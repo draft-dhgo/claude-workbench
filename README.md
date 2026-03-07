@@ -95,23 +95,23 @@ wiki/
 
 ## Wiki Viewer
 
-파이프라인이 생성한 산출물을 브라우저에서 한눈에 확인할 수 있는 Wiki Viewer가 함께 제공됩니다.
+파이프라인이 생성한 산출물을 브라우저에서 한눈에 확인할 수 있는 Wiki Viewer가 함께 제공됩니다. **사이클 기반 뷰**로 구성되어 있어, 각 요구사항(REQ)과 버그(BUG)의 파이프라인 진행 상태를 한눈에 파악할 수 있습니다.
 
 ### Dashboard
 
-카테고리별 문서 수 통계와 최근 문서 목록을 보여줍니다. 각 카테고리를 클릭하면 해당 문서로 바로 이동합니다.
+Dev Cycle과 Bug Cycle 카드를 그리드로 보여줍니다. 각 사이클의 완료 상태(필수 5단계: PRD → SDD → Tests → TDD → Deploy)와 Mockup Gallery를 확인할 수 있습니다.
 
 ![Wiki Dashboard](docs/screenshot-wiki-dashboard.png)
 
 ### Traceability Matrix
 
-요구사항(REQ)부터 PRD → SDD → Tests → TDD → Deploy → Mockup → Bugfix까지, 각 요구사항이 파이프라인의 어디까지 진행되었는지를 매트릭스로 추적합니다. 완료율을 한눈에 파악할 수 있습니다.
+요구사항(REQ)부터 PRD → SDD → Tests → TDD → Deploy → Mockup → Bugfix까지, 각 요구사항이 파이프라인의 어디까지 진행되었는지를 매트릭스로 추적합니다.
 
 ![Traceability Matrix](docs/screenshot-wiki-trace.png)
 
-### Document Viewer
+### Cycle Detail & Document Viewer
 
-사이드바에서 카테고리와 문서를 선택하면 마크다운이 렌더링됩니다. 목업(HTML)은 iframe으로 임베드하여 바로 확인할 수 있습니다.
+사이드바에서 사이클을 클릭하면 파이프라인 단계를 시각화하고, 각 단계의 문서를 바로 열어볼 수 있습니다. 마크다운은 렌더링되고, 목업(HTML)은 iframe으로 임베드됩니다.
 
 ---
 
