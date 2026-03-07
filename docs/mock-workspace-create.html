@@ -4,40 +4,40 @@
 <meta charset="UTF-8"/>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0e0e1a; display: flex; justify-content: center; padding: 40px; }
-.window { width: 860px; background: #1a1a2e; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.6); border: 1px solid #2a2a4a; }
-.titlebar { height: 38px; background: #12122a; display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #110f0a; display: flex; justify-content: center; padding: 40px; }
+.window { width: 860px; background: #1f1b16; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.6); border: 1px solid #3a3530; }
+.titlebar { height: 38px; background: #17140f; display: flex; align-items: center; padding: 0 14px; gap: 8px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; }
 .dot-r { background: #ff5f57; } .dot-y { background: #febc2e; } .dot-g { background: #28c840; }
-.titlebar-text { flex: 1; text-align: center; color: #6a6a8a; font-size: 13px; font-weight: 500; }
+.titlebar-text { flex: 1; text-align: center; color: #7a7060; font-size: 13px; font-weight: 500; }
 .container { padding: 24px 20px; max-width: 860px; }
 .app-header { margin-bottom: 20px; }
-h1 { font-size: 22px; font-weight: 700; color: #e0e0ff; }
-.version { font-size: 12px; color: #8888aa; margin-top: 4px; }
-.tab-nav { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #2a2a4a; }
-.tab-btn { padding: 10px 24px; border: none; background: transparent; color: #8888aa; font-size: 0.92em; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -2px; }
-.tab-btn.active { color: #e0e0ff; border-bottom-color: #533483; }
-.btn { padding: 8px 18px; border-radius: 6px; border: 1px solid #3a3a5a; background: #2a2a4a; color: #e0e0e0; font-size: 0.9em; font-weight: 500; }
-.btn-primary { background: linear-gradient(135deg, #533483, #0f3460); border-color: #533483; color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(83,52,131,0.3); }
-.btn-secondary { background: #2a2a4a; border-color: #3a3a5a; color: #c0c0e0; }
-.section-label { display: block; font-size: 0.85em; font-weight: 600; color: #8888aa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+h1 { font-size: 22px; font-weight: 700; color: #f0e6d6; }
+.version { font-size: 12px; color: #9a9080; margin-top: 4px; }
+.tab-nav { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #3a3530; }
+.tab-btn { padding: 10px 24px; border: none; background: transparent; color: #9a9080; font-size: 0.92em; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab-btn.active { color: #f0e6d6; border-bottom-color: #c47a2a; }
+.btn { padding: 8px 18px; border-radius: 6px; border: 1px solid #4a4035; background: #332d26; color: #e8e0d4; font-size: 0.9em; font-weight: 500; }
+.btn-primary { background: linear-gradient(135deg, #c47a2a, #a05a1a); border-color: #c47a2a; color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(196,122,42,0.3); }
+.btn-secondary { background: #332d26; border-color: #4a4035; color: #d4c4a8; }
+.section-label { display: block; font-size: 0.85em; font-weight: 600; color: #9a9080; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
 .worktree-section { margin-bottom: 20px; }
-.form-input { width: 100%; padding: 10px 14px; border: 1px solid #3a3a5a; border-radius: 6px; background: #12122a; color: #e0e0e0; font-size: 0.92em; }
-.wt-repo-list { border: 1px solid #2a2a4a; border-radius: 6px; background: #12122a; margin-bottom: 10px; overflow: hidden; }
-.wt-repo-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #2a2a4a; }
+.form-input { width: 100%; padding: 10px 14px; border: 1px solid #4a4035; border-radius: 6px; background: #17140f; color: #e8e0d4; font-size: 0.92em; }
+.wt-repo-list { border: 1px solid #3a3530; border-radius: 6px; background: #17140f; margin-bottom: 10px; overflow: hidden; }
+.wt-repo-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #3a3530; }
 .wt-repo-row:last-child { border-bottom: none; }
-.wt-repo-name { font-weight: 600; color: #c0c0ff; font-size: 0.9em; min-width: 160px; }
-.wt-branch-select { padding: 4px 8px; border: 1px solid #3a3a5a; border-radius: 4px; background: #1a1a3a; color: #e0e0e0; font-size: 0.88em; }
+.wt-repo-name { font-weight: 600; color: #d4a574; font-size: 0.9em; min-width: 160px; }
+.wt-branch-select { padding: 4px 8px; border: 1px solid #4a4035; border-radius: 4px; background: #211e18; color: #e8e0d4; font-size: 0.88em; }
 .wt-path-row { display: flex; gap: 10px; align-items: center; }
 .wt-path-input { flex: 1; }
-.wt-progress-list { border: 1px solid #2a2a4a; border-radius: 6px; background: #12122a; margin-bottom: 10px; overflow: hidden; }
-.wt-progress-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #2a2a4a; font-size: 0.9em; }
+.wt-progress-list { border: 1px solid #3a3530; border-radius: 6px; background: #17140f; margin-bottom: 10px; overflow: hidden; }
+.wt-progress-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #3a3530; font-size: 0.9em; }
 .wt-progress-row:last-child { border-bottom: none; }
 .wt-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.78em; font-weight: 700; min-width: 44px; text-align: center; }
 .wt-badge-success { background: #1a3d2a; color: #66cf8a; border: 1px solid #205a30; }
-.wt-badge-running { background: #1a3060; color: #7eb8ff; border: 1px solid #2a4080; }
-.wt-progress-name { font-weight: 600; color: #c0c0ff; min-width: 140px; }
-.wt-progress-msg { color: #8888aa; font-size: 0.88em; }
+.wt-badge-running { background: #3a2e1a; color: #e8b060; border: 1px solid #5a4820; }
+.wt-progress-name { font-weight: 600; color: #d4a574; min-width: 140px; }
+.wt-progress-msg { color: #9a9080; font-size: 0.88em; }
 .wt-summary { font-size: 0.88em; color: #66cf8a; margin-top: 8px; font-weight: 500; }
 </style>
 </head>
@@ -48,10 +48,7 @@ h1 { font-size: 22px; font-weight: 700; color: #e0e0ff; }
     <div class="titlebar-text">Claude Workbench</div>
   </div>
   <div class="container">
-    <header class="app-header">
-      <h1>Claude Workbench</h1>
-      <p class="version">v1.0.0</p>
-    </header>
+    <header class="app-header"><h1>Claude Workbench</h1><p class="version">v1.0.0</p></header>
     <nav class="tab-nav">
       <button class="tab-btn">저장소 관리</button>
       <button class="tab-btn">워크디렉토리 세트</button>
@@ -59,64 +56,36 @@ h1 { font-size: 22px; font-weight: 700; color: #e0e0ff; }
       <button class="tab-btn">워크스페이스 관리</button>
       <button class="tab-btn">워크트리 관리</button>
     </nav>
-
     <div class="worktree-section">
       <label class="section-label">1. 워크디렉토리 세트 선택</label>
-      <select class="form-input" style="color:#7eb8ff;">
-        <option>Backend Services</option>
-      </select>
+      <select class="form-input" style="color:#e8b060;"><option>Backend Services</option></select>
     </div>
-
     <div class="worktree-section">
       <label class="section-label">2. 레포별 베이스 브랜치 확인</label>
       <div class="wt-repo-list">
-        <div class="wt-repo-row">
-          <span class="wt-repo-name">claude-workbench</span>
-          <select class="wt-branch-select"><option>main</option></select>
-        </div>
-        <div class="wt-repo-row">
-          <span class="wt-repo-name">api-server</span>
-          <select class="wt-branch-select"><option>develop</option></select>
-        </div>
-        <div class="wt-repo-row">
-          <span class="wt-repo-name">web-frontend</span>
-          <select class="wt-branch-select"><option>main</option></select>
-        </div>
+        <div class="wt-repo-row"><span class="wt-repo-name">claude-workbench</span><select class="wt-branch-select"><option>main</option></select></div>
+        <div class="wt-repo-row"><span class="wt-repo-name">api-server</span><select class="wt-branch-select"><option>develop</option></select></div>
+        <div class="wt-repo-row"><span class="wt-repo-name">web-frontend</span><select class="wt-branch-select"><option>main</option></select></div>
       </div>
       <button class="btn btn-secondary">원격 업데이트</button>
     </div>
-
     <div class="worktree-section">
       <label class="section-label">3. 새 브랜치명</label>
-      <input type="text" class="form-input" value="feature/login-api" style="color:#e0e0e0;" />
+      <input type="text" class="form-input" value="feature/login-api" style="color:#e8e0d4;" />
     </div>
-
     <div class="worktree-section">
       <label class="section-label">4. 워크트리 생성 경로</label>
       <div class="wt-path-row">
-        <input type="text" class="form-input wt-path-input" value="~/worktrees/feature-login-api" readonly style="color:#a0cfff;" />
+        <input type="text" class="form-input wt-path-input" value="~/worktrees/feature-login-api" readonly style="color:#e8b060;" />
         <button class="btn btn-secondary">경로 선택</button>
       </div>
     </div>
-
     <div class="worktree-section">
       <label class="section-label">처리 결과</label>
       <div class="wt-progress-list">
-        <div class="wt-progress-row">
-          <span class="wt-badge wt-badge-success">OK</span>
-          <span class="wt-progress-name">claude-workbench</span>
-          <span class="wt-progress-msg">워크트리 생성 완료</span>
-        </div>
-        <div class="wt-progress-row">
-          <span class="wt-badge wt-badge-success">OK</span>
-          <span class="wt-progress-name">api-server</span>
-          <span class="wt-progress-msg">워크트리 생성 완료</span>
-        </div>
-        <div class="wt-progress-row">
-          <span class="wt-badge wt-badge-running" style="min-width:50px;">진행중</span>
-          <span class="wt-progress-name">web-frontend</span>
-          <span class="wt-progress-msg">워크트리 생성 중...</span>
-        </div>
+        <div class="wt-progress-row"><span class="wt-badge wt-badge-success">OK</span><span class="wt-progress-name">claude-workbench</span><span class="wt-progress-msg">워크트리 생성 완료</span></div>
+        <div class="wt-progress-row"><span class="wt-badge wt-badge-success">OK</span><span class="wt-progress-name">api-server</span><span class="wt-progress-msg">워크트리 생성 완료</span></div>
+        <div class="wt-progress-row"><span class="wt-badge wt-badge-running" style="min-width:50px;">진행중</span><span class="wt-progress-name">web-frontend</span><span class="wt-progress-msg">워크트리 생성 중...</span></div>
       </div>
       <div class="wt-summary">2/3 완료</div>
     </div>
