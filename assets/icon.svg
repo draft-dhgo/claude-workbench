@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e77f34"/>
+      <stop offset="100%" style="stop-color:#d4622b"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect x="64" y="64" width="896" height="896" rx="180" ry="180" fill="url(#bg)"/>
+  <!-- Workbench / anvil shape -->
+  <g transform="translate(512, 480)">
+    <!-- Hammer head -->
+    <rect x="-180" y="-200" width="360" height="100" rx="20" fill="url(#accent)"/>
+    <!-- Hammer handle -->
+    <rect x="-20" y="-200" width="40" height="280" rx="10" fill="#c4c4c4"/>
+    <!-- Anvil body -->
+    <path d="M-220 120 L-260 200 Q-260 240 -220 240 L220 240 Q260 240 260 200 L220 120 Z" fill="#e0e0e0"/>
+    <rect x="-220" y="80" width="440" height="50" rx="10" fill="#c4c4c4"/>
+    <!-- Anvil horn -->
+    <path d="M-220 80 Q-320 105 -300 130 Q-280 155 -220 130 Z" fill="#d0d0d0"/>
+  </g>
+  <!-- CW text -->
+  <text x="512" y="870" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="120" fill="#e77f34" text-anchor="middle" letter-spacing="8">CW</text>
+</svg>

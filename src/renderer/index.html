@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Workbench</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <h1 id="title">Claude Workbench</h1>
+      <p id="version">앱 버전: 로딩 중...</p>
+    </header>
+
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="repos">저장소 관리</button>
+      <button class="tab-btn" data-tab="sets">워크디렉토리 세트</button>
+      <button class="tab-btn" data-tab="worktree">워크스페이스 생성</button>
+      <button class="tab-btn" data-tab="workspace">워크스페이스 관리</button>
+      <button class="tab-btn" data-tab="repo-worktree">워크트리 관리</button>
+    </nav>
+
+    <!-- 저장소 관리 탭 -->
+    <div id="tab-repos" class="tab-content active">
+      <div class="action-bar">
+        <button id="add-repo-btn" class="btn btn-primary">+ 저장소 추가</button>
+        <div class="search-wrapper">
+          <input type="text" id="repo-search" class="search-input" placeholder="저장소 검색..." />
+        </div>
+      </div>
+
+      <div id="empty-state" class="empty-state" style="display: none;">
+        <div class="empty-icon">&#128193;</div>
+        <p>등록된 저장소가 없습니다.<br><strong>+ 저장소 추가</strong> 버튼으로 시작하세요.</p>
+      </div>
+
+      <table id="repo-table" class="repo-table" style="display: none;">
+        <thead>
+          <tr>
+            <th>이름</th>
+            <th>경로</th>
+            <th>브랜치</th>
+            <th class="col-action">액션</th>
+          </tr>
+        </thead>
+        <tbody id="repo-tbody"></tbody>
+      </table>
+
+      <div id="status-bar" class="status-bar"></div>
+    </div>
+
+    <!-- 워크디렉토리 세트 탭 -->
+    <div id="tab-sets" class="tab-content" style="display: none;">
+      <div id="set-list-view">
+        <div class="action-bar">
+          <button id="create-set-btn" class="btn btn-primary">+ 세트 만들기</button>
+        </div>
+
+        <div id="set-empty-state" class="empty-state" style="display: none;">
+          <div class="empty-icon">&#128230;</div>
+          <p>워크디렉토리 세트가 없습니다.<br><strong>+ 세트 만들기</strong> 버튼으로 시작하세요.</p>
+        </div>
+
+        <div id="set-list" class="set-list"></div>
+        <div id="set-pagination" class="pagination-bar" style="display: none;">
+          <button id="set-prev-btn" class="btn btn-secondary pagination-btn">&lt; 이전</button>
+          <span id="set-page-info" class="pagination-info"></span>
+          <button id="set-next-btn" class="btn btn-secondary pagination-btn">다음 &gt;</button>
+        </div>
+        <div id="set-status-bar" class="status-bar"></div>
+      </div>
+
+      <div id="set-form-view" style="display: none;">
+        <a id="set-form-back" class="back-link">&larr; 세트 목록으로</a>
+        <div class="set-form">
+          <h3 id="set-form-title">세트 만들기</h3>
+          <div class="form-group">
+            <label for="set-name-input">세트 이름</label>
+            <input type="text" class="form-input" id="set-name-input" placeholder="예: 프로젝트 A 작업환경" />
+            <div id="set-name-error" class="form-error" style="display: none;"></div>
+          </div>
+          <div class="form-group">
+            <label>저장소 선택</label>
+            <div id="repo-checkbox-list" class="repo-checkbox-list"></div>
+          </div>
+          <div class="form-actions">
+            <button id="set-cancel-btn" class="btn btn-secondary">취소</button>
+            <button id="set-save-btn" class="btn btn-primary">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="set-detail-view" style="display: none;">
+        <a id="set-detail-back" class="back-link">&larr; 세트 목록으로</a>
+        <div class="set-detail">
+          <div class="set-detail-header">
+            <h3 id="set-detail-name"></h3>
+            <div class="set-detail-actions">
+              <button id="set-edit-btn" class="btn btn-secondary">편집</button>
+              <button id="set-delete-btn" class="btn btn-danger">삭제</button>
+            </div>
+          </div>
+          <div id="set-detail-meta" class="set-detail-meta"></div>
+          <table class="repo-table">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>경로</th>
+                <th>액션</th>
+              </tr>
+            </thead>
+            <tbody id="set-detail-repos"></tbody>
+          </table>
+          <div id="set-detail-status" class="status-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 워크트리 클론 탭 -->
+    <div id="tab-worktree" class="tab-content" style="display: none;">
+      <!-- 세트 선택 영역 -->
+      <div class="worktree-section">
+        <label class="section-label">1. 워크디렉토리 세트 선택</label>
+        <select id="wt-set-select" class="form-input">
+          <option value="">-- 세트를 선택하세요 --</option>
+        </select>
+        <div id="wt-no-sets-msg" class="empty-state" style="display: none;">
+          <p>등록된 워크디렉토리 세트가 없습니다.<br>
+             <strong>워크디렉토리 세트</strong> 탭에서 먼저 세트를 만들어 주세요.</p>
+        </div>
+      </div>
+
+      <!-- 레포별 베이스 브랜치 확인 영역 -->
+      <div id="wt-repo-section" class="worktree-section" style="display: none;">
+        <label class="section-label">2. 레포별 베이스 브랜치 확인</label>
+        <div id="wt-repo-list" class="wt-repo-list"></div>
+        <button id="wt-fetch-btn" class="btn btn-secondary">원격 업데이트</button>
+      </div>
+
+      <!-- 새 브랜치명 입력 영역 -->
+      <div id="wt-branch-section" class="worktree-section" style="display: none;">
+        <label class="section-label">3. 새 브랜치명</label>
+        <input type="text" id="wt-new-branch" class="form-input"
+               placeholder="예: feature/my-task" />
+        <div id="wt-branch-error" class="form-error" style="display: none;"></div>
+      </div>
+
+      <!-- 워크트리 경로 선택 영역 -->
+      <div id="wt-path-section" class="worktree-section" style="display: none;">
+        <label class="section-label">4. 워크트리 생성 경로</label>
+        <div class="wt-path-row">
+          <input type="text" id="wt-target-path" class="form-input wt-path-input"
+                 readonly placeholder="경로를 선택하세요" />
+          <button id="wt-select-path-btn" class="btn btn-secondary">경로 선택</button>
+        </div>
+        <div id="wt-path-error" class="form-error" style="display: none;"></div>
+      </div>
+
+      <!-- 실행 버튼 -->
+      <div id="wt-action-section" class="worktree-section" style="display: none;">
+        <button id="wt-clone-btn" class="btn btn-primary">일괄 클론 실행</button>
+      </div>
+
+      <!-- 진행 결과 영역 -->
+      <div id="wt-result-section" class="worktree-section" style="display: none;">
+        <label class="section-label">처리 결과</label>
+        <div id="wt-progress-list" class="wt-progress-list"></div>
+        <div id="wt-summary" class="wt-summary"></div>
+      </div>
+    </div>
+
+    <!-- 워크스페이스 관리 탭 -->
+    <div id="tab-workspace" class="tab-content" style="display: none;">
+      <h3>워크스페이스 관리</h3>
+
+      <div id="ws-list-section" class="ws-section">
+        <label class="section-label">워크스페이스 목록</label>
+        <div id="ws-list" class="ws-list"></div>
+        <div id="ws-empty-msg" class="empty-state" style="display: none;">
+          <p>생성된 워크스페이스가 없습니다.</p>
+        </div>
+      </div>
+
+      <div id="ws-selected-section" class="ws-section" style="display: none;">
+        <label class="section-label">선택된 워크스페이스</label>
+        <div id="ws-selected-path"></div>
+      </div>
+
+      <div id="ws-action-section" class="ws-section" style="display: none;">
+        <button id="ws-terminal-btn" class="btn btn-secondary" disabled>터미널 열기</button>
+        <button id="ws-claude-btn" class="btn btn-primary" disabled>Claude 설정 재생성</button>
+      </div>
+
+      <div id="ws-result-bar" class="status-bar"></div>
+    </div>
+
+    <!-- 워크트리 관리 탭 -->
+    <div id="tab-repo-worktree" class="tab-content" style="display: none;">
+
+      <!-- 액션 바: 레포 선택 + 새로고침 버튼 -->
+      <div class="action-bar rm-action-bar">
+        <select id="rm-repo-select" class="form-input rm-repo-select">
+          <option value="">-- 레포를 선택하세요 --</option>
+        </select>
+        <button id="rm-refresh-btn" class="btn btn-secondary" style="display:none;">
+          &#x21bb; 새로고침
+        </button>
+      </div>
+
+      <!-- 등록 레포 없음 안내 -->
+      <div id="rm-no-repos-msg" class="empty-state" style="display: none;">
+        <div class="empty-icon">&#128193;</div>
+        <p>등록된 레포가 없습니다.<br>
+           <strong>저장소 관리</strong> 탭에서 먼저 레포를 추가하세요.</p>
+      </div>
+
+      <!-- 로딩 인디케이터 -->
+      <div id="rm-loading" class="rm-loading" style="display: none;">
+        <span class="rm-spinner"></span> 워크트리 목록을 불러오는 중...
+      </div>
+
+      <!-- 워크트리 카드 목록 영역 -->
+      <div id="rm-list-section" style="display: none;">
+        <div id="rm-worktree-list" class="rm-card-list"></div>
+        <div id="rm-empty-msg" class="empty-state" style="display: none;">
+          <div class="empty-icon">&#127795;</div>
+          <p>이 레포에 생성된 워크트리가 없습니다.</p>
+        </div>
+      </div>
+
+      <!-- 삭제 확인 인라인 모달 -->
+      <div id="rm-confirm-overlay" class="dialog-overlay" style="display: none;">
+        <div class="dialog-box">
+          <h3 class="dialog-title">워크트리 삭제 확인</h3>
+          <p id="rm-confirm-msg" class="dialog-msg"></p>
+          <p class="dialog-warn">
+            이 브랜치는 remote에 push되지 않았습니다.<br>
+            삭제 후 복구할 수 없습니다.
+          </p>
+          <div class="dialog-actions">
+            <button id="rm-cancel-btn" class="btn btn-secondary">취소</button>
+            <button id="rm-confirm-btn" class="btn btn-danger">삭제 확인</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="rm-status-bar" class="status-bar"></div>
+    </div>
+
+    <div id="toast" class="toast" style="display: none;"></div>
+  </div>
+  <script src="scripts/renderer.js"></script>
+  <script src="scripts/setRenderer.js"></script>
+  <script src="scripts/worktreeRenderer.js"></script>
+  <script src="scripts/repoWorktreeRenderer.js"></script>
+  <script src="scripts/workspaceRenderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": [
+    "src/renderer/**/*.ts",
+    "src/shared/types/electron-api.d.ts",
+    "src/shared/types/models.ts",
+    "src/shared/types/ipc.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
+}

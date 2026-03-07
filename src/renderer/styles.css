@@ -1,0 +1,663 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+.app-header {
+  margin-bottom: 20px;
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e0e0ff;
+}
+
+#version {
+  font-size: 12px;
+  color: #8888aa;
+  margin-top: 4px;
+}
+
+/* Action Bar */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  cursor: pointer;
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid #3a3a5a;
+  background: #2a2a4a;
+  color: #e0e0e0;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.btn:hover { background: #3a3a5a; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+.btn-primary {
+  background: linear-gradient(135deg, #533483, #0f3460);
+  border-color: #533483;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(83, 52, 131, 0.3);
+}
+.btn-primary:hover { box-shadow: 0 4px 16px rgba(83, 52, 131, 0.5); }
+
+.btn-danger {
+  background: transparent;
+  border-color: transparent;
+  color: #cf6679;
+  padding: 4px 10px;
+  font-size: 1.1em;
+}
+.btn-danger:hover { background: rgba(207, 102, 121, 0.15); }
+
+/* Search */
+.search-wrapper {
+  flex: 1;
+  max-width: 260px;
+  margin-left: auto;
+}
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  background: #12122a;
+  color: #e0e0e0;
+  font-size: 0.9em;
+}
+.search-input:focus {
+  outline: none;
+  border-color: #533483;
+  box-shadow: 0 0 0 3px rgba(83, 52, 131, 0.2);
+}
+.search-input::placeholder { color: #6a6a8a; }
+
+/* Table */
+.repo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.repo-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 0.8em;
+  color: #8888aa;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid #2a2a4a;
+}
+.repo-table td {
+  padding: 12px;
+  border-bottom: 1px solid #2a2a4a;
+  vertical-align: middle;
+}
+.repo-table tbody tr:hover {
+  background: rgba(83, 52, 131, 0.08);
+}
+.repo-name { font-weight: 600; color: #c0c0ff; }
+.repo-path {
+  color: #8888aa;
+  font-size: 0.88em;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.branch-badge {
+  display: inline-block;
+  background: #0f3460;
+  color: #7eb8ff;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.82em;
+  font-weight: 500;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.col-action { width: 60px; text-align: center; }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 24px;
+  color: #6a6a8a;
+}
+.empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+
+/* Status bar */
+.status-bar {
+  margin-top: 12px;
+  font-size: 0.82em;
+  color: #6a6a8a;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.88em;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+}
+.toast-error { background: #3d1a1a; color: #cf6679; border: 1px solid #5a2020; }
+.toast-warning { background: #3d3a1a; color: #cfb866; border: 1px solid #5a5220; }
+.toast-success { background: #1a3d2a; color: #66cf8a; border: 1px solid #205a30; }
+
+.invalid-indicator {
+  color: #cf6679;
+  margin-left: 6px;
+  font-size: 0.85em;
+}
+
+/* Tab Navigation */
+.tab-nav {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #2a2a4a;
+}
+.tab-btn {
+  cursor: pointer;
+  padding: 10px 24px;
+  border: none;
+  background: transparent;
+  color: #8888aa;
+  font-size: 0.92em;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: #c0c0e0; background: transparent; transform: none; }
+.tab-btn.active { color: #e0e0ff; border-bottom-color: #533483; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Set Card List */
+.set-list { display: flex; flex-direction: column; gap: 12px; }
+.set-card {
+  display: flex;
+  align-items: center;
+  background: #22223e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+.set-card:hover {
+  border-color: #533483;
+  box-shadow: 0 2px 12px rgba(83, 52, 131, 0.15);
+  transform: translateY(-1px);
+}
+.set-card-info { flex: 1; }
+.set-card-name { font-size: 1em; font-weight: 600; color: #c0c0ff; margin-bottom: 4px; }
+.set-card-meta { font-size: 0.82em; color: #6a6a8a; display: flex; gap: 16px; }
+.set-card-badge {
+  display: inline-block;
+  background: #0f3460;
+  color: #7eb8ff;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+  margin-right: 12px;
+}
+.set-card-actions { display: flex; gap: 4px; }
+
+/* Back Link */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  color: #8888aa;
+  text-decoration: none;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.back-link:hover { color: #c0c0ff; }
+
+/* Set Form */
+.set-form {
+  background: #22223e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 24px;
+}
+.set-form h3 { font-size: 1.05em; font-weight: 600; color: #e0e0ff; margin-bottom: 20px; }
+.form-group { margin-bottom: 20px; }
+.form-group label {
+  display: block;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #8888aa;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  background: #12122a;
+  color: #e0e0e0;
+  font-size: 0.92em;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-input:focus {
+  outline: none;
+  border-color: #533483;
+  box-shadow: 0 0 0 3px rgba(83, 52, 131, 0.2);
+}
+.form-input::placeholder { color: #6a6a8a; }
+.form-input.error {
+  border-color: #cf6679;
+  box-shadow: 0 0 0 3px rgba(207, 102, 121, 0.2);
+}
+.form-error { font-size: 0.82em; color: #cf6679; margin-top: 6px; }
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #2a2a4a;
+}
+.btn-secondary {
+  background: #2a2a4a;
+  border-color: #3a3a5a;
+  color: #c0c0e0;
+}
+.btn-secondary:hover { background: #3a3a5a; }
+
+/* Repo Checkbox List */
+.repo-checkbox-list {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  background: #12122a;
+}
+.repo-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #2a2a4a;
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.repo-checkbox-item:last-child { border-bottom: none; }
+.repo-checkbox-item:hover { background: rgba(83, 52, 131, 0.08); }
+.repo-checkbox-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #533483;
+  cursor: pointer;
+}
+.repo-checkbox-name { font-weight: 600; color: #c0c0ff; font-size: 0.9em; }
+.repo-checkbox-path {
+  font-size: 0.8em;
+  color: #6a6a8a;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  margin-left: auto;
+}
+
+/* Set Detail */
+.set-detail {
+  background: #22223e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 24px;
+}
+.set-detail-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.set-detail-header h3 { font-size: 1.15em; font-weight: 700; color: #e0e0ff; flex: 1; }
+.set-detail-actions { display: flex; gap: 8px; }
+.set-detail-meta {
+  font-size: 0.82em;
+  color: #6a6a8a;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 20px;
+}
+
+/* Worktree Clone Tab */
+.worktree-section {
+  margin-bottom: 20px;
+}
+
+.section-label {
+  display: block;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #8888aa;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wt-repo-list {
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  background: #12122a;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.wt-repo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+.wt-repo-row:last-child {
+  border-bottom: none;
+}
+
+.wt-repo-name {
+  font-weight: 600;
+  color: #c0c0ff;
+  font-size: 0.9em;
+  min-width: 160px;
+}
+
+.wt-branch-saved {
+  font-size: 0.88em;
+  color: #7eb8ff;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.wt-branch-select {
+  padding: 4px 8px;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  background: #1a1a3a;
+  color: #e0e0e0;
+  font-size: 0.88em;
+}
+
+.wt-path-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.wt-path-input {
+  flex: 1;
+}
+
+.wt-progress-list {
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  background: #12122a;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.wt-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #2a2a4a;
+  font-size: 0.9em;
+}
+
+.wt-progress-row:last-child {
+  border-bottom: none;
+}
+
+.wt-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.78em;
+  font-weight: 700;
+  min-width: 44px;
+  text-align: center;
+}
+
+.wt-badge-pending {
+  background: #2a2a4a;
+  color: #8888aa;
+  border: 1px solid #3a3a5a;
+}
+
+.wt-badge-running {
+  background: #1a3060;
+  color: #7eb8ff;
+  border: 1px solid #2a4080;
+}
+
+.wt-badge-success {
+  background: #1a3d2a;
+  color: #66cf8a;
+  border: 1px solid #205a30;
+}
+
+.wt-badge-error {
+  background: #3d1a1a;
+  color: #cf6679;
+  border: 1px solid #5a2020;
+}
+
+.wt-progress-name {
+  font-weight: 600;
+  color: #c0c0ff;
+  min-width: 140px;
+}
+
+.wt-progress-msg {
+  color: #8888aa;
+  font-size: 0.88em;
+}
+
+.wt-summary {
+  font-size: 0.88em;
+  color: #8888aa;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+/* ─── Workspace Management Tab ─────────────────────────────────────────── */
+
+.ws-list {
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 8px 0;
+}
+
+.ws-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #2a2a4a;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ws-item:last-child {
+  border-bottom: none;
+}
+
+.ws-item:hover {
+  background: #2a2a4e;
+}
+
+.ws-item.selected {
+  background: #1e3a5f;
+  border-left: 3px solid #4a90d9;
+}
+
+.ws-item-name {
+  font-weight: 600;
+  color: #e0e0e0;
+  font-size: 0.9em;
+}
+
+.ws-item-path {
+  font-size: 0.78em;
+  color: #8888aa;
+  word-break: break-all;
+}
+
+.ws-section {
+  margin-bottom: 16px;
+}
+
+#ws-selected-path {
+  font-family: monospace;
+  font-size: 0.85em;
+  color: #a0cfff;
+  word-break: break-all;
+  margin-top: 4px;
+}
+
+#ws-action-section {
+  display: flex;
+  gap: 10px;
+}
+
+/* ─── 워크트리 관리 탭 개선 (REQ-014) ────────────────────────── */
+
+/* 액션 바 내 드롭다운 너비 조정 */
+.rm-action-bar { align-items: center; }
+.rm-repo-select { flex: 1; max-width: 360px; }
+
+/* 카드 목록 컨테이너 */
+.rm-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* 워크트리 카드 */
+.wt-card {
+  background: #22223e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 16px 20px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.wt-card:hover {
+  border-color: #533483;
+  box-shadow: 0 2px 12px rgba(83, 52, 131, 0.15);
+}
+
+/* 카드 헤더: 브랜치명 + 상태 뱃지 */
+.wt-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.wt-card-branch {
+  font-size: 1em;
+  font-weight: 700;
+  color: #c0c0ff;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* push 상태 뱃지 */
+.wt-card-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78em;
+  font-weight: 700;
+}
+.wt-badge-pushed {
+  background: #1a3d2a;
+  color: #66cf8a;
+  border: 1px solid #205a30;
+}
+.wt-badge-unpushed {
+  background: #3d1a1a;
+  color: #cf6679;
+  border: 1px solid #5a2020;
+}
+
+/* 카드 경로 */
+.wt-card-path {
+  font-size: 0.83em;
+  color: #8888aa;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  word-break: break-all;
+  margin-bottom: 12px;
+}
+
+/* 카드 액션 영역 */
+.wt-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* 비활성화된 삭제 버튼 (isPushed=true) */
+.btn-danger:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 로딩 인디케이터 */
+.rm-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 0;
+  color: #8888aa;
+  font-size: 0.9em;
+}
+.rm-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #3a3a5a;
+  border-top-color: #533483;
+  border-radius: 50%;
+  animation: rm-spin 0.7s linear infinite;
+}
+@keyframes rm-spin {
+  to { transform: rotate(360deg); }
+}
