@@ -661,3 +661,91 @@ h1 {
 @keyframes rm-spin {
   to { transform: rotate(360deg); }
 }
+
+/* 삭제 확인 다이얼로그 — SDD-0016 */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-box {
+  background: #1e1a14;
+  border: 1px solid #4a4035;
+  border-radius: 10px;
+  padding: 28px 32px;
+  min-width: 340px;
+  max-width: 480px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.dialog-title {
+  margin: 0 0 12px;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: #e0d4be;
+}
+
+.dialog-msg {
+  margin: 0 0 8px;
+  color: #b8a888;
+  font-size: 0.9em;
+}
+
+.dialog-branch {
+  margin: 0 0 16px;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 1.05em;
+  color: #e0d4be;
+  background: #2a2318;
+  border: 1px solid #4a4035;
+  border-radius: 4px;
+  padding: 6px 10px;
+  word-break: break-all;
+}
+
+.dialog-warn {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  background: rgba(207, 102, 121, 0.12);
+  border: 1px solid rgba(207, 102, 121, 0.4);
+  border-radius: 6px;
+  color: #cf6679;
+  font-size: 0.88em;
+  line-height: 1.5;
+}
+
+.dialog-safe {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  background: rgba(88, 166, 92, 0.12);
+  border: 1px solid rgba(88, 166, 92, 0.4);
+  border-radius: 6px;
+  color: #58a65c;
+  font-size: 0.88em;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-danger-filled {
+  background: #8b1a2a;
+  border-color: #a52030;
+  color: #fff;
+  font-weight: 600;
+  padding: 8px 20px;
+  font-size: 0.95em;
+}
+.btn-danger-filled:hover {
+  background: #a52030;
+  border-color: #cf6679;
+  box-shadow: 0 2px 8px rgba(207, 102, 121, 0.4);
+}

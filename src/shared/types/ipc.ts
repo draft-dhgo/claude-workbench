@@ -1,3 +1,12 @@
+/** Supported UI languages */
+export type Lang = 'en' | 'ko';
+
+/** claude-config:reset request payload */
+export interface ClaudeConfigResetPayload {
+  workspacePath: string;
+  lang?: Lang;
+}
+
 /** Invoke (양방향) IPC 채널 */
 export type InvokeChannel =
   | 'app:ping'

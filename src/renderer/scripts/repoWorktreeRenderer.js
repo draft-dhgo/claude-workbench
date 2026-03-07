@@ -7,7 +7,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const rmWorktreeList   = document.getElementById('rm-worktree-list')
   const rmEmptyMsg       = document.getElementById('rm-empty-msg')
   const rmConfirmOverlay = document.getElementById('rm-confirm-overlay')
-  const rmConfirmMsg     = document.getElementById('rm-confirm-msg')
+  const rmConfirmBranch  = document.getElementById('rm-confirm-branch')
+  const rmConfirmWarn    = document.getElementById('rm-confirm-warn')
+  const rmConfirmSafe    = document.getElementById('rm-confirm-safe')
   const rmCancelBtn      = document.getElementById('rm-cancel-btn')
   const rmConfirmBtn     = document.getElementById('rm-confirm-btn')
   const rmStatusBar      = document.getElementById('rm-status-bar')
@@ -66,10 +68,26 @@ window.addEventListener('DOMContentLoaded', () => {
    * 인라인 모달 오버레이 표시.
    * @param {string} worktreePath
    * @param {string} branch
+   * @param {boolean} isPushed
    */
-  function showDeleteConfirm(worktreePath, branch) {
+  function showDeleteConfirm(worktreePath, branch, isPushed) {
     pendingDelete = { worktreePath, branch }
-    rmConfirmMsg.textContent = "'" + branch + "' 브랜치의 워크트리를 삭제하시겠습니까?"
+
+    // 브랜치명 표시
+    rmConfirmBranch.textContent = branch || '(detached HEAD)'
+
+    // push 상태 분기
+    if (!isPushed) {
+      rmConfirmWarn.textContent =
+        '이 워크트리에 push되지 않은 커밋이 있습니다. 삭제하면 해당 작업 내용이 영구히 손실됩니다.'
+      rmConfirmWarn.style.display = 'block'
+      rmConfirmSafe.style.display = 'none'
+    } else {
+      rmConfirmSafe.textContent = '안전하게 삭제할 수 있습니다.'
+      rmConfirmSafe.style.display = 'block'
+      rmConfirmWarn.style.display = 'none'
+    }
+
     rmConfirmOverlay.style.display = 'flex'
   }
 
@@ -113,6 +131,7 @@ window.addEventListener('DOMContentLoaded', () => {
           '<button class="btn btn-danger rm-delete-btn"' +
             ' data-path="' + escapeHtml(wt.worktreePath) + '"' +
             ' data-branch="' + escapeHtml(wt.branch || '') + '"' +
+            ' data-is-pushed="' + (wt.isPushed ? 'true' : 'false') + '"' +
             disabledAttr + '>삭제</button>' +
         '</div>'
 
@@ -251,7 +270,8 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!deleteBtn || deleteBtn.disabled) return
     const worktreePath = deleteBtn.dataset.path
     const branch = deleteBtn.dataset.branch
-    showDeleteConfirm(worktreePath, branch)
+    const isPushed = deleteBtn.dataset.isPushed === 'true'
+    showDeleteConfirm(worktreePath, branch, isPushed)
   })
 
   window.loadRepoWorktreeTab = loadRepoWorktreeTab

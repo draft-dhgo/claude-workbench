@@ -1,7 +1,7 @@
 import fs = require('fs');
 import path = require('path');
 import { BrowserWindow } from 'electron';
-import { buildDefaultClaudeMd, DEFAULT_SKILLS, DEFAULT_COMMANDS } from '../constants/claudeConfigDefaults';
+import { buildDefaultClaudeMd, buildDefaultSkills, buildDefaultCommands } from '../constants/claudeConfigDefaults';
 
 async function handleDetect(event: any, data: { repoPaths: string[] }) {
   const sourcePath = data.repoPaths[0]
@@ -49,10 +49,15 @@ async function handleCopyAll(event: any, data: { sourcePath: string; worktreePat
   return { succeeded, failed, skipped }
 }
 
-function writeDefaultSkillsAndCommands(claudeDir: string): void {
+type Lang = 'en' | 'ko';
+
+function writeDefaultSkillsAndCommands(claudeDir: string, lang: Lang = 'en'): void {
+  const skills = buildDefaultSkills(lang)
+  const commands = buildDefaultCommands(lang)
+
   // Skills: .claude/skills/{name}/SKILL.md
   const skillsDir = path.join(claudeDir, 'skills')
-  for (const [name, content] of Object.entries(DEFAULT_SKILLS)) {
+  for (const [name, content] of Object.entries(skills)) {
     const skillDir = path.join(skillsDir, name)
     fs.mkdirSync(skillDir, { recursive: true })
     fs.writeFileSync(path.join(skillDir, 'SKILL.md'), content, 'utf8')
@@ -61,17 +66,18 @@ function writeDefaultSkillsAndCommands(claudeDir: string): void {
   // Commands: .claude/commands/{name}.md
   const commandsDir = path.join(claudeDir, 'commands')
   fs.mkdirSync(commandsDir, { recursive: true })
-  for (const [name, content] of Object.entries(DEFAULT_COMMANDS)) {
+  for (const [name, content] of Object.entries(commands)) {
     fs.writeFileSync(path.join(commandsDir, `${name}.md`), content, 'utf8')
   }
 }
 
-async function handleReset(event: any, data: { workspacePath?: string }) {
+async function handleReset(event: any, data: { workspacePath?: string; lang?: Lang }) {
   const workspacePath = data && data.workspacePath
   if (!workspacePath) {
     return { success: false, failedStep: 'validation', error: '유효하지 않은 workspacePath' }
   }
 
+  const lang: Lang = (data && data.lang) || 'en'
   const claudeDir = path.join(workspacePath, '.claude')
   const claudeMd = path.join(workspacePath, 'CLAUDE.md')
   const steps: { step: string; status: string; message: string }[] = []
@@ -105,7 +111,7 @@ async function handleReset(event: any, data: { workspacePath?: string }) {
   // Step 3: .claude/ 재생성 (skills + commands 포함)
   try {
     fs.mkdirSync(claudeDir, { recursive: true })
-    writeDefaultSkillsAndCommands(claudeDir)
+    writeDefaultSkillsAndCommands(claudeDir, lang)
     steps.push({ step: 'create-claude-dir', status: 'success', message: '.claude/ 재생성 완료 (skills 10개, commands 4개)' })
   } catch (e: any) {
     return { success: false, failedStep: 'create-claude-dir', error: e.message }
@@ -114,7 +120,7 @@ async function handleReset(event: any, data: { workspacePath?: string }) {
   // Step 4: CLAUDE.md 재생성
   try {
     const workspaceName = path.basename(workspacePath)
-    const defaultContent = buildDefaultClaudeMd(workspaceName)
+    const defaultContent = buildDefaultClaudeMd(workspaceName, lang)
     fs.writeFileSync(claudeMd, defaultContent, 'utf8')
     steps.push({ step: 'create-claude-md', status: 'success', message: 'CLAUDE.md 재생성 완료' })
   } catch (e: any) {

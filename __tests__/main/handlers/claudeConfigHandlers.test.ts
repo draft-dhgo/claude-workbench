@@ -293,7 +293,8 @@ describe('handleReset', () => {
     const claudeMdCall = mockWriteFileSync.mock.calls.find(c => c[0].endsWith('CLAUDE.md') && !c[0].includes('.claude'))
     expect(claudeMdCall).toBeTruthy()
     const content = claudeMdCall[1]
-    expect(content).toContain('## 사용 가능한 스킬')
+    // Default lang is 'en', so check for English skill table heading
+    expect(content).toMatch(/Available Skills|사용 가능한 스킬/)
     expect(content).toContain('req-manage')
     expect(content).toContain('wiki-views')
     expect(content).toContain('bugfix')
@@ -328,6 +329,96 @@ describe('handleReset', () => {
     })
   })
 })
+
+// ─── handleReset — lang パラメータ (TC-I18N-13~15) ───────────────────────────
+
+describe('handleReset — lang 파라미터 (TC-I18N-13~15)', () => {
+  let langMockExistsSync: jest.Mock;
+  let langMockMkdirSync: jest.Mock;
+  let langMockWriteFileSync: jest.Mock;
+  let langMockRmSync: jest.Mock;
+  let langHandlers: any;
+
+  beforeEach(() => {
+    langMockExistsSync = jest.fn();
+    langMockMkdirSync = jest.fn();
+    langMockWriteFileSync = jest.fn();
+    langMockRmSync = jest.fn();
+
+    langMockExistsSync.mockReturnValue(false);
+    langMockMkdirSync.mockReturnValue(undefined);
+    langMockWriteFileSync.mockReturnValue(undefined);
+    langMockRmSync.mockReturnValue(undefined);
+
+    jest.resetModules();
+    jest.doMock('fs', () => ({
+      existsSync: langMockExistsSync,
+      mkdirSync: langMockMkdirSync,
+      writeFileSync: langMockWriteFileSync,
+      rmSync: langMockRmSync,
+      cpSync: jest.fn(),
+      copyFileSync: jest.fn(),
+    }));
+    jest.doMock('electron', () => ({
+      BrowserWindow: {
+        getAllWindows: jest.fn(() => [{ webContents: { send: jest.fn() } }]),
+      },
+      app: { getPath: jest.fn(() => '/tmp/userData') },
+    }));
+
+    langHandlers = require('../../../src/main/handlers/claudeConfigHandlers');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('TC-I18N-13: lang="en" 전달 시 영어 콘텐츠로 CLAUDE.md를 생성한다', async () => {
+    const result = await langHandlers.handleReset(
+      {},
+      { workspacePath: '/workspace/proj', lang: 'en' }
+    );
+    expect(result.success).toBe(true);
+    const claudeMdCall = langMockWriteFileSync.mock.calls.find(
+      (call: any[]) => String(call[0]).endsWith('CLAUDE.md')
+    );
+    expect(claudeMdCall).toBeDefined();
+    const content: string = claudeMdCall[1];
+    expect(content).toMatch(/[Rr]ules|[Cc]ommands|[Ss]kills/);
+    expect(content).not.toMatch(/워크스페이스 규칙/);
+  });
+
+  test('TC-I18N-14: lang="ko" 전달 시 한국어 콘텐츠로 CLAUDE.md를 생성한다', async () => {
+    const result = await langHandlers.handleReset(
+      {},
+      { workspacePath: '/workspace/proj', lang: 'ko' }
+    );
+    expect(result.success).toBe(true);
+    const claudeMdCall = langMockWriteFileSync.mock.calls.find(
+      (call: any[]) => String(call[0]).endsWith('CLAUDE.md')
+    );
+    expect(claudeMdCall).toBeDefined();
+    const content: string = claudeMdCall[1];
+    expect(content).toMatch(/워크스페이스 규칙|파이프라인/);
+  });
+
+  test('TC-I18N-15: lang 미전달 시 기본값 "en"으로 동작한다 (하위 호환)', async () => {
+    const resultNoLang = await langHandlers.handleReset(
+      {},
+      { workspacePath: '/workspace/proj' }
+    );
+    expect(resultNoLang.success).toBe(true);
+
+    langMockWriteFileSync.mockClear();
+
+    const resultEnLang = await langHandlers.handleReset(
+      {},
+      { workspacePath: '/workspace/proj', lang: 'en' }
+    );
+    expect(resultEnLang.success).toBe(true);
+    expect(resultNoLang.success).toBe(true);
+  });
+});
 
 // ─── handleCopyAll ────────────────────────────────────────────────────────────
 

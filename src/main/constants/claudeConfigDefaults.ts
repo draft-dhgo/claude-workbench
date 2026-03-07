@@ -1,8 +1,11 @@
 // Claude 구성 자동 세팅 시 기본으로 생성되는 스킬/커맨드/CLAUDE.md 내용
 // handleReset에서 .claude/ 재생성 시 사용
 
-function buildDefaultClaudeMd(workspaceName: string): string {
-  return `# Workspace: ${workspaceName}
+type Lang = 'en' | 'ko';
+
+function buildDefaultClaudeMd(workspaceName: string, lang: Lang = 'en'): string {
+  if (lang === 'ko') {
+    return `# Workspace: ${workspaceName}
 
 ## 워크스페이스 규칙
 
@@ -32,6 +35,39 @@ function buildDefaultClaudeMd(workspaceName: string): string {
 | bugfix | 버그 원인 분석 및 수정 보고서 작성. /bugfix-teams Step 1. |
 | project-knowledge | 프로젝트 지식 기록. /teams Step 7, /bugfix-teams Step 7. |
 | wiki-views | wiki/views/index.html 사이클 기반 뷰어 갱신. /teams Step 6, /bugfix-teams Step 6. |
+`
+  }
+  // Default: English
+  return `# Workspace: ${workspaceName}
+
+## Workspace Rules
+
+- All documentation artifacts must be written only under wiki/
+- Existing files in wiki/ must not be modified (append-only)
+- Project knowledge discovered during work should be recorded in wiki/knowledge/
+
+## Pipeline Commands
+
+| Command | Description |
+|---------|-------------|
+| /add-req | Register new requirements in wiki/requirements/ |
+| /teams | Dev cycle pipeline: REQ → PRD → SDD → Mockup → Tests → TDD → Deploy → Wiki Views |
+| /add-bug | Register new bugs in wiki/bugs/README.md |
+| /bugfix-teams | Bug cycle pipeline: Bugfix → SDD → Tests → TDD → Deploy → Wiki Views |
+
+## Available Skills
+
+| Skill | Description |
+|-------|-------------|
+| req-manage | Requirements definition and PRD writing. Step 1 of /teams pipeline. |
+| dev-design | Write development design document (SDD). /teams Step 2, /bugfix-teams Step 2. |
+| ui-mockup | Generate HTML mockup from SDD UI design. /teams Step 2.5. |
+| test-design | Write test design document. /teams Step 3, /bugfix-teams Step 3. |
+| tdd-cycle | TDD (Red-Green-Refactor) cycle implementation. /teams Step 4, /bugfix-teams Step 4. |
+| deploy | Build, verify, and deploy. /teams Step 5, /bugfix-teams Step 5. |
+| bugfix | Bug root cause analysis and fix report. /bugfix-teams Step 1. |
+| project-knowledge | Record project knowledge. /teams Step 7, /bugfix-teams Step 7. |
+| wiki-views | Update wiki/views/index.html cycle-based viewer. /teams Step 6, /bugfix-teams Step 6. |
 `
 }
 
@@ -2022,26 +2058,492 @@ const CMD_BUGFIX_TEAMS = `버그 수정 파이프라인을 실행합니다.
 - wiki/ 내 기존 파일은 절대 수정하지 않는다 (append-only, 상태 갱신은 예외)
 `
 
+// ── Skills: English versions ──
+// For skills already written in English, reuse the same content.
+// For skills with Korean sections (ui-mockup, wiki-views), provide English-only versions.
+
+const SKILL_UI_MOCKUP_EN = `---
+name: ui-mockup
+description: This skill should be used when the user asks to "create UI mockup", "design the screen", "make HTML mockup". Generate standalone HTML mockups from SDD UI specifications.
+---
+
+# ui-mockup
+
+## Purpose
+
+Accept the UI design from an SDD (Solution Design Document) as input and generate a standalone HTML mockup
+that can be viewed directly in a browser. Visually represents the layout and states of each screen,
+similar to a storybook.
+
+## Trigger
+
+Activate when UI mockup creation, screen design visualization, or HTML prototype is requested. Typically runs after dev-design.
+
+## Prerequisites
+
+\`\`\`bash
+mkdir -p wiki/mockups
+\`\`\`
+
+## Workflow
+
+1. **Read context**
+   - Read the relevant SDD from \`wiki/specs/{NNNN}.md\`
+   - Identify screen list, component structure, and UI states from the SDD UI Design section
+   - If no UI Design section, infer from Module Design and Data Flow
+   - Read \`wiki/knowledge/\` for known UI conventions
+
+2. **Identify screens**
+   - List the screens/views to implement
+   - Define UI states for each screen (default, loading, empty, error, etc.)
+
+3. **Generate mockups**
+   - Create \`wiki/mockups/{NNNN}-{screen-name}.html\` for each screen
+   - Follow the mockup writing guidelines below
+
+4. **Create gallery index**
+   - Create \`wiki/mockups/index.html\` listing all mockups as cards
+   - Include SDD number, screen name, and mockup link
+
+5. **Verify output**
+   - Confirm HTML files exist under \`wiki/mockups/\`
+   - Confirm each file is a standalone file that can be opened in a browser
+   - If check fails, fix before reporting completion
+
+## Mockup Writing Guidelines
+
+### Visual Representation Principles
+
+- **Realistic data** — use scenario-appropriate data instead of lorem ipsum
+- **All interactive elements** — buttons, input fields, dropdowns, toggles, checkboxes, etc.
+- **Layout fidelity** — implement actual layout with flexbox/grid
+- **Colors/Typography** — follow project design system if available; otherwise use system fonts + neutral colors
+- **Responsive** — max-width container; mobile support is optional
+- **Hover/focus states** — provide interaction hints via CSS :hover, :focus
+
+## Output
+
+- \`wiki/mockups/{NNNN}-{screen-name}.html\` — Standalone mockup files
+- \`wiki/mockups/index.html\` — Gallery index
+
+## Completion Checklist
+
+- [ ] Mockup HTML files exist under \`wiki/mockups/\`
+- [ ] Each file is standalone (no external dependencies)
+- [ ] Gallery index \`wiki/mockups/index.html\` updated
+
+## Rules
+
+- ALL documentation output goes under \`wiki/\` — nowhere else.
+- wiki/ files are append-only. Never modify existing files.
+`
+
+const SKILL_WIKI_VIEWS_EN = `---
+name: wiki-views
+description: This skill should be used when the user asks to "generate wiki views", "create HTML views", "update wiki HTML". Generate a single-page wiki viewer that dynamically renders markdown files.
+model: claude-haiku-4-5-20251001
+---
+
+# wiki-views
+
+## Purpose
+
+Generate a single \`wiki/views/index.html\` file. This file is an SPA (Single Page Application) viewer
+that dynamically loads and renders markdown files from the wiki/ directory in the browser.
+Once generated, it automatically reflects additions and changes to markdown files.
+
+## Trigger
+
+Activate when wiki HTML generation or view updates are requested. Only needs to be generated once.
+
+## Model
+
+This skill runs with the \`claude-haiku-4-5-20251001\` model.
+
+## Prerequisites
+
+\`\`\`bash
+mkdir -p wiki/views
+\`\`\`
+
+## Workflow
+
+1. **Scan wiki structure**
+   - Scan ALL categories under wiki/ without omission: requirements, prd, specs, tests, tdd, deploy, bugfix, knowledge, mockups
+   - List the current files in each category
+
+2. **Generate viewer**
+   - Create \`wiki/views/index.html\` — a standalone SPA with sidebar navigation and content rendering
+   - Use marked.js or similar to render markdown
+   - Include cycle-based navigation linking all related artifacts (prd, specs, tests, tdd, deploy, mockup)
+
+3. **Verify output**
+   - Confirm \`wiki/views/index.html\` exists
+   - If check fails, fix before reporting completion
+
+## Output
+
+- \`wiki/views/index.html\` — Single-page wiki viewer
+
+## Completion Checklist
+
+- [ ] \`wiki/views/index.html\` exists with navigation and content rendering
+- [ ] All wiki categories are reflected in the sidebar
+
+## Rules
+
+- ALL documentation output goes under \`wiki/\` — nowhere else.
+- wiki/ files are append-only. Never modify existing files.
+`
+
+const SKILL_REQ_MANAGE_EN = SKILL_REQ_MANAGE  // Already in English
+const SKILL_DEV_DESIGN_EN = SKILL_DEV_DESIGN  // Already in English
+const SKILL_TEST_DESIGN_EN = SKILL_TEST_DESIGN // Already in English
+const SKILL_TDD_CYCLE_EN = SKILL_TDD_CYCLE    // Already in English
+const SKILL_DEPLOY_EN = SKILL_DEPLOY          // Already in English
+const SKILL_BUGFIX_EN = SKILL_BUGFIX          // Already in English
+const SKILL_PROJECT_KNOWLEDGE_EN = SKILL_PROJECT_KNOWLEDGE // Already in English
+const SKILL_RECORD_SKILL_RUN_EN = SKILL_RECORD_SKILL_RUN  // Already in English
+
+// ── Commands: English versions ──
+
+const CMD_ADD_REQ_EN = `Register a new requirement.
+
+User input: $ARGUMENTS
+
+If $ARGUMENTS is empty, ask the user what requirement they want to add.
+
+## Registration Steps
+
+1. Read wiki/requirements/README.md
+   - If the file does not exist, create it with the following header:
+     \`\`\`
+     # Requirements
+
+     | ID | Title | Status |
+     |----|-------|--------|
+     \`\`\`
+2. Count existing entries to determine the next REQ-ID (REQ-001, REQ-002, ...)
+3. Add only the title to the README.md table: \`| REQ-NNN | {title} | [ ] |\`
+4. Create the detailed file \`wiki/requirements/REQ-NNN.md\`:
+   \`\`\`markdown
+   # REQ-{NNN}: {Title}
+
+   > Date: {YYYY-MM-DD}
+   > Status: [ ]
+
+   ## Description
+
+   {Detailed description provided by user}
+
+   ## Key Features
+
+   - {Feature 1}
+
+   ## Constraints
+
+   - {If any}
+
+   ## Related Requirements
+
+   - {If any}
+   \`\`\`
+5. Output a registration complete message with the assigned ID
+
+## Rules
+
+- Always register with [ ] (incomplete) status
+- Only record the title in README.md; detailed content goes in \`wiki/requirements/REQ-NNN.md\`
+- Do not modify existing file content (append-only)
+- Inform the user that the /teams command can run the pipeline
+`
+
+const CMD_ADD_BUG_EN = `Register a new bug in wiki/bugs/README.md.
+
+User input: $ARGUMENTS
+
+If $ARGUMENTS is empty, ask the user to describe the bug symptoms.
+
+## Registration Steps
+
+1. Read wiki/bugs/README.md
+   - If the file does not exist, create it with the following header:
+     \`\`\`
+     # Bug Reports
+
+     | ID | Description | Status |
+     |----|-------------|--------|
+     \`\`\`
+2. Count existing entries to determine the next BUG-ID (BUG-001, BUG-002, ...)
+3. Add a new row to the table: \`| BUG-NNN | {description} | [ ] |\`
+4. Output a registration complete message with the assigned ID
+
+## Rules
+
+- Always register with [ ] (incomplete) status
+- Do not modify existing file content (append-only)
+- Inform the user that the /bugfix-teams command can run the pipeline
+`
+
+const CMD_TEAMS_EN = `Run the team development pipeline.
+
+User input: $ARGUMENTS
+
+## Target Selection
+
+1. If $ARGUMENTS contains a REQ-ID (e.g., REQ-001), select that requirement
+2. If $ARGUMENTS is empty, auto-select the first [ ] entry from wiki/requirements/README.md
+3. If no incomplete entries exist or the file is missing: output "/add-req command to add requirements first." and exit
+
+Output the selected item's ID and title, then read \`wiki/requirements/REQ-NNN.md\` to understand the full context and start the pipeline.
+
+## Prerequisites
+
+- Check wiki/ subdirectory structure and create missing directories
+- Check existing files in each category (prd, specs, tests, tdd, deploy) to determine the next sequence number (NNNN)
+- Read wiki/knowledge/ files to understand existing project knowledge
+
+## Pipeline
+
+Each step must be executed in order. Proceed to the next step only after verification passes.
+
+> **Sub-agent principle**: Each step's actual work is executed by creating a sub-agent with the Agent tool.
+> The main agent acts only as orchestrator and verifies output file existence after sub-agent completion.
+> This prevents the main context from being polluted by step-level details.
+
+### Step 1: req-manage — Requirements Definition and PRD Writing
+
+1. Create a sub-agent with the **Agent tool** and instruct it to run the req-manage skill
+   - Pass the selected requirement ID, title, and REQ-NNN.md content as context
+2. After sub-agent completion, the main agent verifies directly:
+   - **Verify**: \`wiki/prd/{NNNN}.md\` exists and is > 100 bytes
+   - **Verify**: \`wiki/requirements/README.md\` contains the requirement row
+   - **Verify**: \`wiki/requirements/REQ-NNN.md\` detail document exists
+3. On verification failure: re-invoke sub-agent to complete the output. Do not proceed until passed.
+
+### Step 2: dev-design — Development Design Document (SDD)
+
+1. Create a sub-agent and instruct it to run the dev-design skill
+   - Pass \`wiki/prd/{NNNN}.md\` path as context
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/specs/{NNNN}.md\` exists and is > 100 bytes
+3. On failure: re-invoke sub-agent
+
+### Step 2.5: ui-mockup — UI Mockup Generation (optional)
+
+> Run only if the feature has a user interface. Skip for API/CLI/backend-only features.
+
+1. Create a sub-agent and instruct it to run the ui-mockup skill
+   - Pass the UI Design section content from \`wiki/specs/{NNNN}.md\` as context
+2. After sub-agent completion, verify:
+   - **Verify**: HTML file(s) exist under \`wiki/mockups/\`
+3. On failure: re-invoke sub-agent
+
+### Step 3: test-design — Test Design Document
+
+1. Create a sub-agent and instruct it to run the test-design skill
+   - Pass \`wiki/specs/{NNNN}.md\` path as context
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/tests/{NNNN}.md\` exists and is > 100 bytes
+3. On failure: re-invoke sub-agent
+
+### Step 4: tdd-cycle — TDD (Red-Green-Refactor) Implementation
+
+1. Create a sub-agent and instruct it to run the tdd-cycle skill
+   - Pass \`wiki/specs/{NNNN}.md\` and \`wiki/tests/{NNNN}.md\` paths as context
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/tdd/{NNNN}.md\` exists and is > 100 bytes
+   - **Verify**: Run the test runner and confirm all tests pass
+3. On failure: re-invoke sub-agent to fix the code
+
+### Step 5: deploy — Build and Verify
+
+1. Create a sub-agent and instruct it to run the deploy skill
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/deploy/{NNNN}.md\` exists and is > 100 bytes
+   - **Verify**: Build artifacts exist
+3. On failure: re-invoke sub-agent
+
+### Step 6: wiki-views — Update Wiki Viewer (haiku model)
+
+1. If \`wiki/views/index.html\` does not exist, create a sub-agent and run wiki-views skill with \`claude-haiku-4-5-20251001\` model
+2. If it already exists, update directly:
+   - Use Glob to find \`wiki/mockups/{NNNN}-*.html\` pattern to get actual mockup filenames
+   - If the cycle entry (\`<!-- Cycle: {NNNN} -->\`) already exists, verify and fix mockup link paths
+   - If not, add an entry for the current cycle (NNNN) with prd, specs, tests, tdd, deploy, mockup links
+3. **Verify**: \`wiki/views/index.html\` file exists
+
+### Step 7: project-knowledge — Record Project Knowledge
+
+1. Create a sub-agent and instruct it to run the project-knowledge skill
+   - Pass a summary of key findings from the entire pipeline (architecture, conventions, dependencies, notes)
+2. **Verify**: Confirm new content does not duplicate existing entries
+
+## Completion
+
+1. Update the item status in wiki/requirements/README.md from [ ] to [x]
+2. Output a final pipeline summary:
+   - Output path for each step
+   - Verification result (PASS/FAIL)
+
+## Execution Rules
+
+- All documentation artifacts must be written only under \`wiki/\` — never elsewhere
+- Execute each step in order; proceed to the next only after verification passes
+- Always use the previous step's output (wiki/ docs) as input for the next step
+- When referencing requirements, read the title from README.md then read \`wiki/requirements/REQ-NNN.md\` for full content
+- Never modify existing wiki/ files (append-only, status updates are the exception)
+`
+
+const CMD_BUGFIX_TEAMS_EN = `Run the bug fix pipeline.
+
+User input: $ARGUMENTS
+
+## Target Selection
+
+1. If $ARGUMENTS contains a BUG-ID (e.g., BUG-001), select that bug
+2. If $ARGUMENTS is empty, auto-select the first [ ] entry from wiki/bugs/README.md
+3. If no incomplete entries exist or the file is missing: output "/add-bug command to add bugs first." and exit
+
+Output the selected item's ID and description, then start the pipeline.
+
+## Prerequisites
+
+- Check wiki/ subdirectory structure and create missing directories
+- Check existing files in each category (bugfix, specs, tests, tdd, deploy) to determine the next sequence number (NNNN)
+- Read wiki/knowledge/ files to understand existing project knowledge
+
+## Pipeline
+
+Each step must be executed in order. Proceed to the next step only after verification passes.
+
+> **Sub-agent principle**: Each step's actual work is executed by creating a sub-agent with the Agent tool.
+> The main agent acts only as orchestrator and verifies output file existence after sub-agent completion.
+> This prevents the main context from being polluted by step-level details.
+
+### Step 1: bugfix — Bug Root Cause Analysis
+
+1. Create a sub-agent with the **Agent tool** and instruct it to run the bugfix skill
+   - Pass the selected bug ID and the relevant entry from wiki/bugs/README.md as context
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/bugfix/{NNNN}.md\` exists and is > 100 bytes
+3. On failure: re-invoke sub-agent to complete the output. Do not proceed until passed.
+
+### Step 2: dev-design — Fix Design
+
+1. Create a sub-agent and instruct it to run the dev-design skill
+   - Pass \`wiki/bugfix/{NNNN}.md\` path as context
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/specs/{NNNN}.md\` exists and is > 100 bytes
+3. On failure: re-invoke sub-agent
+
+### Step 3: test-design — Regression Test Design
+
+1. Create a sub-agent and instruct it to run the test-design skill
+   - Pass \`wiki/specs/{NNNN}.md\` path as context
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/tests/{NNNN}.md\` exists and is > 100 bytes
+3. On failure: re-invoke sub-agent
+
+### Step 4: tdd-cycle — TDD-Based Fix
+
+1. Create a sub-agent and instruct it to run the tdd-cycle skill
+   - Pass \`wiki/specs/{NNNN}.md\` and \`wiki/tests/{NNNN}.md\` paths as context
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/tdd/{NNNN}.md\` exists and is > 100 bytes
+   - **Verify**: Run the test runner and confirm all tests pass
+3. On failure: re-invoke sub-agent to fix the code
+
+### Step 5: deploy — Build and Verify
+
+1. Create a sub-agent and instruct it to run the deploy skill
+2. After sub-agent completion, verify:
+   - **Verify**: \`wiki/deploy/{NNNN}.md\` exists and is > 100 bytes
+   - **Verify**: Build artifacts exist
+3. On failure: re-invoke sub-agent
+
+### Step 6: wiki-views — Update Wiki Viewer (haiku model)
+
+1. If \`wiki/views/index.html\` does not exist, create a sub-agent and run wiki-views skill with \`claude-haiku-4-5-20251001\` model
+2. If it already exists, update directly:
+   - Use Glob to find \`wiki/mockups/{NNNN}-*.html\` pattern to get actual mockup filenames
+   - If the cycle entry (\`<!-- Cycle: {NNNN} -->\`) already exists, verify and fix mockup link paths
+   - If not, add an entry for the current cycle (NNNN)
+3. **Verify**: \`wiki/views/index.html\` file exists
+
+### Step 7: project-knowledge — Record Project Knowledge
+
+1. Create a sub-agent and instruct it to run the project-knowledge skill
+   - Pass a summary of key findings from the entire pipeline
+2. **Verify**: Confirm new content does not duplicate existing entries
+
+## Completion
+
+1. Update the item status in wiki/bugs/README.md from [ ] to [x]
+2. Output a final pipeline summary:
+   - Output path for each step
+   - Verification result (PASS/FAIL)
+
+## Execution Rules
+
+- All documentation artifacts must be written only under \`wiki/\` — never elsewhere
+- Execute each step in order; proceed to the next only after verification passes
+- Always use the previous step's output (wiki/ docs) as input for the next step
+- Never modify existing wiki/ files (append-only, status updates are the exception)
+`
+
 // ── Export ──
 
-const DEFAULT_SKILLS = {
-  'req-manage': SKILL_REQ_MANAGE,
-  'dev-design': SKILL_DEV_DESIGN,
-  'ui-mockup': SKILL_UI_MOCKUP,
-  'test-design': SKILL_TEST_DESIGN,
-  'tdd-cycle': SKILL_TDD_CYCLE,
-  'deploy': SKILL_DEPLOY,
-  'bugfix': SKILL_BUGFIX,
-  'project-knowledge': SKILL_PROJECT_KNOWLEDGE,
-  'wiki-views': SKILL_WIKI_VIEWS,
-  'record-skill-run': SKILL_RECORD_SKILL_RUN
+function buildDefaultSkills(lang: Lang = 'en'): Record<string, string> {
+  if (lang === 'ko') {
+    return {
+      'req-manage': SKILL_REQ_MANAGE,
+      'dev-design': SKILL_DEV_DESIGN,
+      'ui-mockup': SKILL_UI_MOCKUP,
+      'test-design': SKILL_TEST_DESIGN,
+      'tdd-cycle': SKILL_TDD_CYCLE,
+      'deploy': SKILL_DEPLOY,
+      'bugfix': SKILL_BUGFIX,
+      'project-knowledge': SKILL_PROJECT_KNOWLEDGE,
+      'wiki-views': SKILL_WIKI_VIEWS,
+      'record-skill-run': SKILL_RECORD_SKILL_RUN
+    }
+  }
+  // Default: English (skills content is already in English)
+  return {
+    'req-manage': SKILL_REQ_MANAGE_EN,
+    'dev-design': SKILL_DEV_DESIGN_EN,
+    'ui-mockup': SKILL_UI_MOCKUP_EN,
+    'test-design': SKILL_TEST_DESIGN_EN,
+    'tdd-cycle': SKILL_TDD_CYCLE_EN,
+    'deploy': SKILL_DEPLOY_EN,
+    'bugfix': SKILL_BUGFIX_EN,
+    'project-knowledge': SKILL_PROJECT_KNOWLEDGE_EN,
+    'wiki-views': SKILL_WIKI_VIEWS_EN,
+    'record-skill-run': SKILL_RECORD_SKILL_RUN_EN
+  }
 }
 
-const DEFAULT_COMMANDS = {
-  'add-req': CMD_ADD_REQ,
-  'add-bug': CMD_ADD_BUG,
-  'teams': CMD_TEAMS,
-  'bugfix-teams': CMD_BUGFIX_TEAMS
+function buildDefaultCommands(lang: Lang = 'en'): Record<string, string> {
+  if (lang === 'ko') {
+    return {
+      'add-req': CMD_ADD_REQ,
+      'add-bug': CMD_ADD_BUG,
+      'teams': CMD_TEAMS,
+      'bugfix-teams': CMD_BUGFIX_TEAMS
+    }
+  }
+  // Default: English
+  return {
+    'add-req': CMD_ADD_REQ_EN,
+    'add-bug': CMD_ADD_BUG_EN,
+    'teams': CMD_TEAMS_EN,
+    'bugfix-teams': CMD_BUGFIX_TEAMS_EN
+  }
 }
 
-export { buildDefaultClaudeMd, DEFAULT_SKILLS, DEFAULT_COMMANDS }
+// Backward-compatible constants (ko default to preserve existing behavior for callers)
+const DEFAULT_SKILLS = buildDefaultSkills('ko')
+const DEFAULT_COMMANDS = buildDefaultCommands('ko')
+
+export { buildDefaultClaudeMd, buildDefaultSkills, buildDefaultCommands, DEFAULT_SKILLS, DEFAULT_COMMANDS }

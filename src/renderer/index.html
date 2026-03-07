@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
@@ -10,16 +10,25 @@
 <body>
   <div class="container">
     <header class="app-header">
-      <h1 id="title">Claude Workbench</h1>
-      <p id="version">앱 버전: 로딩 중...</p>
+      <div class="app-header-left">
+        <h1 id="title">Claude Workbench</h1>
+        <p id="version">App version: <span id="version-text" data-i18n="app.version.loading">Loading...</span></p>
+      </div>
+      <div class="app-header-right">
+        <label for="lang-select" data-i18n="lang.select.label">Language</label>
+        <select id="lang-select" class="lang-select">
+          <option value="en">English</option>
+          <option value="ko">한국어</option>
+        </select>
+      </div>
     </header>
 
     <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="repos">저장소 관리</button>
-      <button class="tab-btn" data-tab="sets">워크디렉토리 세트</button>
-      <button class="tab-btn" data-tab="worktree">워크스페이스 생성</button>
-      <button class="tab-btn" data-tab="workspace">워크스페이스 관리</button>
-      <button class="tab-btn" data-tab="repo-worktree">워크트리 관리</button>
+      <button class="tab-btn active" data-tab="repos" data-i18n="tab.repos">Repository Management</button>
+      <button class="tab-btn" data-tab="sets" data-i18n="tab.sets">Workdir Sets</button>
+      <button class="tab-btn" data-tab="worktree" data-i18n="tab.worktree">Create Workspace</button>
+      <button class="tab-btn" data-tab="workspace" data-i18n="tab.workspace">Workspace Management</button>
+      <button class="tab-btn" data-tab="repo-worktree" data-i18n="tab.repo-worktree">Worktree Management</button>
     </nav>
 
     <!-- 저장소 관리 탭 -->
@@ -234,14 +243,13 @@
       <div id="rm-confirm-overlay" class="dialog-overlay" style="display: none;">
         <div class="dialog-box">
           <h3 class="dialog-title">워크트리 삭제 확인</h3>
-          <p id="rm-confirm-msg" class="dialog-msg"></p>
-          <p class="dialog-warn">
-            이 브랜치는 remote에 push되지 않았습니다.<br>
-            삭제 후 복구할 수 없습니다.
-          </p>
+          <p class="dialog-msg">다음 워크트리를 삭제하시겠습니까?</p>
+          <p id="rm-confirm-branch" class="dialog-branch"></p>
+          <p id="rm-confirm-warn" class="dialog-warn" style="display: none;"></p>
+          <p id="rm-confirm-safe" class="dialog-safe" style="display: none;"></p>
           <div class="dialog-actions">
             <button id="rm-cancel-btn" class="btn btn-secondary">취소</button>
-            <button id="rm-confirm-btn" class="btn btn-danger">삭제 확인</button>
+            <button id="rm-confirm-btn" class="btn btn-danger btn-danger-filled">삭제</button>
           </div>
         </div>
       </div>
@@ -251,6 +259,7 @@
 
     <div id="toast" class="toast" style="display: none;"></div>
   </div>
+  <script src="scripts/i18n.js"></script>
   <script src="scripts/renderer.js"></script>
   <script src="scripts/setRenderer.js"></script>
   <script src="scripts/worktreeRenderer.js"></script>
