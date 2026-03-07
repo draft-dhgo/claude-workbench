@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <style>
@@ -48,46 +48,49 @@ h1 { font-size: 22px; font-weight: 700; color: #f0e6d6; }
     <div class="titlebar-text">Claude Workbench</div>
   </div>
   <div class="container">
-    <header class="app-header"><h1>Claude Workbench</h1><p class="version">v1.0.0</p></header>
+    <header class="app-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <div><h1>Claude Workbench</h1><p class="version">v1.0.0</p></div>
+      <select style="padding:4px 8px;border:1px solid #4a4035;border-radius:4px;background:#17140f;color:#e8e0d4;font-size:0.82em;"><option>English</option><option>한국어</option></select>
+    </header>
     <nav class="tab-nav">
-      <button class="tab-btn">저장소 관리</button>
-      <button class="tab-btn">워크디렉토리 세트</button>
-      <button class="tab-btn active">워크스페이스 생성</button>
-      <button class="tab-btn">워크스페이스 관리</button>
-      <button class="tab-btn">워크트리 관리</button>
+      <button class="tab-btn">Repositories</button>
+      <button class="tab-btn">Workdir Sets</button>
+      <button class="tab-btn active">Create Workspace</button>
+      <button class="tab-btn">Workspace Mgmt</button>
+      <button class="tab-btn">Worktree Mgmt</button>
     </nav>
     <div class="worktree-section">
-      <label class="section-label">1. 워크디렉토리 세트 선택</label>
+      <label class="section-label">1. SELECT WORKDIR SET</label>
       <select class="form-input" style="color:#e8b060;"><option>Backend Services</option></select>
     </div>
     <div class="worktree-section">
-      <label class="section-label">2. 레포별 베이스 브랜치 확인</label>
+      <label class="section-label">2. BASE BRANCHES PER REPO</label>
       <div class="wt-repo-list">
         <div class="wt-repo-row"><span class="wt-repo-name">claude-workbench</span><select class="wt-branch-select"><option>main</option></select></div>
         <div class="wt-repo-row"><span class="wt-repo-name">api-server</span><select class="wt-branch-select"><option>develop</option></select></div>
         <div class="wt-repo-row"><span class="wt-repo-name">web-frontend</span><select class="wt-branch-select"><option>main</option></select></div>
       </div>
-      <button class="btn btn-secondary">원격 업데이트</button>
+      <button class="btn btn-secondary">Fetch Remote</button>
     </div>
     <div class="worktree-section">
-      <label class="section-label">3. 새 브랜치명</label>
+      <label class="section-label">3. NEW BRANCH NAME</label>
       <input type="text" class="form-input" value="feature/login-api" style="color:#e8e0d4;" />
     </div>
     <div class="worktree-section">
-      <label class="section-label">4. 워크트리 생성 경로</label>
+      <label class="section-label">4. WORKTREE PATH</label>
       <div class="wt-path-row">
         <input type="text" class="form-input wt-path-input" value="~/worktrees/feature-login-api" readonly style="color:#e8b060;" />
-        <button class="btn btn-secondary">경로 선택</button>
+        <button class="btn btn-secondary">Select Path</button>
       </div>
     </div>
     <div class="worktree-section">
-      <label class="section-label">처리 결과</label>
+      <label class="section-label">PROGRESS</label>
       <div class="wt-progress-list">
-        <div class="wt-progress-row"><span class="wt-badge wt-badge-success">OK</span><span class="wt-progress-name">claude-workbench</span><span class="wt-progress-msg">워크트리 생성 완료</span></div>
-        <div class="wt-progress-row"><span class="wt-badge wt-badge-success">OK</span><span class="wt-progress-name">api-server</span><span class="wt-progress-msg">워크트리 생성 완료</span></div>
-        <div class="wt-progress-row"><span class="wt-badge wt-badge-running" style="min-width:50px;">진행중</span><span class="wt-progress-name">web-frontend</span><span class="wt-progress-msg">워크트리 생성 중...</span></div>
+        <div class="wt-progress-row"><span class="wt-badge wt-badge-success">OK</span><span class="wt-progress-name">claude-workbench</span><span class="wt-progress-msg">Worktree created</span></div>
+        <div class="wt-progress-row"><span class="wt-badge wt-badge-success">OK</span><span class="wt-progress-name">api-server</span><span class="wt-progress-msg">Worktree created</span></div>
+        <div class="wt-progress-row"><span class="wt-badge wt-badge-running" style="min-width:50px;">WIP</span><span class="wt-progress-name">web-frontend</span><span class="wt-progress-msg">Creating worktree...</span></div>
       </div>
-      <div class="wt-summary">2/3 완료</div>
+      <div class="wt-summary">2/3 completed</div>
     </div>
   </div>
 </div>

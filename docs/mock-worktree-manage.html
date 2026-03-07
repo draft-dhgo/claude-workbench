@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <style>
@@ -42,33 +42,36 @@ h1 { font-size: 22px; font-weight: 700; color: #f0e6d6; }
     <div class="titlebar-text">Claude Workbench</div>
   </div>
   <div class="container">
-    <header class="app-header"><h1>Claude Workbench</h1><p class="version">v1.0.0</p></header>
+    <header class="app-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <div><h1>Claude Workbench</h1><p class="version">v1.0.0</p></div>
+      <select style="padding:4px 8px;border:1px solid #4a4035;border-radius:4px;background:#17140f;color:#e8e0d4;font-size:0.82em;"><option>English</option><option>한국어</option></select>
+    </header>
     <nav class="tab-nav">
-      <button class="tab-btn">저장소 관리</button>
-      <button class="tab-btn">워크디렉토리 세트</button>
-      <button class="tab-btn">워크스페이스 생성</button>
-      <button class="tab-btn">워크스페이스 관리</button>
-      <button class="tab-btn active">워크트리 관리</button>
+      <button class="tab-btn">Repositories</button>
+      <button class="tab-btn">Workdir Sets</button>
+      <button class="tab-btn">Create Workspace</button>
+      <button class="tab-btn">Workspace Mgmt</button>
+      <button class="tab-btn active">Worktree Mgmt</button>
     </nav>
     <div class="action-bar">
       <select class="form-input rm-repo-select" style="color:#e8b060;"><option>claude-workbench</option></select>
-      <button class="btn btn-secondary">&#x21bb; 새로고침</button>
+      <button class="btn btn-secondary">&#x21bb; Refresh</button>
     </div>
     <div class="rm-card-list">
       <div class="wt-card">
         <div class="wt-card-header"><span class="wt-card-branch">feature/login-api</span><span class="wt-card-badge wt-badge-pushed">pushed</span></div>
         <div class="wt-card-path">~/worktrees/feature-login-api/claude-workbench</div>
-        <div class="wt-card-actions"><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;">터미널</button><button class="btn-danger btn-danger-disabled">삭제</button></div>
+        <div class="wt-card-actions"><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;">Terminal</button><button class="btn-danger btn-danger-disabled">Delete</button></div>
       </div>
       <div class="wt-card">
         <div class="wt-card-header"><span class="wt-card-branch">feature/dashboard-ui</span><span class="wt-card-badge wt-badge-unpushed">unpushed</span></div>
         <div class="wt-card-path">~/worktrees/feature-dashboard/claude-workbench</div>
-        <div class="wt-card-actions"><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;">터미널</button><button class="btn-danger">삭제</button></div>
+        <div class="wt-card-actions"><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;">Terminal</button><button class="btn-danger">Delete</button></div>
       </div>
       <div class="wt-card">
         <div class="wt-card-header"><span class="wt-card-branch">bugfix/auth-token</span><span class="wt-card-badge wt-badge-pushed">pushed</span></div>
         <div class="wt-card-path">~/worktrees/bugfix-auth/claude-workbench</div>
-        <div class="wt-card-actions"><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;">터미널</button><button class="btn-danger btn-danger-disabled">삭제</button></div>
+        <div class="wt-card-actions"><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.85em;">Terminal</button><button class="btn-danger btn-danger-disabled">Delete</button></div>
       </div>
     </div>
   </div>

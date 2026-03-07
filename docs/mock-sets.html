@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <style>
@@ -38,27 +38,30 @@ h1 { font-size: 22px; font-weight: 700; color: #f0e6d6; }
     <div class="titlebar-text">Claude Workbench</div>
   </div>
   <div class="container">
-    <header class="app-header"><h1>Claude Workbench</h1><p class="version">v1.0.0</p></header>
+    <header class="app-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <div><h1>Claude Workbench</h1><p class="version">v1.0.0</p></div>
+      <select style="padding:4px 8px;border:1px solid #4a4035;border-radius:4px;background:#17140f;color:#e8e0d4;font-size:0.82em;"><option>English</option><option>한국어</option></select>
+    </header>
     <nav class="tab-nav">
-      <button class="tab-btn">저장소 관리</button>
-      <button class="tab-btn active">워크디렉토리 세트</button>
-      <button class="tab-btn">워크스페이스 생성</button>
-      <button class="tab-btn">워크스페이스 관리</button>
-      <button class="tab-btn">워크트리 관리</button>
+      <button class="tab-btn">Repositories</button>
+      <button class="tab-btn active">Workdir Sets</button>
+      <button class="tab-btn">Create Workspace</button>
+      <button class="tab-btn">Workspace Mgmt</button>
+      <button class="tab-btn">Worktree Mgmt</button>
     </nav>
-    <div class="action-bar"><button class="btn btn-primary">+ 세트 만들기</button></div>
+    <div class="action-bar"><button class="btn btn-primary">+ Create Set</button></div>
     <div class="set-list">
       <div class="set-card">
-        <div class="set-card-info"><div class="set-card-name">Backend Services</div><div class="set-card-meta"><span class="set-card-badge">3 repos</span><span>생성: 2026-03-05</span><span>수정: 2026-03-08</span></div></div>
-        <div class="set-card-actions"><button class="btn-secondary btn" style="padding:6px 12px;font-size:0.85em;">편집</button><button class="btn-danger">삭제</button></div>
+        <div class="set-card-info"><div class="set-card-name">Backend Services</div><div class="set-card-meta"><span class="set-card-badge">3 repos</span><span>Created: 2026-03-05</span><span>Updated: 2026-03-08</span></div></div>
+        <div class="set-card-actions"><button class="btn-secondary btn" style="padding:6px 12px;font-size:0.85em;">Edit</button><button class="btn-danger">Delete</button></div>
       </div>
       <div class="set-card">
-        <div class="set-card-info"><div class="set-card-name">Frontend Apps</div><div class="set-card-meta"><span class="set-card-badge">2 repos</span><span>생성: 2026-03-06</span><span>수정: 2026-03-07</span></div></div>
-        <div class="set-card-actions"><button class="btn-secondary btn" style="padding:6px 12px;font-size:0.85em;">편집</button><button class="btn-danger">삭제</button></div>
+        <div class="set-card-info"><div class="set-card-name">Frontend Apps</div><div class="set-card-meta"><span class="set-card-badge">2 repos</span><span>Created: 2026-03-06</span><span>Updated: 2026-03-07</span></div></div>
+        <div class="set-card-actions"><button class="btn-secondary btn" style="padding:6px 12px;font-size:0.85em;">Edit</button><button class="btn-danger">Delete</button></div>
       </div>
       <div class="set-card">
-        <div class="set-card-info"><div class="set-card-name">Full Stack Project</div><div class="set-card-meta"><span class="set-card-badge">5 repos</span><span>생성: 2026-03-01</span><span>수정: 2026-03-08</span></div></div>
-        <div class="set-card-actions"><button class="btn-secondary btn" style="padding:6px 12px;font-size:0.85em;">편집</button><button class="btn-danger">삭제</button></div>
+        <div class="set-card-info"><div class="set-card-name">Full Stack Project</div><div class="set-card-meta"><span class="set-card-badge">5 repos</span><span>Created: 2026-03-01</span><span>Updated: 2026-03-08</span></div></div>
+        <div class="set-card-actions"><button class="btn-secondary btn" style="padding:6px 12px;font-size:0.85em;">Edit</button><button class="btn-danger">Delete</button></div>
       </div>
     </div>
   </div>
