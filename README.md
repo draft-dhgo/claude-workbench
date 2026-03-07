@@ -113,6 +113,24 @@ Dev Cycle과 Bug Cycle 카드를 그리드로 보여줍니다. 각 사이클의 
 
 사이드바에서 사이클을 클릭하면 파이프라인 단계를 시각화하고, 각 단계의 문서를 바로 열어볼 수 있습니다. 마크다운은 렌더링되고, 목업(HTML)은 iframe으로 임베드됩니다.
 
+### 실행 방법
+
+워크스페이스의 `wiki/` 디렉토리에서 로컬 서버를 실행하면 브라우저에서 바로 확인할 수 있습니다.
+
+```bash
+# 워크스페이스 루트에서
+npx serve wiki -p 3000
+
+# 브라우저에서 열기
+open http://localhost:3000/views/index.html
+```
+
+또는 Python으로도 실행할 수 있습니다.
+
+```bash
+python3 -m http.server 3000 -d wiki
+```
+
 ---
 
 ## Getting Started
