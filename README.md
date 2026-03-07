@@ -18,13 +18,7 @@
 
 ## Screenshots
 
-> 앱을 실행한 뒤 `docs/` 폴더에 스크린샷을 추가하세요.
->
-> `docs/screenshot-mock.html`을 브라우저에서 열면 UI 미리보기를 확인할 수 있습니다.
-
-<!-- 스크린샷 추가 시 아래 주석을 해제하세요
 ![Main Screen](docs/screenshot-main.png)
--->
 
 ---
 
