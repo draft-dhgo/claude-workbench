@@ -101,13 +101,13 @@ wiki/
 
 Dev Cycle과 Bug Cycle 카드를 그리드로 보여줍니다. 각 사이클의 완료 상태(필수 5단계: PRD → SDD → Tests → TDD → Deploy)와 Mockup Gallery를 확인할 수 있습니다.
 
-![Wiki Dashboard](docs/screenshot-wiki-dashboard.png)
+![Wiki Dashboard](docs/screenshot-wiki-dashboard.png?v=2)
 
 ### Traceability Matrix
 
 요구사항(REQ)부터 PRD → SDD → Tests → TDD → Deploy → Mockup → Bugfix까지, 각 요구사항이 파이프라인의 어디까지 진행되었는지를 매트릭스로 추적합니다.
 
-![Traceability Matrix](docs/screenshot-wiki-trace.png)
+![Traceability Matrix](docs/screenshot-wiki-trace.png?v=2)
 
 ### Cycle Detail & Document Viewer
 
