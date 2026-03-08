@@ -4,7 +4,7 @@ module.exports = {
     electron: '<rootDir>/__mocks__/electron.ts'
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  testMatch: ['**/__tests__/**/*.test.ts'],
+  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.js'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: {

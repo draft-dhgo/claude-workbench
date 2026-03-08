@@ -226,3 +226,76 @@ describe('TC-HSG-02: handleSetGet — baseBranch 빈 문자열인 경우 정상 
     expect(result.set.repositories[0].baseBranch).toBe('')
   })
 })
+
+// ─── BUG-002 회귀 방지 테스트 ──────────────────────────────────────────────────
+
+describe('BUG-002 회귀: handleSetCreate — repositories 배열 올바르게 처리', () => {
+  test('repositories 페이로드로 저장소가 포함된 세트 생성', async () => {
+    const result = await handlers.handleSetCreate(null, {
+      name: '버그002 세트',
+      repositories: [
+        { id: 'r1', baseBranch: 'main' },
+        { id: 'r2', baseBranch: 'develop' }
+      ]
+    })
+    expect(result.success).toBe(true)
+    expect(result.set.repositories).toEqual([
+      { id: 'r1', baseBranch: 'main' },
+      { id: 'r2', baseBranch: 'develop' }
+    ])
+    // repositoryIds 필드는 존재하지 않아야 한다
+    expect(result.set.repositoryIds).toBeUndefined()
+  })
+
+  test('repositories 빈 배열로 세트 생성 시 오류 없이 처리', async () => {
+    const result = await handlers.handleSetCreate(null, {
+      name: '빈 세트',
+      repositories: []
+    })
+    expect(result.success).toBe(true)
+    expect(result.set.repositories).toEqual([])
+    expect(result.set.repositories.length).toBe(0)
+  })
+})
+
+describe('BUG-002 회귀: handleSetList — repositories 필드를 포함한 세트 반환', () => {
+  test('목록의 각 세트에 repositories 배열이 존재하고 repositoryIds는 없음', async () => {
+    await handlers.handleSetCreate(null, {
+      name: '세트 X',
+      repositories: [{ id: 'r1', baseBranch: 'main' }]
+    })
+    await handlers.handleSetCreate(null, {
+      name: '세트 Y',
+      repositories: []
+    })
+
+    const result = await handlers.handleSetList()
+    expect(result.success).toBe(true)
+    expect(result.sets).toHaveLength(2)
+
+    result.sets.forEach(set => {
+      // repositories 필드가 배열로 존재해야 한다 (렌더러에서 set.repositories.length 참조 가능)
+      expect(Array.isArray(set.repositories)).toBe(true)
+      // repositoryIds 필드는 존재하지 않아야 한다
+      expect(set.repositoryIds).toBeUndefined()
+    })
+  })
+
+  test('목록의 세트에서 repositories.length 참조가 TypeError 없이 동작', async () => {
+    await handlers.handleSetCreate(null, {
+      name: '세트 Z',
+      repositories: [{ id: 'r1', baseBranch: '' }]
+    })
+
+    const result = await handlers.handleSetList()
+    expect(result.success).toBe(true)
+
+    // 이 참조가 TypeError를 발생시키지 않아야 한다 (BUG-002 핵심 검증)
+    expect(() => {
+      result.sets.forEach(set => {
+        const count = set.repositories.length
+        expect(typeof count).toBe('number')
+      })
+    }).not.toThrow()
+  })
+})
