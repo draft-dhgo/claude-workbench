@@ -8,32 +8,65 @@ window.addEventListener('DOMContentLoaded', async () => {
   const wsTerminalBtn   = document.getElementById('ws-terminal-btn')
   const wsClaudeBtn     = document.getElementById('ws-claude-btn')
   const wsResultBar     = document.getElementById('ws-result-bar')
+  const wsCreateToggleBtn = document.getElementById('ws-create-toggle-btn')
+  const wsCreateForm    = document.getElementById('ws-create-form')
+  const wsCreateName    = document.getElementById('ws-create-name')
+  const wsCreatePathDisplay = document.getElementById('ws-create-path-display')
+  const wsCreatePathBtn = document.getElementById('ws-create-path-btn')
+  const wsCreateSubmitBtn = document.getElementById('ws-create-submit-btn')
+  const wsCreateCancelBtn = document.getElementById('ws-create-cancel-btn')
+  const wsRenameSection = document.getElementById('ws-rename-section')
+  const wsRenameInput   = document.getElementById('ws-rename-input')
+  const wsRenameBtn     = document.getElementById('ws-rename-btn')
+  const wsDeleteBtn     = document.getElementById('ws-delete-btn')
   const t = window.i18n.t
 
   let selectedWorkspacePath = null
+  let selectedWorkspace = null
+  let selectedCreatePath = null
   let isWorking = false
+
+  function showToast(message, type) {
+    const toast = document.getElementById('toast')
+    if (!toast) return
+    toast.textContent = message
+    toast.className = 'toast toast-' + (type || 'info')
+    toast.style.display = 'block'
+    setTimeout(() => { toast.style.display = 'none' }, 3000)
+  }
 
   function setResult(message, isError) {
     wsResultBar.textContent = message
     wsResultBar.className = 'status-bar' + (isError ? ' status-error' : '')
   }
 
-  function selectWorkspace(workspacePath) {
-    selectedWorkspacePath = workspacePath
+  function selectWorkspace(ws) {
+    selectedWorkspace = ws
+    selectedWorkspacePath = ws.path
 
     wsList.querySelectorAll('.ws-item').forEach(item => {
       item.classList.remove('selected')
     })
 
-    const selectedItem = wsList.querySelector('[data-path="' + CSS.escape(workspacePath) + '"]')
+    const selectedItem = wsList.querySelector('[data-path="' + CSS.escape(ws.path) + '"]')
     if (selectedItem) selectedItem.classList.add('selected')
 
     wsSelectedSection.style.display = 'block'
-    wsSelectedPath.textContent = workspacePath
+    wsSelectedPath.textContent = ws.path
 
     wsActionSection.style.display = 'flex'
     wsTerminalBtn.disabled = false
     wsClaudeBtn.disabled = false
+
+    // 빈 워크스페이스만 이름 변경/삭제 가능
+    if (ws.type === 'empty' && ws.id) {
+      wsRenameSection.style.display = 'block'
+      wsRenameInput.value = ws.name
+      wsDeleteBtn.style.display = 'inline-block'
+    } else {
+      wsRenameSection.style.display = 'none'
+      wsDeleteBtn.style.display = 'none'
+    }
 
     setResult('')
   }
@@ -46,6 +79,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     wsTerminalBtn.disabled = true
     wsClaudeBtn.disabled = true
     selectedWorkspacePath = null
+    selectedWorkspace = null
+    wsRenameSection.style.display = 'none'
+    wsDeleteBtn.style.display = 'none'
 
     let result
     try {
@@ -71,6 +107,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       const item = document.createElement('div')
       item.className = 'ws-item'
       item.dataset.path = ws.path
+      if (ws.id) item.dataset.id = ws.id
+
+      // 타입 배지
+      const badgeSpan = document.createElement('span')
+      badgeSpan.className = 'ws-badge ws-badge-' + ws.type
+      badgeSpan.textContent = ws.type === 'worktree'
+        ? t('workspace.badge.worktree')
+        : t('workspace.badge.empty')
 
       const nameSpan = document.createElement('span')
       nameSpan.className = 'ws-item-name'
@@ -80,10 +124,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       pathSpan.className = 'ws-item-path'
       pathSpan.textContent = ws.path
 
+      item.appendChild(badgeSpan)
       item.appendChild(nameSpan)
       item.appendChild(pathSpan)
 
-      item.addEventListener('click', () => selectWorkspace(ws.path))
+      item.addEventListener('click', () => selectWorkspace(ws))
       wsList.appendChild(item)
     })
   }
@@ -143,6 +188,108 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // 생성 폼 토글
+  wsCreateToggleBtn.addEventListener('click', () => {
+    wsCreateForm.style.display = wsCreateForm.style.display === 'none' ? 'block' : 'none'
+  })
+
+  // 경로 선택
+  wsCreatePathBtn.addEventListener('click', async () => {
+    const result = await window.electronAPI.invoke('worktree:select-path')
+    if (result && result.path) {
+      selectedCreatePath = result.path
+      wsCreatePathDisplay.textContent = result.path
+    }
+  })
+
+  // 생성 제출
+  wsCreateSubmitBtn.addEventListener('click', async () => {
+    const name = wsCreateName.value.trim()
+    if (!name) {
+      showToast(t('workspace.error.name_empty'), 'warning')
+      return
+    }
+    if (!selectedCreatePath) {
+      showToast(t('workspace.error.path_empty'), 'warning')
+      return
+    }
+
+    const result = await window.electronAPI.invoke('workspace:create', {
+      name,
+      parentPath: selectedCreatePath,
+      lang: window.i18n.currentLang
+    })
+
+    if (result.success) {
+      wsCreateName.value = ''
+      selectedCreatePath = null
+      wsCreatePathDisplay.textContent = t('workspace.create.path.placeholder')
+      wsCreateForm.style.display = 'none'
+      showToast(t('workspace.create.success'), 'success')
+      await fetchAndRenderList()
+    } else {
+      showToast(t('workspace.error.create_fail', { error: result.error || '' }), 'error')
+    }
+  })
+
+  // 취소
+  wsCreateCancelBtn.addEventListener('click', () => {
+    wsCreateForm.style.display = 'none'
+    wsCreateName.value = ''
+    selectedCreatePath = null
+    wsCreatePathDisplay.textContent = t('workspace.create.path.placeholder')
+  })
+
+  // 이름 변경
+  wsRenameBtn.addEventListener('click', async () => {
+    if (!selectedWorkspace || !selectedWorkspace.id) return
+
+    const newName = wsRenameInput.value.trim()
+    if (!newName) {
+      showToast(t('workspace.error.name_empty'), 'warning')
+      return
+    }
+
+    const result = await window.electronAPI.invoke('workspace:update', {
+      id: selectedWorkspace.id,
+      name: newName
+    })
+
+    if (result.success) {
+      showToast(t('workspace.rename.success'), 'success')
+      await fetchAndRenderList()
+    } else {
+      showToast(t('workspace.error.rename_fail', { error: result.error || '' }), 'error')
+    }
+  })
+
+  // 삭제
+  wsDeleteBtn.addEventListener('click', async () => {
+    if (!selectedWorkspace || !selectedWorkspace.id) return
+
+    const confirmed = window.confirm(
+      t('workspace.delete.confirm', { name: selectedWorkspace.name, path: selectedWorkspace.path })
+    )
+    if (!confirmed) return
+
+    const result = await window.electronAPI.invoke('workspace:delete', {
+      id: selectedWorkspace.id
+    })
+
+    if (result.success) {
+      selectedWorkspace = null
+      selectedWorkspacePath = null
+      wsSelectedSection.style.display = 'none'
+      wsActionSection.style.display = 'none'
+      wsRenameSection.style.display = 'none'
+      wsDeleteBtn.style.display = 'none'
+      showToast(t('workspace.delete.success'), 'success')
+      await fetchAndRenderList()
+    } else {
+      showToast(t('workspace.error.delete_fail', { error: result.error || '' }), 'error')
+    }
+  })
+
   async function loadWorkspaceTab() {
     isWorking = false
     setResult('')
@@ -153,4 +300,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   wsClaudeBtn.addEventListener('click', onRegenerateClaude)
 
   window.loadWorkspaceTab = loadWorkspaceTab
+
+  window.i18n.registerReRender(fetchAndRenderList)
 })

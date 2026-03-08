@@ -9,9 +9,11 @@ const mockExistsSync  = jest.fn()
 const mockExecFile    = jest.fn()
 const mockGetAllSets  = jest.fn()
 const mockGetRepoById = jest.fn()
+const mockWsGetAll    = jest.fn()
 
 let MockWorkdirSetStore: jest.Mock
 let MockRepoStore: jest.Mock
+let MockWorkspaceStore: jest.Mock
 
 let handlers: any
 
@@ -20,6 +22,7 @@ beforeEach(() => {
   mockExecFile.mockReset()
   mockGetAllSets.mockReset()
   mockGetRepoById.mockReset()
+  mockWsGetAll.mockReset()
 
   jest.resetModules()
 
@@ -43,6 +46,15 @@ beforeEach(() => {
     getById: mockGetRepoById,
   }))
   jest.doMock('../../../src/main/services/repoStore', () => MockRepoStore)
+
+  MockWorkspaceStore = jest.fn().mockImplementation(() => ({
+    getAll: mockWsGetAll.mockReturnValue([]),
+  }))
+  jest.doMock('../../../src/main/services/workspaceStore', () => MockWorkspaceStore)
+
+  jest.doMock('../../../src/main/constants/claudeConfigDefaults', () => ({
+    buildDefaultClaudeMd: jest.fn(() => '# CLAUDE.md'),
+  }))
 
   handlers = require('../../../src/main/handlers/workspaceHandlers')
 })
@@ -80,6 +92,7 @@ describe('handleList', () => {
     expect(result.workspaces).toHaveLength(1)
     expect(result.workspaces[0].path).toBe('/base/repo-a/feature-xyz')
     expect(result.workspaces[0].name).toBe('feature-xyz')
+    expect(result.workspaces[0].type).toBe('worktree')
     // main repo path must be excluded
     const paths = result.workspaces.map((w: any) => w.path)
     expect(paths).not.toContain('/src/repo-a')
@@ -217,6 +230,7 @@ describe('handleList', () => {
     expect(result.workspaces).toHaveLength(1)
     expect(result.workspaces[0].path).toBe('/base/repo-b/feature-abc')
     expect(result.workspaces[0].name).toBe('feature-abc')
+    expect(result.workspaces[0].type).toBe('worktree')
 
     const paths = result.workspaces.map((w: any) => w.path)
     expect(paths).not.toContain('/src/repo-a')
@@ -277,5 +291,6 @@ describe('handleList', () => {
     expect(result.success).toBe(true)
     expect(result.workspaces).toHaveLength(1)
     expect(result.workspaces[0].path).toBe('/base/repo-a/feature-xyz')
+    expect(result.workspaces[0].type).toBe('worktree')
   })
 })

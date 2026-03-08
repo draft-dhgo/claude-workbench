@@ -4,7 +4,9 @@ import { contextBridge, ipcRenderer } from 'electron';
 const ALLOWED_SEND_CHANNELS: string[] = []
 const ALLOWED_RECEIVE_CHANNELS: string[] = [
   'worktree:progress',
-  'claude-config:progress'
+  'claude-config:progress',
+  'queue:status-update',
+  'queue:log'
 ]
 const ALLOWED_INVOKE_CHANNELS: string[] = [
   'app:ping', 'app:version',
@@ -17,7 +19,13 @@ const ALLOWED_INVOKE_CHANNELS: string[] = [
   'claude-config:copy-all',
   'claude-config:reset',
   'terminal:open',
-  'workspace:list'
+  'workspace:list',
+  'workspace:create', 'workspace:update', 'workspace:delete',
+  'queue:enqueue',
+  'queue:dequeue',
+  'queue:abort',
+  'queue:status',
+  'queue:security-warning'
 ]
 
 contextBridge.exposeInMainWorld('electronAPI', {

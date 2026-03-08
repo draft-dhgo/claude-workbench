@@ -6,7 +6,8 @@ import { handleSetCreate, handleSetList, handleSetGet, handleSetUpdate, handleSe
 import { handleListBranches, handleFetch, handleCreateAll, handleSelectPath, handleListByRepo, handleDeleteWorktree } from './handlers/worktreeHandlers';
 import { handleDetect, handleCopyAll, handleReset } from './handlers/claudeConfigHandlers';
 import { handleOpenTerminal } from './handlers/terminalHandlers';
-import { handleList } from './handlers/workspaceHandlers';
+import { handleList, handleCreate, handleUpdate, handleDelete } from './handlers/workspaceHandlers';
+import { handleEnqueue, handleDequeue, handleAbort, handleStatus, handleSecurityWarning } from './handlers/commandQueueHandlers';
 
 function createWindow() {
   const win = new BrowserWindow(getWindowOptions())
@@ -51,6 +52,16 @@ ipcMain.handle('terminal:open', handleOpenTerminal)
 
 // Workspace 핸들러 등록
 ipcMain.handle('workspace:list', handleList)
+ipcMain.handle('workspace:create', handleCreate)
+ipcMain.handle('workspace:update', handleUpdate)
+ipcMain.handle('workspace:delete', handleDelete)
+
+// Command Queue 핸들러 등록
+ipcMain.handle('queue:enqueue', handleEnqueue)
+ipcMain.handle('queue:dequeue', handleDequeue)
+ipcMain.handle('queue:abort', handleAbort)
+ipcMain.handle('queue:status', handleStatus)
+ipcMain.handle('queue:security-warning', handleSecurityWarning)
 
 app.whenReady().then(createWindow)
 

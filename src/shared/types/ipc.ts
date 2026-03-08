@@ -30,7 +30,15 @@ export type InvokeChannel =
   | 'claude-config:copy-all'
   | 'claude-config:reset'
   | 'terminal:open'
-  | 'workspace:list';
+  | 'workspace:list'
+  | 'workspace:create'
+  | 'workspace:update'
+  | 'workspace:delete'
+  | 'queue:enqueue'
+  | 'queue:dequeue'
+  | 'queue:abort'
+  | 'queue:status'
+  | 'queue:security-warning';
 
 /** Send (단방향) IPC 채널 — 현재 없음 */
 export type SendChannel = never;
@@ -38,4 +46,6 @@ export type SendChannel = never;
 /** Receive (메인→렌더러) IPC 채널 */
 export type ReceiveChannel =
   | 'worktree:progress'
-  | 'claude-config:progress';
+  | 'claude-config:progress'
+  | 'queue:status-update'
+  | 'queue:log';

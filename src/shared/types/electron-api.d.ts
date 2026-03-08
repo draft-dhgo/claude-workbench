@@ -14,5 +14,6 @@ declare global {
     loadWorktreeSets?: () => void;
     loadWorkspaceTab?: () => void;
     loadRepoWorktreeTab?: () => void;
+    loadCommandQueueTab?: () => void;
   }
 }

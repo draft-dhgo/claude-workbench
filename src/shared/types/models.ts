@@ -54,8 +54,78 @@ export interface WorktreeWithPushStatus extends WorktreeInfo {
   isPushed: boolean;
 }
 
+/** 워크스페이스 타입 */
+export type WorkspaceType = 'worktree' | 'empty';
+
 /** 워크스페이스 항목 */
 export interface WorkspaceEntry {
+  id?: string;           // 빈 워크스페이스: UUID, 워크트리 기반: undefined
   path: string;
   name: string;
+  type: WorkspaceType;   // 워크스페이스 유형 식별
+  createdAt?: string;    // 빈 워크스페이스만 해당
+  updatedAt?: string;    // 빈 워크스페이스만 해당
+}
+
+/** 워크스페이스 영속 저장소 파일(workspaces.json) 구조 */
+export interface WorkspaceFile {
+  version: number;
+  workspaces: StoredWorkspace[];
+}
+
+/** 저장소에 영속되는 워크스페이스 데이터 */
+export interface StoredWorkspace {
+  id: string;
+  name: string;
+  path: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 커맨드 큐 항목 상태 */
+export type QueueItemStatus = 'pending' | 'running' | 'success' | 'failed' | 'aborted' | 'retrying';
+
+/** 지원하는 파이프라인 커맨드 타입 */
+export type QueueCommandType = '/add-req' | '/bugfix' | '/teams' | '/bugfix-teams';
+
+/** 큐 항목 실행 결과 */
+export interface QueueItemResult {
+  sessionId?: string;
+  costUsd?: number;
+  durationMs?: number;
+  numTurns?: number;
+  errorMessage?: string;
+}
+
+/** 커맨드 큐 항목 */
+export interface QueueItem {
+  id: string;
+  command: QueueCommandType;
+  args: string;
+  cwd: string;
+  status: QueueItemStatus;
+  retryCount: number;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  result?: QueueItemResult;
+}
+
+/** queue:log 채널로 전송되는 로그 메시지 */
+export interface QueueLogMessage {
+  itemId: string;
+  type: 'assistant' | 'user' | 'result' | 'system' | 'error';
+  content: string;
+  timestamp: string;
+}
+
+/** queue:status-update 채널로 전송되는 상태 업데이트 */
+export interface QueueStatusUpdate {
+  items: QueueItem[];
+  retryInfo?: {
+    itemId: string;
+    retryCount: number;
+    nextRetryAt: string;
+    remainingMs: number;
+  };
 }
