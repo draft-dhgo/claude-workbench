@@ -1,4 +1,5 @@
 window.addEventListener('DOMContentLoaded', async () => {
+  await window._i18nReady
   const versionEl = document.getElementById('version')
   const addBtn = document.getElementById('add-repo-btn')
   const searchInput = document.getElementById('repo-search')
@@ -7,13 +8,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   const emptyState = document.getElementById('empty-state')
   const statusBar = document.getElementById('status-bar')
   const toast = document.getElementById('toast')
+  const t = window.i18n.t
 
-  // 버전 표시
+  // Version display
   try {
     const version = await window.electronAPI.invoke('app:version')
-    versionEl.textContent = `앱 버전: v${version}`
+    versionEl.textContent = t('app.version.prefix') + 'v' + version
   } catch (e) {
-    versionEl.textContent = '앱 버전: 알 수 없음'
+    versionEl.textContent = t('app.version.prefix') + t('app.version.unknown')
   }
 
   let allRepos = []
@@ -36,7 +38,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (repos.length === 0) {
       repoTable.style.display = 'none'
       emptyState.style.display = 'block'
-      statusBar.textContent = '등록된 저장소가 없습니다'
+      statusBar.textContent = t('repos.empty')
       return
     }
 
@@ -49,15 +51,15 @@ window.addEventListener('DOMContentLoaded', async () => {
         '<td><span class="repo-name">' + escapeHtml(repo.name) + '</span></td>' +
         '<td><span class="repo-path">' + escapeHtml(repo.path) + '</span></td>' +
         '<td><span class="branch-badge">' + escapeHtml(repo.branch || 'unknown') + '</span></td>' +
-        '<td class="col-action"><button class="btn btn-danger remove-btn" data-id="' + repo.id + '" title="등록 해제">&times;</button></td>'
+        '<td class="col-action"><button class="btn btn-danger remove-btn" data-id="' + repo.id + '" title="' + t('repos.col.action.unregister') + '">&times;</button></td>'
       repoTbody.appendChild(tr)
     })
 
-    statusBar.textContent = repos.length + '개의 저장소가 등록되어 있습니다'
+    statusBar.textContent = t('repos.count', { n: repos.length })
   }
 
   async function loadRepos() {
-    statusBar.textContent = '불러오는 중...'
+    statusBar.textContent = t('app.version.loading')
     try {
       const result = await window.electronAPI.invoke('repo:list')
       if (result.success) {
@@ -65,7 +67,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         renderRepos(allRepos)
       }
     } catch (e) {
-      showToast('저장소 목록을 불러올 수 없습니다.', 'error')
+      showToast(t('repos.error.load'), 'error')
     }
   }
 
@@ -75,12 +77,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (result.success) {
         await loadRepos()
       } else if (result.error === 'NOT_GIT_REPO') {
-        showToast('유효한 Git 저장소가 아닙니다. .git 디렉토리가 없습니다.', 'error')
+        showToast(t('repos.error.not_git'), 'error')
       } else if (result.error === 'DUPLICATE_PATH') {
-        showToast('이미 등록된 저장소입니다.', 'warning')
+        showToast(t('repos.error.duplicate'), 'warning')
       }
     } catch (e) {
-      showToast('저장소 추가 중 오류가 발생했습니다.', 'error')
+      showToast(t('repos.error.add'), 'error')
     }
   })
 
@@ -94,7 +96,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         await loadRepos()
       }
     } catch (err) {
-      showToast('저장소 삭제 중 오류가 발생했습니다.', 'error')
+      showToast(t('repos.error.remove'), 'error')
     }
   })
 
@@ -106,7 +108,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderRepos(filtered)
   })
 
-  // 탭 전환
+  // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
@@ -133,6 +135,24 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (btn.dataset.tab === 'repo-worktree' && typeof window.loadRepoWorktreeTab === 'function') {
         window.loadRepoWorktreeTab()
       }
+      if (btn.dataset.tab === 'command-queue' && typeof window.loadCommandQueueTab === 'function') {
+        window.loadCommandQueueTab()
+      }
+    })
+  })
+
+  // Register re-render callback for language switching
+  window.i18n.registerReRender(() => {
+    if (allRepos.length > 0) {
+      renderRepos(allRepos)
+    } else {
+      statusBar.textContent = t('repos.empty')
+    }
+    // Re-render version
+    window.electronAPI.invoke('app:version').then(version => {
+      versionEl.textContent = t('app.version.prefix') + 'v' + version
+    }).catch(() => {
+      versionEl.textContent = t('app.version.prefix') + t('app.version.unknown')
     })
   })
 

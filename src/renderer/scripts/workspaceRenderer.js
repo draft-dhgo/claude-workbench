@@ -1,4 +1,5 @@
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  await window._i18nReady
   const wsList          = document.getElementById('ws-list')
   const wsEmptyMsg      = document.getElementById('ws-empty-msg')
   const wsSelectedSection = document.getElementById('ws-selected-section')
@@ -7,6 +8,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const wsTerminalBtn   = document.getElementById('ws-terminal-btn')
   const wsClaudeBtn     = document.getElementById('ws-claude-btn')
   const wsResultBar     = document.getElementById('ws-result-bar')
+  const t = window.i18n.t
 
   let selectedWorkspacePath = null
   let isWorking = false
@@ -19,20 +21,16 @@ window.addEventListener('DOMContentLoaded', () => {
   function selectWorkspace(workspacePath) {
     selectedWorkspacePath = workspacePath
 
-    // 모든 항목의 선택 상태 초기화
     wsList.querySelectorAll('.ws-item').forEach(item => {
       item.classList.remove('selected')
     })
 
-    // 선택한 항목 하이라이트
     const selectedItem = wsList.querySelector('[data-path="' + CSS.escape(workspacePath) + '"]')
     if (selectedItem) selectedItem.classList.add('selected')
 
-    // 선택 경로 표시
     wsSelectedSection.style.display = 'block'
     wsSelectedPath.textContent = workspacePath
 
-    // 액션 버튼 활성화
     wsActionSection.style.display = 'flex'
     wsTerminalBtn.disabled = false
     wsClaudeBtn.disabled = false
@@ -53,12 +51,12 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       result = await window.electronAPI.invoke('workspace:list', {})
     } catch (e) {
-      setResult('목록 조회 중 오류가 발생했습니다.', true)
+      setResult(t('workspace.error.list_error'), true)
       return
     }
 
     if (!result.success) {
-      setResult('목록 조회 실패: ' + (result.error || ''), true)
+      setResult(t('workspace.error.list_fail', { error: result.error || '' }), true)
       return
     }
 
@@ -100,12 +98,12 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       const result = await window.electronAPI.invoke('terminal:open', { path: selectedWorkspacePath })
       if (result.success) {
-        setResult('터미널이 열렸습니다.')
+        setResult(t('workspace.terminal.success'))
       } else {
-        setResult('터미널 실행 실패: ' + (result.error || '알 수 없는 오류'), true)
+        setResult(t('workspace.error.terminal_fail', { error: result.error || '' }), true)
       }
     } catch (e) {
-      setResult('터미널 실행 중 오류가 발생했습니다.', true)
+      setResult(t('workspace.error.terminal_error'), true)
     } finally {
       isWorking = false
       wsTerminalBtn.disabled = false
@@ -116,11 +114,7 @@ window.addEventListener('DOMContentLoaded', () => {
   async function onRegenerateClaude() {
     if (isWorking || !selectedWorkspacePath) return
 
-    const confirmMessage =
-      'Claude 설정을 재생성하시겠습니까?\n\n' +
-      '대상 워크스페이스:\n  ' + selectedWorkspacePath + '\n\n' +
-      '아래 항목이 삭제 후 재생성됩니다:\n  - .claude/ 폴더\n  - CLAUDE.md 파일\n\n' +
-      'wiki/ 및 기타 파일은 영향받지 않습니다.'
+    const confirmMessage = t('workspace.reset.confirm', { path: selectedWorkspacePath })
 
     const confirmed = window.confirm(confirmMessage)
     if (!confirmed) return
@@ -132,15 +126,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
     try {
       const result = await window.electronAPI.invoke('claude-config:reset', {
-        workspacePath: selectedWorkspacePath
+        workspacePath: selectedWorkspacePath,
+        lang: window.i18n.currentLang
       })
       if (result.success) {
-        setResult('재생성 완료')
+        setResult(t('workspace.reset.success'))
       } else {
-        setResult('재생성 실패: ' + (result.error || '알 수 없는 오류'), true)
+        setResult(t('workspace.error.reset_fail', { error: result.error || '' }), true)
       }
     } catch (e) {
-      setResult('재생성 중 오류가 발생했습니다.', true)
+      setResult(t('workspace.error.reset_error'), true)
     } finally {
       isWorking = false
       wsTerminalBtn.disabled = false
@@ -154,10 +149,8 @@ window.addEventListener('DOMContentLoaded', () => {
     await fetchAndRenderList()
   }
 
-  // 이벤트 리스너
   wsTerminalBtn.addEventListener('click', onOpenTerminal)
   wsClaudeBtn.addEventListener('click', onRegenerateClaude)
 
-  // 글로벌 함수 노출
   window.loadWorkspaceTab = loadWorkspaceTab
 })

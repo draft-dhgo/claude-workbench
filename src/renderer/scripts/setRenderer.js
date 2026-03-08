@@ -1,4 +1,5 @@
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  await window._i18nReady
   const setListView = document.getElementById('set-list-view')
   const setFormView = document.getElementById('set-form-view')
   const setDetailView = document.getElementById('set-detail-view')
@@ -21,13 +22,12 @@ window.addEventListener('DOMContentLoaded', () => {
   const setEditBtn = document.getElementById('set-edit-btn')
   const setDeleteBtn = document.getElementById('set-delete-btn')
   const toast = document.getElementById('toast')
+  const t = window.i18n.t
 
-  // 페이지네이션 상태 변수
   const PAGE_SIZE = 5
   let allSets = []
   let currentPage = 1
 
-  // 페이지네이션 DOM 요소
   const setPagination = document.getElementById('set-pagination')
   const setPrevBtn = document.getElementById('set-prev-btn')
   const setNextBtn = document.getElementById('set-next-btn')
@@ -62,6 +62,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     setList.innerHTML = ''
     pageItems.forEach(set => {
+      const repoCount = (set.repositories || []).length
       const card = document.createElement('div')
       card.className = 'set-card'
       card.dataset.id = set.id
@@ -69,19 +70,18 @@ window.addEventListener('DOMContentLoaded', () => {
         '<div class="set-card-info">' +
           '<div class="set-card-name">' + escapeHtml(set.name) + '</div>' +
           '<div class="set-card-meta">' +
-            '<span>저장소 ' + set.repositoryIds.length + '개</span>' +
-            '<span>생성일: ' + set.createdAt.slice(0, 10) + '</span>' +
+            '<span>' + t('sets.card.repos', { n: repoCount }) + '</span>' +
+            '<span>' + t('sets.card.created') + set.createdAt.slice(0, 10) + '</span>' +
           '</div>' +
         '</div>' +
-        '<span class="set-card-badge">' + set.repositoryIds.length + ' repos</span>' +
+        '<span class="set-card-badge">' + repoCount + ' repos</span>' +
         '<div class="set-card-actions">' +
-          '<button class="btn btn-danger set-delete-card-btn" data-id="' + set.id + '" title="삭제">&times;</button>' +
+          '<button class="btn btn-danger set-delete-card-btn" data-id="' + set.id + '" title="' + t('sets.card.delete') + '">&times;</button>' +
         '</div>'
       setList.appendChild(card)
     })
-    setStatusBar.textContent = allSets.length + '개의 세트가 있습니다'
+    setStatusBar.textContent = t('sets.count', { n: allSets.length })
 
-    // 페이지네이션 UI 제어
     if (totalPages <= 1) {
       setPagination.style.display = 'none'
     } else {
@@ -104,20 +104,19 @@ window.addEventListener('DOMContentLoaded', () => {
         setList.innerHTML = ''
         setEmptyState.style.display = 'block'
         setPagination.style.display = 'none'
-        setStatusBar.textContent = '워크디렉토리 세트가 없습니다'
+        setStatusBar.textContent = t('sets.empty')
         return
       }
 
       setEmptyState.style.display = 'none'
       renderPage(1)
     } catch (e) {
-      showToast('세트 목록을 불러올 수 없습니다.', 'error')
+      showToast(t('sets.error.load'), 'error')
     }
   }
 
   window.loadSets = loadSets
 
-  // 페이지네이션 버튼 이벤트 리스너
   setPrevBtn.addEventListener('click', () => {
     if (currentPage > 1) renderPage(currentPage - 1)
   })
@@ -128,7 +127,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   async function showCreateForm() {
     editingSetId = null
-    setFormTitle.textContent = '세트 만들기'
+    setFormTitle.textContent = t('sets.form.title.create')
     setNameInput.value = ''
     setNameError.style.display = 'none'
     setNameInput.classList.remove('error')
@@ -138,7 +137,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   async function showEditForm(setId) {
     editingSetId = setId
-    setFormTitle.textContent = '세트 편집'
+    setFormTitle.textContent = t('sets.form.title.edit')
     setNameError.style.display = 'none'
     setNameInput.classList.remove('error')
     try {
@@ -149,7 +148,7 @@ window.addEventListener('DOMContentLoaded', () => {
       await loadRepoCheckboxes(selectedIds)
       showView('form')
     } catch (e) {
-      showToast('세트 정보를 불러올 수 없습니다.', 'error')
+      showToast(t('sets.error.detail_load'), 'error')
     }
   }
 
@@ -169,7 +168,7 @@ window.addEventListener('DOMContentLoaded', () => {
         repoCheckboxList.appendChild(label)
       })
     } catch (e) {
-      showToast('저장소 목록을 불러올 수 없습니다.', 'error')
+      showToast(t('sets.error.repos_load'), 'error')
     }
   }
 
@@ -177,23 +176,23 @@ window.addEventListener('DOMContentLoaded', () => {
     const name = setNameInput.value.trim()
     if (!name) {
       setNameInput.classList.add('error')
-      setNameError.textContent = '세트 이름을 입력해주세요.'
+      setNameError.textContent = t('sets.error.name_empty')
       setNameError.style.display = 'block'
       return
     }
 
     const checkboxes = repoCheckboxList.querySelectorAll('input[type="checkbox"]:checked')
-    const repositoryIds = Array.from(checkboxes).map(cb => cb.value)
+    const repositories = Array.from(checkboxes).map(cb => ({ id: cb.value, baseBranch: '' }))
 
     try {
       let result
       if (editingSetId) {
         result = await window.electronAPI.invoke('workdir-set:update', {
-          id: editingSetId, name, repositoryIds
+          id: editingSetId, name, repositories
         })
       } else {
         result = await window.electronAPI.invoke('workdir-set:create', {
-          name, repositoryIds
+          name, repositories
         })
       }
 
@@ -201,15 +200,15 @@ window.addEventListener('DOMContentLoaded', () => {
         await loadSets()
       } else if (result.error === 'DUPLICATE_NAME') {
         setNameInput.classList.add('error')
-        setNameError.textContent = '이미 동일한 이름의 세트가 존재합니다.'
+        setNameError.textContent = t('sets.error.name_duplicate')
         setNameError.style.display = 'block'
       } else if (result.error === 'EMPTY_NAME') {
         setNameInput.classList.add('error')
-        setNameError.textContent = '세트 이름을 입력해주세요.'
+        setNameError.textContent = t('sets.error.name_empty')
         setNameError.style.display = 'block'
       }
     } catch (e) {
-      showToast('세트 저장 중 오류가 발생했습니다.', 'error')
+      showToast(t('sets.error.save'), 'error')
     }
   }
 
@@ -217,15 +216,15 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       const result = await window.electronAPI.invoke('workdir-set:get', setId)
       if (!result.success) {
-        showToast('세트를 찾을 수 없습니다.', 'error')
+        showToast(t('sets.error.not_found'), 'error')
         return
       }
 
       const set = result.set
       setDetailName.textContent = set.name
       setDetailMeta.innerHTML =
-        '<span>생성일: ' + set.createdAt.slice(0, 10) + '</span>' +
-        '<span>수정일: ' + set.updatedAt.slice(0, 10) + '</span>'
+        '<span>' + t('sets.detail.created') + set.createdAt.slice(0, 10) + '</span>' +
+        '<span>' + t('sets.detail.updated') + set.updatedAt.slice(0, 10) + '</span>'
 
       setDetailRepos.innerHTML = ''
       set.repositories.forEach(repo => {
@@ -233,17 +232,17 @@ window.addEventListener('DOMContentLoaded', () => {
         tr.innerHTML =
           '<td><span class="repo-name">' + escapeHtml(repo.name) + '</span></td>' +
           '<td><span class="repo-path">' + escapeHtml(repo.path) + '</span></td>' +
-          '<td><button class="btn btn-secondary set-terminal-btn" data-path="' + escapeHtml(repo.path) + '">터미널</button></td>'
+          '<td><button class="btn btn-secondary set-terminal-btn" data-path="' + escapeHtml(repo.path) + '">' + t('sets.detail.terminal') + '</button></td>'
         setDetailRepos.appendChild(tr)
       })
 
-      setDetailStatus.textContent = set.repositories.length + '개의 저장소가 포함되어 있습니다'
+      setDetailStatus.textContent = t('sets.detail.repo_count', { n: set.repositories.length })
 
       setEditBtn.dataset.id = set.id
       setDeleteBtn.dataset.id = set.id
       showView('detail')
     } catch (e) {
-      showToast('세트 상세 정보를 불러올 수 없습니다.', 'error')
+      showToast(t('sets.error.detail_load'), 'error')
     }
   }
 
@@ -253,10 +252,10 @@ window.addEventListener('DOMContentLoaded', () => {
       if (result.success) {
         await loadSets()
       } else {
-        showToast('세트 삭제에 실패했습니다.', 'error')
+        showToast(t('sets.error.delete'), 'error')
       }
     } catch (e) {
-      showToast('세트 삭제 중 오류가 발생했습니다.', 'error')
+      showToast(t('sets.error.delete_error'), 'error')
     }
   }
 
@@ -293,14 +292,22 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   })
 
-  // set-detail-repos 이벤트 위임: 터미널 버튼
   setDetailRepos.addEventListener('click', async (e) => {
     const termBtn = e.target.closest('.set-terminal-btn')
     if (!termBtn) return
     const dirPath = termBtn.dataset.path
     const result = await window.electronAPI.invoke('terminal:open', { path: dirPath })
     if (!result.success) {
-      showToast('터미널 실행 실패: ' + (result.error || '알 수 없는 오류'), 'error')
+      showToast(t('sets.error.terminal_fail', { error: result.error || '' }), 'error')
+    }
+  })
+
+  // Register re-render callback for language switching
+  window.i18n.registerReRender(() => {
+    if (allSets.length > 0) {
+      renderPage(currentPage)
+    } else {
+      setStatusBar.textContent = t('sets.empty')
     }
   })
 })

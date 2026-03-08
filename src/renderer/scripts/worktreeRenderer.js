@@ -1,5 +1,5 @@
-window.addEventListener('DOMContentLoaded', () => {
-  // DOM 참조
+window.addEventListener('DOMContentLoaded', async () => {
+  await window._i18nReady
   const wtSetSelect      = document.getElementById('wt-set-select')
   const wtNoSetsMsg      = document.getElementById('wt-no-sets-msg')
   const wtRepoSection    = document.getElementById('wt-repo-section')
@@ -17,16 +17,14 @@ window.addEventListener('DOMContentLoaded', () => {
   const wtResultSection  = document.getElementById('wt-result-section')
   const wtProgressList   = document.getElementById('wt-progress-list')
   const wtSummary        = document.getElementById('wt-summary')
+  const t = window.i18n.t
 
-  // 상태 변수
   let currentSetId = null
   let currentSetRepos = []
   let selectedTargetPath = ''
   let isFetching = false
   let isCloning = false
   const progressMap = new Map()
-
-  // ── 보조 함수 ────────────────────────────────────────────────────────────────
 
   function escapeHtml(str) {
     const div = document.createElement('div')
@@ -49,16 +47,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function resetResultSection(repos) {
     progressMap.clear()
-    repos.forEach(r => progressMap.set(r.id, { repoName: r.name, status: 'pending', message: '대기 중' }))
+    repos.forEach(r => progressMap.set(r.id, { repoName: r.name, status: 'pending', message: t('worktree.status.pending') }))
     wtSummary.textContent = ''
     renderProgressList()
   }
 
   function showSummary(succeeded, failed, total) {
-    wtSummary.textContent = '완료: ' + succeeded + ' / 실패: ' + failed + ' / 전체: ' + total
+    wtSummary.textContent = t('worktree.summary', { s: succeeded, f: failed, t: total })
   }
-
-  // ── 렌더링 함수 ──────────────────────────────────────────────────────────────
 
   function renderRepoList(repos) {
     wtRepoList.innerHTML = ''
@@ -68,11 +64,11 @@ window.addEventListener('DOMContentLoaded', () => {
       const nameSpan = '<span class="wt-repo-name">' + escapeHtml(repo.name) + '</span>'
       let branchCell
       if (repo.baseBranch) {
-        branchCell = '<span class="wt-branch-saved">' + escapeHtml(repo.baseBranch) + ' (저장됨)</span>'
+        branchCell = '<span class="wt-branch-saved">' + escapeHtml(repo.baseBranch) + ' ' + t('worktree.branch.saved') + '</span>'
       } else {
         branchCell =
           '<select class="wt-branch-select" data-repo-id="' + repo.id + '">' +
-            '<option value="">(선택안됨)</option>' +
+            '<option value="">' + t('worktree.branch.none') + '</option>' +
           '</select>'
       }
       row.innerHTML = nameSpan + branchCell
@@ -92,11 +88,11 @@ window.addEventListener('DOMContentLoaded', () => {
         error:   'wt-badge-error'
       }[info.status] || 'wt-badge-pending'
       const badgeLabel = {
-        pending: '대기',
-        running: '진행',
-        success: '완료',
-        error:   '실패'
-      }[info.status] || '대기'
+        pending: t('worktree.progress.pending'),
+        running: t('worktree.progress.running'),
+        success: t('worktree.progress.success'),
+        error:   t('worktree.progress.error')
+      }[info.status] || t('worktree.progress.pending')
       row.innerHTML =
         '<span class="wt-badge ' + badgeClass + '">' + badgeLabel + '</span>' +
         '<span class="wt-progress-name">' + escapeHtml(info.repoName) + '</span>' +
@@ -104,8 +100,6 @@ window.addEventListener('DOMContentLoaded', () => {
       wtProgressList.appendChild(row)
     })
   }
-
-  // ── 비동기 로직 함수 ─────────────────────────────────────────────────────────
 
   async function loadWorktreeSets() {
     currentSetId = null
@@ -117,7 +111,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const result = await window.electronAPI.invoke('workdir-set:list')
     if (!result.success) return
 
-    wtSetSelect.innerHTML = '<option value="">-- 세트를 선택하세요 --</option>'
+    wtSetSelect.innerHTML = '<option value="">' + t('worktree.select.placeholder') + '</option>'
 
     if (result.sets.length === 0) {
       wtNoSetsMsg.style.display = 'block'
@@ -167,7 +161,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!result.success) return
 
     currentSetId = setId
-    currentSetRepos = result.set.repositories  // [{id, name, path, baseBranch}]
+    currentSetRepos = result.set.repositories
 
     renderRepoList(currentSetRepos)
     await loadBranchesForUnset(currentSetRepos)
@@ -178,14 +172,14 @@ window.addEventListener('DOMContentLoaded', () => {
     if (isFetching || !currentSetId) return
     isFetching = true
     wtFetchBtn.disabled = true
-    wtFetchBtn.textContent = '업데이트 중...'
+    wtFetchBtn.textContent = t('worktree.fetch.loading')
 
     await window.electronAPI.invoke('worktree:fetch', { setId: currentSetId })
     await loadBranchesForUnset(currentSetRepos)
 
     isFetching = false
     wtFetchBtn.disabled = false
-    wtFetchBtn.textContent = '원격 업데이트'
+    wtFetchBtn.textContent = t('worktree.fetch')
   }
 
   async function onSelectPathClick() {
@@ -200,18 +194,17 @@ window.addEventListener('DOMContentLoaded', () => {
   async function onCloneClick() {
     if (isCloning) return
 
-    // 유효성 검사
     const newBranch = wtNewBranch.value.trim()
     let valid = true
     if (!newBranch) {
-      wtBranchError.textContent = '새 브랜치명을 입력해주세요.'
+      wtBranchError.textContent = t('worktree.error.branch_empty')
       wtBranchError.style.display = 'block'
       valid = false
     } else {
       wtBranchError.style.display = 'none'
     }
     if (!selectedTargetPath) {
-      wtPathError.textContent = '워크트리 생성 경로를 선택해주세요.'
+      wtPathError.textContent = t('worktree.error.path_empty')
       wtPathError.style.display = 'block'
       valid = false
     } else {
@@ -219,7 +212,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     if (!valid) return
 
-    // repos 배열 조합
     const repos = currentSetRepos.map(repo => ({
       id:         repo.id,
       path:       repo.path,
@@ -227,7 +219,6 @@ window.addEventListener('DOMContentLoaded', () => {
       baseBranch: repo.baseBranch || getSelectedBranch(repo.id)
     }))
 
-    // 결과 섹션 초기화 및 표시
     resetResultSection(repos)
     showSections({ repo: true, branch: true, path: true, action: true, result: true })
 
@@ -254,16 +245,17 @@ window.addEventListener('DOMContentLoaded', () => {
     renderProgressList()
   }
 
-  // ── 이벤트 리스너 등록 ────────────────────────────────────────────────────────
-
   wtSetSelect.addEventListener('change', () => onSetSelected(wtSetSelect.value))
   wtFetchBtn.addEventListener('click', onFetchClick)
   wtSelectPathBtn.addEventListener('click', onSelectPathClick)
   wtCloneBtn.addEventListener('click', onCloneClick)
 
-  // worktree:progress 이벤트 수신 등록
   window.electronAPI.on('worktree:progress', handleProgress)
 
-  // 전역 노출
   window.loadWorktreeSets = loadWorktreeSets
+
+  // Register re-render callback for language switching
+  window.i18n.registerReRender(() => {
+    renderProgressList()
+  })
 })

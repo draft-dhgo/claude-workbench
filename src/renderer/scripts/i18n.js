@@ -1,6 +1,7 @@
 (function() {
   let _locale = {};
   let _lang = 'en';
+  let _reRenderCallbacks = [];
 
   try {
     _lang = localStorage.getItem('app-lang') || 'en';
@@ -25,7 +26,10 @@
   }
 
   function t(key, params) {
-    let str = _locale[key] || key;
+    if (_locale && Object.keys(_locale).length > 0 && !Object.prototype.hasOwnProperty.call(_locale, key)) {
+      console.warn('[i18n] Missing translation key: ' + key);
+    }
+    let str = (_locale && _locale[key]) ? _locale[key] : key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
         str = str.replace(new RegExp('\\{' + k + '\\}', 'g'), String(v));
@@ -46,12 +50,19 @@
     });
   }
 
+  function registerReRender(fn) {
+    _reRenderCallbacks.push(fn);
+  }
+
   async function setLang(lang) {
     await loadLocale(lang);
     applyAll();
     const sel = document.getElementById('lang-select');
     if (sel) sel.value = lang;
     document.documentElement.lang = lang;
+    _reRenderCallbacks.forEach(function(fn) {
+      try { fn(); } catch (e) {}
+    });
   }
 
   async function init() {
@@ -72,6 +83,17 @@
     t: t,
     setLang: setLang,
     init: init,
-    applyAll: applyAll
+    applyAll: applyAll,
+    registerReRender: registerReRender
   };
+
+  // Expose ready promise so other scripts can await locale loading
+  window._i18nReady = new Promise(function(resolve) {
+    function doInit() { init().then(resolve, resolve); }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', doInit);
+    } else {
+      doInit();
+    }
+  });
 })();
