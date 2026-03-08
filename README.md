@@ -40,6 +40,18 @@ View the worktree list per repository and manage deletions based on push status.
 
 ![Worktree Management](docs/screenshot-worktree-manage.png)
 
+## Command Queue
+
+Queue multiple Claude Code commands and execute them sequentially. Built on the `@anthropic-ai/claude-agent-sdk`, commands run with full permission bypass and auto-retry on rate limits.
+
+![Command Queue](docs/screenshot-queue.png)
+
+- **FIFO queue**: enqueue `/add-req`, `/teams`, `/bugfix-teams`, `/add-bug` commands
+- **Rate limit retry**: exponential backoff (30s → 5min) with countdown timer
+- **Abort**: cancel a running command mid-execution via AbortController
+- **Dequeue**: remove pending commands before they start
+- **Real-time logs**: IPC-based status updates and execution logs in the UI
+
 ---
 
 ## Claude Code Commands
@@ -195,20 +207,6 @@ claude-workbench/
 ├── __tests__/              # Jest tests
 └── docs/                   # Documentation & screenshots
 ```
-
----
-
-## Command Queue
-
-Queue multiple Claude Code commands and execute them sequentially. Built on the `@anthropic-ai/claude-agent-sdk`, commands run with full permission bypass and auto-retry on rate limits.
-
-![Command Queue](docs/screenshot-queue.png)
-
-- **FIFO queue**: enqueue `/add-req`, `/teams`, `/bugfix-teams`, `/add-bug` commands
-- **Rate limit retry**: exponential backoff (30s → 5min) with countdown timer
-- **Abort**: cancel a running command mid-execution via AbortController
-- **Dequeue**: remove pending commands before they start
-- **Real-time logs**: IPC-based status updates and execution logs in the UI
 
 ---
 
