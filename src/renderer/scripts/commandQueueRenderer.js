@@ -29,9 +29,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   async function loadWorkspaces() {
     try {
       const result = await window.electronAPI.invoke('workspace:list')
-      if (result.success && result.entries) {
+      if (result.success && result.workspaces) {
         cmdCwdSelect.innerHTML = '<option value="">-- Select workspace --</option>'
-        result.entries.forEach(function (entry) {
+        result.workspaces.forEach(function (entry) {
           const opt = document.createElement('option')
           opt.value = entry.path
           opt.textContent = entry.name + ' (' + entry.path + ')'
