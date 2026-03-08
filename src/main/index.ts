@@ -8,6 +8,7 @@ import { handleDetect, handleCopyAll, handleReset } from './handlers/claudeConfi
 import { handleOpenTerminal } from './handlers/terminalHandlers';
 import { handleList, handleCreate, handleUpdate, handleDelete } from './handlers/workspaceHandlers';
 import { handleEnqueue, handleDequeue, handleAbort, handleStatus, handleSecurityWarning } from './handlers/commandQueueHandlers';
+import { handleWikiHostStart, handleWikiHostStop, handleWikiHostStatus, handleWikiHostOpenBrowser, cleanupWikiHost } from './handlers/wikiHostHandlers';
 
 function createWindow() {
   const win = new BrowserWindow(getWindowOptions())
@@ -63,7 +64,18 @@ ipcMain.handle('queue:abort', handleAbort)
 ipcMain.handle('queue:status', handleStatus)
 ipcMain.handle('queue:security-warning', handleSecurityWarning)
 
+// Wiki Host 핸들러 등록
+ipcMain.handle('wiki-host:start', handleWikiHostStart)
+ipcMain.handle('wiki-host:stop', handleWikiHostStop)
+ipcMain.handle('wiki-host:status', handleWikiHostStatus)
+ipcMain.handle('wiki-host:open-browser', handleWikiHostOpenBrowser)
+
 app.whenReady().then(createWindow)
+
+// 앱 종료 시 Wiki Host 서버 정리
+app.on('before-quit', async () => {
+  await cleanupWikiHost();
+})
 
 app.on('window-all-closed', () => handleWindowAllClosed(app))
 

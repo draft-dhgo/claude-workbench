@@ -129,3 +129,10 @@ export interface QueueStatusUpdate {
     remainingMs: number;
   };
 }
+
+/** Wiki Viewer 호스팅 서버 상태 */
+export interface WikiHostStatus {
+  running: boolean;
+  url?: string;
+  port?: number;
+}

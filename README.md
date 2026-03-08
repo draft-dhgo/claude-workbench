@@ -125,9 +125,18 @@ Tracks each requirement from REQ through PRD → SDD → Tests → TDD → Deplo
 
 Click a cycle in the sidebar to visualize pipeline stages and open each stage's document directly. Markdown is rendered and mockups (HTML) are embedded as iframes.
 
-### How to Run
+### Built-in Hosting
 
-Start a local server from the `wiki/` directory of your workspace and open it in a browser.
+The Wiki Viewer can be hosted directly from the app. In the **Workspace Management** tab, click **Start Server** to launch a local HTTP server that serves the `wiki/views/` directory.
+
+- **One-click start/stop**: Start and stop the server from the app UI
+- **Auto port selection**: Automatically picks an available port in the 8080–8099 range
+- **Open in browser**: Click to open the hosted Wiki Viewer in your default browser
+- **Status indicator**: Green dot when running, gray when stopped
+- **Auto cleanup**: Server shuts down automatically when the app quits
+- **localhost only**: Bound to `127.0.0.1` for security
+
+You can also host the Wiki Viewer manually:
 
 ```bash
 # From workspace root
@@ -135,12 +144,6 @@ npx serve wiki -p 3000
 
 # Open in browser
 open http://localhost:3000/views/index.html
-```
-
-Or with Python:
-
-```bash
-python3 -m http.server 3000 -d wiki
 ```
 
 ---

@@ -38,7 +38,11 @@ export type InvokeChannel =
   | 'queue:dequeue'
   | 'queue:abort'
   | 'queue:status'
-  | 'queue:security-warning';
+  | 'queue:security-warning'
+  | 'wiki-host:start'
+  | 'wiki-host:stop'
+  | 'wiki-host:status'
+  | 'wiki-host:open-browser';
 
 /** Send (단방향) IPC 채널 — 현재 없음 */
 export type SendChannel = never;
@@ -48,4 +52,5 @@ export type ReceiveChannel =
   | 'worktree:progress'
   | 'claude-config:progress'
   | 'queue:status-update'
-  | 'queue:log';
+  | 'queue:log'
+  | 'wiki-host:status-update';

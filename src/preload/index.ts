@@ -6,7 +6,8 @@ const ALLOWED_RECEIVE_CHANNELS: string[] = [
   'worktree:progress',
   'claude-config:progress',
   'queue:status-update',
-  'queue:log'
+  'queue:log',
+  'wiki-host:status-update'
 ]
 const ALLOWED_INVOKE_CHANNELS: string[] = [
   'app:ping', 'app:version',
@@ -25,7 +26,11 @@ const ALLOWED_INVOKE_CHANNELS: string[] = [
   'queue:dequeue',
   'queue:abort',
   'queue:status',
-  'queue:security-warning'
+  'queue:security-warning',
+  'wiki-host:start',
+  'wiki-host:stop',
+  'wiki-host:status',
+  'wiki-host:open-browser'
 ]
 
 contextBridge.exposeInMainWorld('electronAPI', {

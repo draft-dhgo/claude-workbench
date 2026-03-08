@@ -1015,3 +1015,62 @@ h1 {
   color: #66a0cf;
   border: 1px solid #203a5a;
 }
+
+/* ─── Wiki Host Section ──────────────────────────────────────────── */
+
+.wh-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.wh-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.wh-indicator::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.wh-stopped {
+  color: #9a9080;
+}
+
+.wh-stopped::before {
+  background-color: #666;
+}
+
+.wh-running {
+  color: #66cf8a;
+}
+
+.wh-running::before {
+  background-color: #66cf8a;
+}
+
+.wh-url {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+  color: #64b5f6;
+  background: rgba(100, 181, 246, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  user-select: all;
+}
+
+.wh-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

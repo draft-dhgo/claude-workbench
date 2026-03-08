@@ -21,10 +21,19 @@ window.addEventListener('DOMContentLoaded', async () => {
   const wsDeleteBtn     = document.getElementById('ws-delete-btn')
   const t = window.i18n.t
 
+  const whSection        = document.getElementById('wh-section')
+  const whIndicator      = document.getElementById('wh-indicator')
+  const whUrl            = document.getElementById('wh-url')
+  const whStartBtn       = document.getElementById('wh-start-btn')
+  const whStopBtn        = document.getElementById('wh-stop-btn')
+  const whOpenBtn        = document.getElementById('wh-open-btn')
+
   let selectedWorkspacePath = null
   let selectedWorkspace = null
   let selectedCreatePath = null
   let isWorking = false
+  let wikiHostRunning = false
+  let wikiHostUrl = null
 
   function showToast(message, type) {
     const toast = document.getElementById('toast')
@@ -68,6 +77,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       wsDeleteBtn.style.display = 'none'
     }
 
+    // 호스팅 섹션 표시
+    whSection.style.display = 'block'
+    fetchWikiHostStatus()
+
     setResult('')
   }
 
@@ -82,6 +95,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     selectedWorkspace = null
     wsRenameSection.style.display = 'none'
     wsDeleteBtn.style.display = 'none'
+    whSection.style.display = 'none'
 
     let result
     try {
@@ -290,6 +304,65 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   })
 
+  // === Wiki Host UI ===
+
+  function updateWikiHostUI() {
+    if (wikiHostRunning) {
+      whIndicator.className = 'wh-indicator wh-running'
+      whIndicator.textContent = t('wikiHost.status.running')
+      whUrl.textContent = wikiHostUrl
+      whUrl.style.display = 'inline'
+      whStartBtn.disabled = true
+      whStopBtn.disabled = false
+      whOpenBtn.disabled = false
+    } else {
+      whIndicator.className = 'wh-indicator wh-stopped'
+      whIndicator.textContent = t('wikiHost.status.stopped')
+      whUrl.style.display = 'none'
+      whStartBtn.disabled = false
+      whStopBtn.disabled = true
+      whOpenBtn.disabled = true
+    }
+  }
+
+  async function fetchWikiHostStatus() {
+    try {
+      const status = await window.electronAPI.invoke('wiki-host:status')
+      wikiHostRunning = status.running
+      wikiHostUrl = status.url || null
+      updateWikiHostUI()
+    } catch (e) { /* ignore */ }
+  }
+
+  window.electronAPI.on('wiki-host:status-update', (status) => {
+    wikiHostRunning = status.running
+    wikiHostUrl = status.url || null
+    updateWikiHostUI()
+  })
+
+  whStartBtn.addEventListener('click', async () => {
+    if (!selectedWorkspacePath) return
+    const res = await window.electronAPI.invoke('wiki-host:start', {
+      workspacePath: selectedWorkspacePath
+    })
+    if (!res.success) {
+      const errKey = res.error === 'VIEWS_DIR_NOT_FOUND'
+        ? 'wikiHost.error.noViewsDir'
+        : res.error === 'INDEX_NOT_FOUND'
+          ? 'wikiHost.error.noIndex'
+          : 'wikiHost.error.startFail'
+      showToast(t(errKey), 'error')
+    }
+  })
+
+  whStopBtn.addEventListener('click', async () => {
+    await window.electronAPI.invoke('wiki-host:stop')
+  })
+
+  whOpenBtn.addEventListener('click', async () => {
+    await window.electronAPI.invoke('wiki-host:open-browser')
+  })
+
   async function loadWorkspaceTab() {
     isWorking = false
     setResult('')
@@ -302,4 +375,5 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.loadWorkspaceTab = loadWorkspaceTab
 
   window.i18n.registerReRender(fetchAndRenderList)
+  window.i18n.registerReRender(updateWikiHostUI)
 })

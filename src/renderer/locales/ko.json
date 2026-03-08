@@ -159,5 +159,16 @@
   "cq.abort.btn": "실행 중단",
   "cq.queue.empty": "등록된 커맨드가 없습니다.",
   "cq.queue.empty.hint": "위에서 커맨드를 추가하세요.",
-  "cq.log.label": "실행 로그"
+  "cq.log.label": "실행 로그",
+  "wikiHost.title": "Wiki Viewer 호스팅",
+  "wikiHost.start": "서버 시작",
+  "wikiHost.stop": "서버 중지",
+  "wikiHost.openBrowser": "브라우저에서 열기",
+  "wikiHost.status.running": "실행 중",
+  "wikiHost.status.stopped": "중지",
+  "wikiHost.error.noViewsDir": "wiki/views/ 디렉토리를 찾을 수 없습니다",
+  "wikiHost.error.noIndex": "wiki/views/에 index.html이 없습니다",
+  "wikiHost.error.startFail": "서버 시작 실패: {error}",
+  "wikiHost.error.noPort": "사용 가능한 포트를 찾을 수 없습니다 (8080-8099)",
+  "wikiHost.url": "호스팅 URL"
 }

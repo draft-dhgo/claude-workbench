@@ -159,5 +159,16 @@
   "cq.abort.btn": "Abort",
   "cq.queue.empty": "No commands registered.",
   "cq.queue.empty.hint": "Add a command above.",
-  "cq.log.label": "Execution Log"
+  "cq.log.label": "Execution Log",
+  "wikiHost.title": "Wiki Viewer Hosting",
+  "wikiHost.start": "Start Server",
+  "wikiHost.stop": "Stop Server",
+  "wikiHost.openBrowser": "Open in Browser",
+  "wikiHost.status.running": "Running",
+  "wikiHost.status.stopped": "Stopped",
+  "wikiHost.error.noViewsDir": "wiki/views/ directory not found",
+  "wikiHost.error.noIndex": "index.html not found in wiki/views/",
+  "wikiHost.error.startFail": "Failed to start server: {error}",
+  "wikiHost.error.noPort": "No available port found (8080-8099)",
+  "wikiHost.url": "Hosting URL"
 }
