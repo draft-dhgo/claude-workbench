@@ -202,6 +202,8 @@ claude-workbench/
 
 Queue multiple Claude Code commands and execute them sequentially. Built on the `@anthropic-ai/claude-agent-sdk`, commands run with full permission bypass and auto-retry on rate limits.
 
+![Command Queue](docs/screenshot-queue.png)
+
 - **FIFO queue**: enqueue `/add-req`, `/teams`, `/bugfix-teams`, `/add-bug` commands
 - **Rate limit retry**: exponential backoff (30s → 5min) with countdown timer
 - **Abort**: cancel a running command mid-execution via AbortController
