@@ -3,6 +3,7 @@
 
 let _currentRepoId = null
 let _isCreating = false
+let _isBatchCreating = false
 
 /**
  * Sets the current repo ID (used by tests to inject state).
@@ -180,6 +181,221 @@ async function onCreateSubmit(onRepoSelectedFn, showToastFn) {
   }
 }
 
+/**
+ * 배치 생성 패널을 표시하고 목록/Add 버튼을 숨긴다.
+ * 경로 입력 및 행 컨테이너를 초기화한다.
+ */
+function showBatchCreatePanel() {
+  if (!_currentRepoId) return
+  const panel = document.getElementById('rm-batch-create-panel')
+  const listSection = document.getElementById('rm-list-section')
+  const addBtnWrapper = document.getElementById('rm-add-btn-wrapper')
+  const pathInput = document.getElementById('rm-batch-path-input')
+  const rows = document.getElementById('rm-batch-rows')
+  const pathError = document.getElementById('rm-batch-path-error')
+
+  if (panel) panel.style.display = 'block'
+  if (listSection) listSection.style.display = 'none'
+  if (addBtnWrapper) addBtnWrapper.style.display = 'none'
+  if (pathInput) pathInput.value = ''
+  if (rows) rows.innerHTML = ''
+  if (pathError) pathError.style.display = 'none'
+}
+
+/**
+ * 배치 생성 패널을 숨기고 목록/Add 버튼을 복원한다.
+ */
+function hideBatchCreatePanel() {
+  const panel = document.getElementById('rm-batch-create-panel')
+  const listSection = document.getElementById('rm-list-section')
+  const addBtnWrapper = document.getElementById('rm-add-btn-wrapper')
+
+  if (panel) panel.style.display = 'none'
+  if (listSection) listSection.style.display = 'block'
+  if (addBtnWrapper) addBtnWrapper.style.display = 'block'
+}
+
+/**
+ * 배치 항목 컨테이너에 새 행(브랜치 입력 + 제거 버튼)을 추가한다.
+ * @param {string} [defaultBranch=''] - 행 초기 브랜치값
+ */
+function addWorktreeRow(defaultBranch = '') {
+  const rows = document.getElementById('rm-batch-rows')
+  if (!rows) return
+
+  const rowEl = document.createElement('div')
+  rowEl.className = 'rm-batch-row'
+
+  const branchInput = document.createElement('input')
+  branchInput.type = 'text'
+  branchInput.className = 'form-input rm-batch-branch-input'
+  branchInput.placeholder = 'feature/my-branch'
+  branchInput.value = defaultBranch
+
+  const removeBtn = document.createElement('button')
+  removeBtn.className = 'btn rm-batch-remove-row'
+  removeBtn.setAttribute('aria-label', 'Remove')
+  removeBtn.textContent = '×'
+  removeBtn.addEventListener('click', () => removeWorktreeRow(rowEl))
+
+  const statusSpan = document.createElement('span')
+  statusSpan.className = 'rm-batch-row-status'
+
+  rowEl.appendChild(branchInput)
+  rowEl.appendChild(removeBtn)
+  rowEl.appendChild(statusSpan)
+  rows.appendChild(rowEl)
+}
+
+/**
+ * 특정 행 엘리먼트를 제거한다. 최소 1행은 유지한다.
+ * @param {HTMLElement} rowEl
+ */
+function removeWorktreeRow(rowEl) {
+  const rows = document.getElementById('rm-batch-rows')
+  if (!rows) return
+  const allRows = rows.querySelectorAll('.rm-batch-row')
+  if (allRows.length <= 1) return
+  if (rowEl && rowEl.parentNode === rows) {
+    rows.removeChild(rowEl)
+  }
+}
+
+/**
+ * 배치 생성 패널의 경로 선택 버튼 핸들러.
+ * worktree:select-path IPC 호출 후 #rm-batch-path-input 값 설정.
+ */
+async function onBatchSelectPathClicked() {
+  const result = await window.electronAPI.invoke('worktree:select-path')
+  if (result && result.success && result.path) {
+    const pathInput = document.getElementById('rm-batch-path-input')
+    const pathError = document.getElementById('rm-batch-path-error')
+    if (pathInput) pathInput.value = result.path
+    if (pathError) pathError.style.display = 'none'
+  }
+}
+
+/**
+ * 배치 입력 검증: 경로 비어있음, 브랜치명 비어있음, 중복 브랜치명 검사.
+ * @returns {boolean} 유효하면 true
+ */
+function validateBatchInputs() {
+  const pathInput = document.getElementById('rm-batch-path-input')
+  const pathError = document.getElementById('rm-batch-path-error')
+  const rows = document.getElementById('rm-batch-rows')
+
+  const path = pathInput ? pathInput.value.trim() : ''
+  if (!path) {
+    if (pathError) {
+      pathError.textContent = 'Target directory is required'
+      pathError.style.display = 'block'
+    }
+    return false
+  }
+  if (pathError) pathError.style.display = 'none'
+
+  if (!rows) return true
+
+  const branchInputs = rows.querySelectorAll('.rm-batch-branch-input')
+  const branches = []
+  for (const input of branchInputs) {
+    const val = input.value.trim()
+    if (!val) {
+      input.classList.add('input-error')
+      return false
+    }
+    if (branches.includes(val)) {
+      input.classList.add('input-error')
+      return false
+    }
+    branches.push(val)
+  }
+
+  return true
+}
+
+/**
+ * 배치 생성 제출 핸들러.
+ * 각 행의 브랜치에 대해 순차적으로 worktree:create-single IPC 호출.
+ * 성공/실패를 행별로 표시한 후 목록 갱신.
+ * @param {Function} onRepoSelectedFn - 목록 갱신 콜백
+ * @param {Function} showToastFn - 토스트 표시 콜백
+ */
+async function onBatchCreateSubmit(onRepoSelectedFn, showToastFn) {
+  if (_isBatchCreating) return
+  if (!validateBatchInputs()) return
+
+  _isBatchCreating = true
+
+  const pathInput = document.getElementById('rm-batch-path-input')
+  const targetPath = pathInput ? pathInput.value.trim() : ''
+  const rows = document.getElementById('rm-batch-rows')
+  const submitBtn = document.getElementById('rm-batch-submit-btn')
+
+  if (submitBtn) submitBtn.disabled = true
+
+  const rowEls = rows ? Array.from(rows.querySelectorAll('.rm-batch-row')) : []
+
+  // Disable all branch inputs
+  for (const rowEl of rowEls) {
+    const input = rowEl.querySelector('.rm-batch-branch-input')
+    if (input) input.disabled = true
+  }
+
+  let successCount = 0
+
+  for (const rowEl of rowEls) {
+    const input = rowEl.querySelector('.rm-batch-branch-input')
+    const statusSpan = rowEl.querySelector('.rm-batch-row-status')
+    const newBranch = input ? input.value.trim() : ''
+
+    try {
+      const result = await window.electronAPI.invoke('worktree:create-single', {
+        repoId: _currentRepoId,
+        baseBranch: 'HEAD',
+        newBranch,
+        targetPath,
+      })
+
+      if (result && result.success) {
+        if (statusSpan) {
+          statusSpan.textContent = 'Created'
+          statusSpan.className = 'rm-batch-row-status rm-batch-status-success'
+        }
+        successCount++
+      } else {
+        const errMsg = (result && result.error) ? result.error : 'Failed'
+        if (statusSpan) {
+          statusSpan.textContent = 'Failed: ' + errMsg
+          statusSpan.className = 'rm-batch-row-status rm-batch-status-error'
+        }
+      }
+    } catch (e) {
+      const errMsg = e && e.message ? e.message : 'Error'
+      if (statusSpan) {
+        statusSpan.textContent = 'Failed: ' + errMsg
+        statusSpan.className = 'rm-batch-row-status rm-batch-status-error'
+      }
+    }
+  }
+
+  if (submitBtn) submitBtn.disabled = false
+  _isBatchCreating = false
+
+  // Refresh list after all rows processed
+  if (onRepoSelectedFn) await onRepoSelectedFn(_currentRepoId)
+
+  // Show toast if any success
+  if (successCount > 0 && showToastFn) {
+    showToastFn('repo-worktree.batch.create.success', 'success')
+  }
+
+  // Hide panel only if ALL rows succeeded
+  if (successCount === rowEls.length && rowEls.length > 0) {
+    hideBatchCreatePanel()
+  }
+}
+
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -190,6 +406,13 @@ if (typeof module !== 'undefined' && module.exports) {
     onSelectPathClicked,
     onCreateSubmit,
     setCurrentRepoId,
+    showBatchCreatePanel,
+    hideBatchCreatePanel,
+    addWorktreeRow,
+    removeWorktreeRow,
+    onBatchSelectPathClicked,
+    validateBatchInputs,
+    onBatchCreateSubmit,
   }
 }
 

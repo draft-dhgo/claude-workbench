@@ -10,7 +10,7 @@ const pendingPrevState = new WeakMap()
 
 // ─── Public API (global) ─────────────────────────────────────────────────────
 
-function createHostingButton(workspacePath) {
+function createHostingButton(workspacePath, onToggle) {
   const wrapper = document.createElement('div')
   wrapper.className = 'hosting-btn-wrapper'
   wrapper.dataset.workspacePath = workspacePath
@@ -29,13 +29,17 @@ function createHostingButton(workspacePath) {
     try {
       if (isRunning) {
         const res = await window.electronAPI.invoke('wiki-host:stop')
-        if (!res.success) {
-          updateHostingButton(wrapper, true)
+        const newRunning = res.success ? false : true
+        updateHostingButton(wrapper, newRunning)
+        if (res.success && typeof onToggle === 'function') {
+          try { onToggle(workspacePath, false) } catch (_) { /* ignore callback errors */ }
         }
       } else {
         const res = await window.electronAPI.invoke('wiki-host:start', { workspacePath })
-        if (!res.success) {
-          updateHostingButton(wrapper, false)
+        const newRunning = res.success ? true : false
+        updateHostingButton(wrapper, newRunning)
+        if (res.success && typeof onToggle === 'function') {
+          try { onToggle(workspacePath, true) } catch (_) { /* ignore callback errors */ }
         }
       }
     } finally {
@@ -79,9 +83,8 @@ function setHostingButtonPending(wrapper, isPending) {
     button.textContent = '...'
     button.className = 'hosting-btn hosting-btn-pending'
   } else {
-    const wasRunning = pendingPrevState.get(wrapper) || false
+    // Only release disabled — state has already been set by the caller (click handler)
     button.disabled = false
     button.setAttribute('aria-disabled', 'false')
-    updateHostingButton(wrapper, wasRunning)
   }
 }

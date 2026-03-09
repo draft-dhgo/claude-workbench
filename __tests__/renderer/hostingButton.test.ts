@@ -104,10 +104,12 @@ describe('TC-U-06: setHostingButtonPending — isPending=true 시 disabled + "..
   })
 })
 
-describe('TC-U-07: setHostingButtonPending — isPending=false 시 정상 상태 복귀', () => {
-  test('disabled가 false이고 textContent가 ...이 아니며 hosting-btn-pending 클래스가 미포함된다', () => {
+describe('TC-U-07: setHostingButtonPending — isPending=false 시 disabled만 해제 (SDD-0001)', () => {
+  test('disabled가 false이고 hosting-btn-pending 클래스가 미포함된다 (상태 복원은 호출자 책임)', () => {
     const wrapper = createHostingButton('/Users/test/ws')
     setHostingButtonPending(wrapper, true)
+    // Caller (click handler) sets state before calling setHostingButtonPending(false)
+    updateHostingButton(wrapper, false) // simulate: click handler sets final state
     setHostingButtonPending(wrapper, false)
     const btn = wrapper.querySelector('button') as HTMLButtonElement
     expect(btn.disabled).toBe(false)
@@ -116,11 +118,13 @@ describe('TC-U-07: setHostingButtonPending — isPending=false 시 정상 상태
   })
 })
 
-describe('TC-U-08: setHostingButtonPending — Running 상태에서 pending 해제 시 Stop 상태 유지', () => {
-  test('textContent가 Stop이고 hosting-btn-running 클래스가 포함된다', () => {
+describe('TC-U-08: setHostingButtonPending — Running 상태에서 pending 해제 시 Stop 상태 유지 (SDD-0001)', () => {
+  test('호출자가 updateHostingButton(true) 후 setHostingButtonPending(false) 시 Stop 상태 유지', () => {
     const wrapper = createHostingButton('/Users/test/ws')
     updateHostingButton(wrapper, true)
     setHostingButtonPending(wrapper, true)
+    // Caller explicitly sets state (new contract per SDD-0001)
+    updateHostingButton(wrapper, true)
     setHostingButtonPending(wrapper, false)
     const btn = wrapper.querySelector('button') as HTMLButtonElement
     expect(btn.textContent).toBe('Stop')

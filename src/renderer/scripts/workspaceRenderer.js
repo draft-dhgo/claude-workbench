@@ -135,7 +135,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       })
 
       // 각 워크스페이스 항목에 호스팅 버튼 추가
-      const hostingWrapper = createHostingButton(ws.path)
+      const hostingWrapper = createHostingButton(ws.path, (wsPath, nowRunning) => {
+        currentHostingPath = nowRunning ? wsPath : null
+      })
 
       btnGroup.appendChild(resetBtn)
       btnGroup.appendChild(deleteBtn)

@@ -3,6 +3,7 @@ import fs = require('fs');
 import path = require('path');
 import { BrowserWindow } from 'electron';
 import { QueueItem, QueueItemStatus, QueueCommandType, QueueItemResult, QueueLogMessage, QueueStatusUpdate, RateLimitStatus } from '../../shared/types/models';
+import { truncateLogContent } from '../utils/logFormatter';
 
 const RATE_LIMIT_RETRY_INTERVAL_MS = 5 * 60 * 1000; // 5분 고정
 
@@ -640,7 +641,11 @@ class CommandQueueService {
   private _sendLog(log: QueueLogMessage): void {
     const win = this._getWindow();
     if (!win) return;
-    win.webContents.send('queue:log', log);
+    const truncated: QueueLogMessage = {
+      ...log,
+      content: truncateLogContent(log.content)
+    };
+    win.webContents.send('queue:log', truncated);
   }
 
   private _sendRateLimitStatus(status: RateLimitStatus): void {

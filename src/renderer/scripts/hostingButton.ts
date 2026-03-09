@@ -21,9 +21,14 @@ const pendingPrevState = new WeakMap<HTMLElement, boolean>()
  * Creates a hosting control button wrapper for a workspace row.
  *
  * @param workspacePath - The workspace path this button controls.
+ * @param onToggle - Optional callback invoked on successful state change:
+ *   `(path: string, running: boolean) => void`
  * @returns div.hosting-btn-wrapper containing button.hosting-btn in Stopped state.
  */
-export function createHostingButton(workspacePath: string): HTMLElement {
+export function createHostingButton(
+  workspacePath: string,
+  onToggle?: (path: string, running: boolean) => void
+): HTMLElement {
   const wrapper = document.createElement('div')
   wrapper.className = 'hosting-btn-wrapper'
   wrapper.dataset.workspacePath = workspacePath
@@ -43,15 +48,17 @@ export function createHostingButton(workspacePath: string): HTMLElement {
     try {
       if (isRunning) {
         const res = await (window as any).electronAPI.invoke('wiki-host:stop')
-        if (!res.success) {
-          // On failure, restore Running state
-          updateHostingButton(wrapper, true)
+        const newRunning = res.success ? false : true
+        updateHostingButton(wrapper, newRunning)
+        if (res.success && typeof onToggle === 'function') {
+          try { onToggle(workspacePath, false) } catch (_) { /* ignore callback errors */ }
         }
       } else {
         const res = await (window as any).electronAPI.invoke('wiki-host:start', { workspacePath })
-        if (!res.success) {
-          // On failure, restore Stopped state
-          updateHostingButton(wrapper, false)
+        const newRunning = res.success ? true : false
+        updateHostingButton(wrapper, newRunning)
+        if (res.success && typeof onToggle === 'function') {
+          try { onToggle(workspacePath, true) } catch (_) { /* ignore callback errors */ }
         }
       }
     } finally {
@@ -109,11 +116,8 @@ export function setHostingButtonPending(wrapper: HTMLElement, isPending: boolean
     button.textContent = '...'
     button.className = 'hosting-btn hosting-btn-pending'
   } else {
-    // Restore the previous state
-    const wasRunning = pendingPrevState.get(wrapper) ?? false
+    // Only release disabled — state has already been set by the caller (click handler)
     button.disabled = false
     button.setAttribute('aria-disabled', 'false')
-    // Restore full state (text, class, aria-label) based on previous running state
-    updateHostingButton(wrapper, wasRunning)
   }
 }
