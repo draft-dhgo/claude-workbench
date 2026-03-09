@@ -3,12 +3,13 @@ import path = require('path');
 import { getWindowOptions, handleWindowAllClosed, handlePing, handleVersion } from './window';
 import { handleRepoAdd, handleRepoList, handleRepoRemove, handleRepoValidate } from './handlers/repoHandlers';
 import { handleSetCreate, handleSetList, handleSetGet, handleSetUpdate, handleSetDelete } from './handlers/workdirSetHandlers';
-import { handleListBranches, handleFetch, handleCreateAll, handleSelectPath, handleListByRepo, handleDeleteWorktree } from './handlers/worktreeHandlers';
+import { handleListBranches, handleFetch, handleCreateAll, handleSelectPath, handleListByRepo, handleDeleteWorktree, handleCreateSingle, handleListBranchesSingle, handleFetchSingle, handleListUnpushed, handleDetachWorktree } from './handlers/worktreeHandlers';
 import { handleDetect, handleCopyAll, handleReset } from './handlers/claudeConfigHandlers';
 import { handleOpenTerminal } from './handlers/terminalHandlers';
-import { handleList, handleCreate, handleUpdate, handleDelete } from './handlers/workspaceHandlers';
-import { handleEnqueue, handleDequeue, handleAbort, handleStatus, handleSecurityWarning } from './handlers/commandQueueHandlers';
+import { handleList, handleRegister, handleCreate, handleUpdate, handleDelete } from './handlers/workspaceHandlers';
+import { handleEnqueue, handleDequeue, handleAbort, handleStatus, handleSecurityWarning, initService as initQueueService } from './handlers/commandQueueHandlers';
 import { handleWikiHostStart, handleWikiHostStop, handleWikiHostStatus, handleWikiHostOpenBrowser, cleanupWikiHost } from './handlers/wikiHostHandlers';
+import { handleSetActive, handleGetActive, handleGetCommands, handleGetSkills, handleGetConfigStatus, handleResetConfig, handleGetQueueSummary, handleRateLimitRetryNow, handleRateLimitCancel } from './handlers/workspaceManagerHandlers';
 
 function createWindow() {
   const win = new BrowserWindow(getWindowOptions())
@@ -43,6 +44,13 @@ ipcMain.handle('worktree:select-path', handleSelectPath)
 ipcMain.handle('worktree:list-by-repo', handleListByRepo)
 ipcMain.handle('worktree:delete-worktree', handleDeleteWorktree)
 
+// 신규 Worktree 핸들러 등록
+ipcMain.handle('worktree:create-single', handleCreateSingle)
+ipcMain.handle('worktree:list-branches-single', handleListBranchesSingle)
+ipcMain.handle('worktree:fetch-single', handleFetchSingle)
+ipcMain.handle('worktree:list-unpushed', handleListUnpushed)
+ipcMain.handle('worktree:detach', handleDetachWorktree)
+
 // Claude 구성 핸들러 등록
 ipcMain.handle('claude-config:detect',   handleDetect)
 ipcMain.handle('claude-config:copy-all', handleCopyAll)
@@ -53,6 +61,7 @@ ipcMain.handle('terminal:open', handleOpenTerminal)
 
 // Workspace 핸들러 등록
 ipcMain.handle('workspace:list', handleList)
+ipcMain.handle('workspace:register', handleRegister)
 ipcMain.handle('workspace:create', handleCreate)
 ipcMain.handle('workspace:update', handleUpdate)
 ipcMain.handle('workspace:delete', handleDelete)
@@ -70,7 +79,21 @@ ipcMain.handle('wiki-host:stop', handleWikiHostStop)
 ipcMain.handle('wiki-host:status', handleWikiHostStatus)
 ipcMain.handle('wiki-host:open-browser', handleWikiHostOpenBrowser)
 
-app.whenReady().then(createWindow)
+// Workspace Manager 핸들러 등록 (신규)
+ipcMain.handle('workspace-mgr:set-active', handleSetActive)
+ipcMain.handle('workspace-mgr:get-active', handleGetActive)
+ipcMain.handle('workspace-mgr:get-commands', handleGetCommands)
+ipcMain.handle('workspace-mgr:get-skills', handleGetSkills)
+ipcMain.handle('workspace-mgr:get-config-status', handleGetConfigStatus)
+ipcMain.handle('workspace-mgr:reset-config', handleResetConfig)
+ipcMain.handle('workspace-mgr:get-queue-summary', handleGetQueueSummary)
+ipcMain.handle('workspace-mgr:rate-limit-retry-now', handleRateLimitRetryNow)
+ipcMain.handle('workspace-mgr:rate-limit-cancel', handleRateLimitCancel)
+
+app.whenReady().then(() => {
+  createWindow();
+  initQueueService();
+})
 
 // 앱 종료 시 Wiki Host 서버 정리
 app.on('before-quit', async () => {
