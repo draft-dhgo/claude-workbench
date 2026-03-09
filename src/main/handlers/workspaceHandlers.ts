@@ -2,8 +2,8 @@ import path = require('path');
 import fs = require('fs');
 import { app } from 'electron';
 import WorkspaceStore = require('../services/workspaceStore');
-import { WorkspaceEntry } from '../../shared/types/models';
-import { buildDefaultClaudeMd } from '../constants/claudeConfigDefaults';
+import { WorktreeInfo, WorkspaceEntry } from '../../shared/types/models';
+import { buildDefaultClaudeMd, buildWikiViewerHtml } from '../constants/claudeConfigDefaults';
 
 let _workspaceStore: InstanceType<typeof WorkspaceStore> | null = null;
 
@@ -94,7 +94,20 @@ async function handleCreate(_event: any, data: { name?: string; parentPath?: str
     const claudeMdContent = buildDefaultClaudeMd(name, lang as any);
     fs.writeFileSync(path.join(dirPath, 'CLAUDE.md'), claudeMdContent, 'utf-8');
 
-    // 4. 영속 저장소에 등록
+    // 4. wiki/ 스캐폴딩
+    const wikiDirs = ['requirements', 'prd', 'specs', 'tests', 'tdd', 'deploy', 'bugfix', 'bugs', 'knowledge', 'mockups', 'views'];
+    for (const d of wikiDirs) {
+      fs.mkdirSync(path.join(dirPath, 'wiki', d), { recursive: true });
+    }
+    fs.writeFileSync(path.join(dirPath, 'wiki', 'bugs', 'README.md'), '# Bug Reports\n\n| ID | 설명 | 상태 |\n|----|------|------|\n', 'utf-8');
+    fs.writeFileSync(path.join(dirPath, 'wiki', 'requirements', 'README.md'), '# Requirements\n\n| ID | 제목 | 상태 |\n|----|------|------|\n', 'utf-8');
+    fs.writeFileSync(path.join(dirPath, 'wiki', 'knowledge', 'architecture.md'), '# Architecture\n', 'utf-8');
+    fs.writeFileSync(path.join(dirPath, 'wiki', 'knowledge', 'conventions.md'), '# Conventions\n', 'utf-8');
+    fs.writeFileSync(path.join(dirPath, 'wiki', 'knowledge', 'dependencies.md'), '# Dependencies\n', 'utf-8');
+    fs.writeFileSync(path.join(dirPath, 'wiki', 'knowledge', 'gotchas.md'), '# Gotchas\n', 'utf-8');
+    fs.writeFileSync(path.join(dirPath, 'wiki', 'views', 'index.html'), buildWikiViewerHtml(), 'utf-8');
+
+    // 5. 영속 저장소에 등록
     const workspace = getWorkspaceStore().create(name, dirPath);
 
     return {
