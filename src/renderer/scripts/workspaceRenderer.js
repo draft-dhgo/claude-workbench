@@ -299,4 +299,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.loadWorkspaceTab = loadWorkspaceTab
 
   window.i18n.registerReRender(fetchAndRenderList)
+
+  // 초기 로딩: 워크스페이스 목록을 미리 로드해둔다
+  // (modeToggle의 restoreTabIndex가 renderer.js 핸들러 등록 전에 실행되어
+  //  loadWorkspaceTab이 호출되지 않는 타이밍 이슈 방지)
+  await fetchAndRenderList()
 })
