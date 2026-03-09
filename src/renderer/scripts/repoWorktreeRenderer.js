@@ -531,32 +531,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     })
   }
 
-  const rmAddBtn = document.getElementById('rm-add-btn')
-  const rmBatchBtn = document.getElementById('rm-batch-btn')
-  const rmSelectPathBtn = document.getElementById('rm-select-path-btn')
+  const rmCreateInline = document.getElementById('rm-create-inline')
+  const rmNewBranch = document.getElementById('rm-new-branch')
   const rmCreateBtn = document.getElementById('rm-create-btn')
-  const rmCreateCancelBtn = document.getElementById('rm-create-cancel-btn')
-  const rmBatchSelectPathBtn = document.getElementById('rm-batch-select-path-btn')
-  const rmBatchAddRowBtn = document.getElementById('rm-batch-add-row-btn')
-  const rmBatchSubmitBtn = document.getElementById('rm-batch-submit-btn')
-  const rmBatchCancelBtn = document.getElementById('rm-batch-cancel-btn')
+  const rmCreateError = document.getElementById('rm-create-error')
 
   async function onRepoSelected(repoId) {
     if (!repoId) {
       currentRepoId = null
-      _currentRepoId = null
       rmListSection.style.display = 'none'
       if (rmRefreshBtn) rmRefreshBtn.style.display = 'none'
-      if (rmAddBtn) rmAddBtn.style.display = 'none'
-      if (rmBatchBtn) rmBatchBtn.style.display = 'none'
-      hideCreateForm()
-      hideBatchCreatePanel()
+      if (rmCreateInline) rmCreateInline.style.display = 'none'
       return
     }
 
     currentRepoId = repoId
-    _currentRepoId = repoId
-    setCurrentRepoId(repoId)
     setLoading(true)
 
     try {
@@ -570,11 +559,43 @@ window.addEventListener('DOMContentLoaded', async () => {
 
       renderWorktreeList(result.worktrees || [])
       if (rmRefreshBtn) rmRefreshBtn.style.display = 'inline-block'
-      if (rmAddBtn) rmAddBtn.style.display = 'inline-block'
-      if (rmBatchBtn) rmBatchBtn.style.display = 'inline-block'
+      if (rmCreateInline) rmCreateInline.style.display = 'flex'
     } catch (e) {
       setLoading(false)
       showToast(t('repo-worktree.error.list_error'), 'error')
+    }
+  }
+
+  async function onInlineCreate() {
+    if (!currentRepoId || !rmNewBranch) return
+    const branch = rmNewBranch.value.trim()
+    if (!branch) {
+      if (rmCreateError) {
+        rmCreateError.textContent = 'Branch name is required'
+        rmCreateError.style.display = 'block'
+      }
+      return
+    }
+    if (rmCreateError) rmCreateError.style.display = 'none'
+    if (rmCreateBtn) { rmCreateBtn.disabled = true; rmCreateBtn.textContent = 'Creating...' }
+
+    try {
+      const result = await window.electronAPI.invoke('worktree:create-single', {
+        repoId: currentRepoId,
+        branch,
+        baseBranch: 'HEAD',
+      })
+      if (result && result.success) {
+        rmNewBranch.value = ''
+        showToast('Worktree created', 'success')
+        await onRepoSelected(currentRepoId)
+      } else {
+        showToast('Failed: ' + (result?.error || 'unknown'), 'error')
+      }
+    } catch (e) {
+      showToast('Error creating worktree', 'error')
+    } finally {
+      if (rmCreateBtn) { rmCreateBtn.disabled = false; rmCreateBtn.textContent = '+ Create' }
     }
   }
 
@@ -670,23 +691,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     showDeleteConfirm(worktreePath, branch, isPushed)
   })
 
-  // Single create form buttons
-  if (rmAddBtn) rmAddBtn.addEventListener('click', showCreateForm)
-  if (rmSelectPathBtn) rmSelectPathBtn.addEventListener('click', onSelectPathClicked)
-  if (rmCreateBtn) rmCreateBtn.addEventListener('click', () => onCreateSubmit(onRepoSelected, showToast))
-  if (rmCreateCancelBtn) rmCreateCancelBtn.addEventListener('click', hideCreateForm)
-
-  // Batch create panel buttons
-  if (rmBatchBtn) {
-    rmBatchBtn.addEventListener('click', () => {
-      showBatchCreatePanel()
-      addWorktreeRow()
-    })
-  }
-  if (rmBatchSelectPathBtn) rmBatchSelectPathBtn.addEventListener('click', onBatchSelectPathClicked)
-  if (rmBatchAddRowBtn) rmBatchAddRowBtn.addEventListener('click', () => addWorktreeRow())
-  if (rmBatchSubmitBtn) rmBatchSubmitBtn.addEventListener('click', () => onBatchCreateSubmit(onRepoSelected, showToast))
-  if (rmBatchCancelBtn) rmBatchCancelBtn.addEventListener('click', hideBatchCreatePanel)
+  // Inline create button + enter key
+  if (rmCreateBtn) rmCreateBtn.addEventListener('click', onInlineCreate)
+  if (rmNewBranch) rmNewBranch.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') onInlineCreate()
+  })
 
   window.loadRepoWorktreeTab = loadRepoWorktreeTab
 
