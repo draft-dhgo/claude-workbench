@@ -127,7 +127,7 @@ class WikiHostService {
     }
 
     const mimeType = this._getMimeType(safePath);
-    res.writeHead(200, { 'Content-Type': mimeType });
+    res.writeHead(200, { 'Content-Type': mimeType, 'Cache-Control': 'no-cache, no-store, must-revalidate' });
 
     const stream = fs.createReadStream(safePath);
     stream.on('error', () => {
