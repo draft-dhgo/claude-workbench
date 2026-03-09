@@ -20,7 +20,7 @@
 
 Switch between two modes using the toggle in the header. **Workspace mode** focuses on running Claude Code pipelines; **Worktree mode** manages Git repositories and their worktrees.
 
-![Repository Management](docs/screenshot-main.png)
+![Repository Management](docs/screenshot-main.png?v=3)
 
 ---
 
@@ -30,7 +30,7 @@ Switch between two modes using the toggle in the header. **Workspace mode** focu
 
 Queue multiple Claude Code commands and execute them sequentially. Built on the `@anthropic-ai/claude-agent-sdk`, commands run with full permission bypass and auto-retry on rate limits.
 
-![Command Queue](docs/screenshot-queue.png)
+![Command Queue](docs/screenshot-queue.png?v=3)
 
 - **FIFO queue**: enqueue `/add-req`, `/teams`, `/bugfix-teams`, `/add-bug` commands
 - **Workspace selector**: choose which workspace each command runs in
@@ -44,7 +44,7 @@ Queue multiple Claude Code commands and execute them sequentially. Built on the 
 
 Register existing directories or create new workspaces (with CLAUDE.md, skills, and slash commands pre-installed). Manage wiki viewer hosting from the same screen.
 
-![Workspace Management](docs/screenshot-sets.png)
+![Workspace Management](docs/screenshot-sets.png?v=3)
 
 - **Add Workspace**: register any existing directory as a workspace
 - **Create Workspace**: scaffold a new workspace with CLAUDE.md, `.claude/commands/`, and all pipeline skills installed automatically
@@ -52,7 +52,7 @@ Register existing directories or create new workspaces (with CLAUDE.md, skills, 
 - **Open Terminal**: open a terminal in the workspace directory
 - **Wiki Hosting**: start/stop a local HTTP server to serve the wiki viewer
 
-![Built-in Hosting](docs/screenshot-wiki-hosting.png)
+![Built-in Hosting](docs/screenshot-wiki-hosting.png?v=3)
 
 ---
 
@@ -62,13 +62,13 @@ Register existing directories or create new workspaces (with CLAUDE.md, skills, 
 
 Register local Git repositories, check current branches, and find them quickly with search.
 
-![Repository Management](docs/screenshot-main.png)
+![Repository Management](docs/screenshot-main.png?v=3)
 
 ### Worktree Management
 
 View the worktree list per repository and manage deletions based on push status. Shows a warning when deleting an unpushed branch.
 
-![Worktree Management](docs/screenshot-worktree-manage.png)
+![Worktree Management](docs/screenshot-worktree-manage.png?v=3)
 
 ---
 
@@ -127,21 +127,20 @@ wiki/
 
 A Wiki Viewer is included to browse all pipeline artifacts in your browser. The **cycle-based view** lets you track the pipeline progress for each requirement (REQ) and bug (BUG) at a glance.
 
-### Dashboard
-
-Displays Dev Cycle and Bug Cycle cards in a grid. See the completion status of each cycle (5 required stages: PRD → SDD → Tests → TDD → Deploy) and a Mockup Gallery.
-
-![Wiki Dashboard](docs/screenshot-wiki-dashboard.png?v=2)
-
-### Traceability Matrix
-
-Tracks each requirement from REQ through PRD → SDD → Tests → TDD → Deploy → Mockup → Bugfix in a matrix view.
-
-![Traceability Matrix](docs/screenshot-wiki-trace.png?v=2)
-
-### Cycle Detail & Document Viewer
-
-Click a cycle in the sidebar to visualize pipeline stages and open each stage's document directly. Markdown is rendered and mockups (HTML) are embedded as iframes.
+<table>
+<tr>
+<td width="50%"><strong>Dashboard</strong><br/>Dev/Bug Cycle cards, completion status, Mockup Gallery<br/><img src="docs/screenshot-wiki-dashboard.png?v=4" width="100%" /></td>
+<td width="50%"><strong>Traceability Matrix</strong><br/>REQ → PRD → SDD → Tests → TDD → Deploy → Mockup → Bugfix<br/><img src="docs/screenshot-wiki-trace.png?v=4" width="100%" /></td>
+</tr>
+<tr>
+<td width="50%"><strong>Cycle Detail</strong><br/>Pipeline stage visualization with document links<br/><img src="docs/screenshot-wiki-cycle-detail.png?v=4" width="100%" /></td>
+<td width="50%"><strong>Document Viewer</strong><br/>Markdown rendering with breadcrumb navigation<br/><img src="docs/screenshot-wiki-doc-viewer.png?v=4" width="100%" /></td>
+</tr>
+<tr>
+<td width="50%"><strong>Mockup Viewer</strong><br/>HTML mockups embedded as iframes<br/><img src="docs/screenshot-wiki-mockup.png?v=4" width="100%" /></td>
+<td width="50%"></td>
+</tr>
+</table>
 
 ### Built-in Hosting
 
