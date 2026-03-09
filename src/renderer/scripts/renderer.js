@@ -140,6 +140,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (btn.dataset.tab === 'workspace-mgmt' && typeof window.loadWorkspaceTab === 'function') {
         window.loadWorkspaceTab()
       }
+      if (btn.dataset.tab === 'worktree-create' && typeof window.loadWorktreeCreateTab === 'function') {
+        window.loadWorktreeCreateTab()
+      }
       if (btn.dataset.tab === 'repo-worktree' && typeof window.loadRepoWorktreeTab === 'function') {
         window.loadRepoWorktreeTab()
       }

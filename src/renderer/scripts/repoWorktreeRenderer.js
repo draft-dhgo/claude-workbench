@@ -1,8 +1,4 @@
-// ─── Multi-repo Worktree Creation Renderer ────────────────────────────────
-
-let _allRepos = []
-let _selectedRepos = {} // { repoId: { id, name, path, baseBranch: null, branches: [] } }
-let _isMultiCreating = false
+// ─── Worktree Management Renderer (list + delete) ──────────────────────────
 
 window.addEventListener('DOMContentLoaded', async () => {
   await window._i18nReady
@@ -21,22 +17,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   const rmConfirmBtn     = document.getElementById('rm-confirm-btn')
   const rmStatusBar      = document.getElementById('rm-status-bar')
   const t = window.i18n.t
-
-  // Multi-create elements
-  const rmOpenCreateBtn   = document.getElementById('rm-open-create-btn')
-  const rmMultiCreate     = document.getElementById('rm-multi-create')
-  const rmMultiCloseBtn   = document.getElementById('rm-multi-close-btn')
-  const rmMultiRepoList   = document.getElementById('rm-multi-repo-list')
-  const rmMultiBranchStep = document.getElementById('rm-multi-branch-step')
-  const rmMultiBranchList = document.getElementById('rm-multi-branch-list')
-  const rmMultiConfigStep = document.getElementById('rm-multi-config-step')
-  const rmMultiNewBranch  = document.getElementById('rm-multi-new-branch')
-  const rmMultiTargetPath = document.getElementById('rm-multi-target-path')
-  const rmMultiPathBtn    = document.getElementById('rm-multi-path-btn')
-  const rmMultiError      = document.getElementById('rm-multi-error')
-  const rmMultiAction     = document.getElementById('rm-multi-action')
-  const rmMultiCreateBtn  = document.getElementById('rm-multi-create-btn')
-  const rmMultiResult     = document.getElementById('rm-multi-result')
 
   let currentRepoId = null
   let pendingDelete  = null
@@ -180,229 +160,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     await onRepoSelected(currentRepoId)
   }
 
-  // ─── Multi-repo creation logic ────────────────────────────────
-
-  function openMultiCreate() {
-    rmMultiCreate.style.display = 'block'
-    if (rmOpenCreateBtn) rmOpenCreateBtn.style.display = 'none'
-    rmMultiBranchStep.style.display = 'none'
-    rmMultiConfigStep.style.display = 'none'
-    rmMultiAction.style.display = 'none'
-    rmMultiResult.style.display = 'none'
-    rmMultiResult.innerHTML = ''
-    if (rmMultiNewBranch) rmMultiNewBranch.value = ''
-    if (rmMultiTargetPath) rmMultiTargetPath.value = ''
-    if (rmMultiError) rmMultiError.style.display = 'none'
-    _selectedRepos = {}
-    renderRepoCheckboxes()
-  }
-
-  function closeMultiCreate() {
-    rmMultiCreate.style.display = 'none'
-    if (rmOpenCreateBtn) rmOpenCreateBtn.style.display = 'block'
-  }
-
-  function renderRepoCheckboxes() {
-    rmMultiRepoList.innerHTML = ''
-    _allRepos.forEach(repo => {
-      const item = document.createElement('label')
-      item.className = 'rm-multi-repo-item'
-      const cb = document.createElement('input')
-      cb.type = 'checkbox'
-      cb.value = repo.id
-      cb.addEventListener('change', () => onRepoCheckChange(repo, cb.checked))
-      const nameSpan = document.createElement('span')
-      nameSpan.className = 'repo-name'
-      nameSpan.textContent = repo.name
-      const pathSpan = document.createElement('span')
-      pathSpan.className = 'repo-path'
-      pathSpan.textContent = repo.path
-      item.appendChild(cb)
-      item.appendChild(nameSpan)
-      item.appendChild(pathSpan)
-      rmMultiRepoList.appendChild(item)
-    })
-  }
-
-  async function onRepoCheckChange(repo, checked) {
-    if (checked) {
-      _selectedRepos[repo.id] = { id: repo.id, name: repo.name, path: repo.path, baseBranch: null, branches: [] }
-      // Fetch branches
-      try {
-        const result = await window.electronAPI.invoke('worktree:list-branches-single', { repoId: repo.id })
-        if (result.success && _selectedRepos[repo.id]) {
-          _selectedRepos[repo.id].branches = result.branches || []
-        }
-      } catch (e) { /* ignore */ }
-    } else {
-      delete _selectedRepos[repo.id]
-    }
-    updateSteps()
-  }
-
-  function updateSteps() {
-    const selectedIds = Object.keys(_selectedRepos)
-    if (selectedIds.length > 0) {
-      rmMultiBranchStep.style.display = 'block'
-      rmMultiConfigStep.style.display = 'block'
-      rmMultiAction.style.display = 'flex'
-      renderBranchSelectors()
-    } else {
-      rmMultiBranchStep.style.display = 'none'
-      rmMultiConfigStep.style.display = 'none'
-      rmMultiAction.style.display = 'none'
-    }
-  }
-
-  function renderBranchSelectors() {
-    rmMultiBranchList.innerHTML = ''
-    Object.values(_selectedRepos).forEach(repo => {
-      const row = document.createElement('div')
-      row.className = 'rm-multi-branch-row'
-
-      const nameSpan = document.createElement('span')
-      nameSpan.className = 'branch-repo-name'
-      nameSpan.textContent = repo.name
-
-      const wrapper = document.createElement('div')
-      wrapper.className = 'branch-search-wrapper'
-
-      const input = document.createElement('input')
-      input.type = 'text'
-      input.className = 'form-input branch-search-input'
-      input.placeholder = 'Search branch...'
-      input.value = repo.baseBranch || ''
-      input.dataset.repoId = repo.id
-
-      const dropdown = document.createElement('div')
-      dropdown.className = 'rm-branch-dropdown'
-      dropdown.style.display = 'none'
-
-      function renderDropdown(filter) {
-        dropdown.innerHTML = ''
-        const branches = repo.branches || []
-        const filtered = filter
-          ? branches.filter(b => b.toLowerCase().includes(filter.toLowerCase()))
-          : branches
-        if (filtered.length === 0) {
-          dropdown.style.display = 'none'
-          return
-        }
-        filtered.slice(0, 50).forEach(b => {
-          const item = document.createElement('div')
-          item.className = 'rm-branch-dropdown-item'
-          item.textContent = b
-          item.addEventListener('mousedown', (e) => {
-            e.preventDefault()
-            input.value = b
-            _selectedRepos[repo.id].baseBranch = b
-            dropdown.style.display = 'none'
-          })
-          dropdown.appendChild(item)
-        })
-        dropdown.style.display = 'block'
-      }
-
-      input.addEventListener('focus', () => renderDropdown(input.value))
-      input.addEventListener('input', () => {
-        _selectedRepos[repo.id].baseBranch = input.value
-        renderDropdown(input.value)
-      })
-      input.addEventListener('blur', () => {
-        setTimeout(() => { dropdown.style.display = 'none' }, 150)
-      })
-
-      wrapper.appendChild(input)
-      wrapper.appendChild(dropdown)
-      row.appendChild(nameSpan)
-      row.appendChild(wrapper)
-      rmMultiBranchList.appendChild(row)
-    })
-  }
-
-  async function onMultiPathClicked() {
-    const result = await window.electronAPI.invoke('worktree:select-path')
-    if (result && result.success && result.path) {
-      rmMultiTargetPath.value = result.path
-      if (rmMultiError) rmMultiError.style.display = 'none'
-    }
-  }
-
-  async function onMultiCreate() {
-    if (_isMultiCreating) return
-    const selectedIds = Object.keys(_selectedRepos)
-    if (selectedIds.length === 0) return
-
-    // Validate
-    const newBranch = rmMultiNewBranch.value.trim()
-    const targetPath = rmMultiTargetPath.value.trim()
-    if (!newBranch || !targetPath) {
-      if (rmMultiError) {
-        rmMultiError.textContent = 'Branch name and target path are required'
-        rmMultiError.style.display = 'block'
-      }
-      return
-    }
-
-    // Check all repos have base branch selected
-    for (const repo of Object.values(_selectedRepos)) {
-      if (!repo.baseBranch) {
-        if (rmMultiError) {
-          rmMultiError.textContent = 'Please select base branch for: ' + repo.name
-          rmMultiError.style.display = 'block'
-        }
-        return
-      }
-    }
-
-    if (rmMultiError) rmMultiError.style.display = 'none'
-    _isMultiCreating = true
-    rmMultiCreateBtn.disabled = true
-    rmMultiCreateBtn.textContent = 'Creating...'
-    rmMultiResult.innerHTML = ''
-    rmMultiResult.style.display = 'block'
-
-    let successCount = 0
-    for (const repo of Object.values(_selectedRepos)) {
-      const itemDiv = document.createElement('div')
-      itemDiv.className = 'rm-multi-result-item'
-      itemDiv.textContent = repo.name + ': creating...'
-      rmMultiResult.appendChild(itemDiv)
-
-      try {
-        const result = await window.electronAPI.invoke('worktree:create-single', {
-          repoId: repo.id,
-          baseBranch: repo.baseBranch,
-          newBranch,
-          targetPath,
-        })
-        if (result && result.success) {
-          itemDiv.textContent = repo.name + ': Created (' + (result.worktreePath || '') + ')'
-          itemDiv.className = 'rm-multi-result-item success'
-          successCount++
-        } else {
-          itemDiv.textContent = repo.name + ': Failed - ' + (result?.error || 'unknown')
-          itemDiv.className = 'rm-multi-result-item error'
-        }
-      } catch (e) {
-        itemDiv.textContent = repo.name + ': Error - ' + (e.message || 'unknown')
-        itemDiv.className = 'rm-multi-result-item error'
-      }
-    }
-
-    _isMultiCreating = false
-    rmMultiCreateBtn.disabled = false
-    rmMultiCreateBtn.textContent = 'Create Worktrees'
-
-    if (successCount > 0) {
-      showToast(successCount + ' worktree(s) created', 'success')
-      // Refresh current repo list if one is selected
-      if (currentRepoId) await onRepoSelected(currentRepoId)
-    }
-  }
-
-  // ─── Tab load ────────────────────────────────
-
   async function loadRepoWorktreeTab() {
     currentRepoId = null
     pendingDelete = null
@@ -413,26 +170,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     rmConfirmOverlay.style.display = 'none'
     if (rmRefreshBtn) rmRefreshBtn.style.display = 'none'
     if (rmStatusBar) rmStatusBar.textContent = ''
-    if (rmMultiCreate) rmMultiCreate.style.display = 'none'
 
     try {
       const result = await window.electronAPI.invoke('repo:list')
       if (!result.success) return
       const repos = result.repos || []
-      _allRepos = repos
 
       rmRepoSelect.innerHTML = '<option value="">' + t('repo-worktree.select.placeholder') + '</option>'
 
       if (repos.length === 0) {
         rmNoReposMsg.style.display = 'block'
         rmRepoSelect.style.display = 'none'
-        if (rmOpenCreateBtn) rmOpenCreateBtn.style.display = 'none'
         return
       }
 
       rmNoReposMsg.style.display = 'none'
       rmRepoSelect.style.display = 'block'
-      if (rmOpenCreateBtn) rmOpenCreateBtn.style.display = 'block'
 
       repos.forEach(repo => {
         const option = document.createElement('option')
@@ -444,8 +197,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       showToast(t('repo-worktree.error.repos_load'), 'error')
     }
   }
-
-  // ─── Event bindings ────────────────────────────────
 
   rmRepoSelect.addEventListener('change', () => onRepoSelected(rmRepoSelect.value))
   if (rmRefreshBtn) rmRefreshBtn.addEventListener('click', onRefresh)
@@ -460,12 +211,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     const isPushed = deleteBtn.dataset.isPushed === 'true'
     showDeleteConfirm(worktreePath, branch, isPushed)
   })
-
-  // Multi-create buttons
-  if (rmOpenCreateBtn) rmOpenCreateBtn.addEventListener('click', openMultiCreate)
-  if (rmMultiCloseBtn) rmMultiCloseBtn.addEventListener('click', closeMultiCreate)
-  if (rmMultiPathBtn) rmMultiPathBtn.addEventListener('click', onMultiPathClicked)
-  if (rmMultiCreateBtn) rmMultiCreateBtn.addEventListener('click', onMultiCreate)
 
   window.loadRepoWorktreeTab = loadRepoWorktreeTab
 

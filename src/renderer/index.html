@@ -60,6 +60,7 @@
     <nav class="tab-nav" id="tab-nav-worktree" style="display:none;">
       <button class="tab-btn active" data-tab="repos"
               data-i18n="tab.repos">Repository Management</button>
+      <button class="tab-btn" data-tab="worktree-create">Worktree Create</button>
       <button class="tab-btn" data-tab="repo-worktree"
               data-i18n="tab.repo-worktree">Worktree Management</button>
     </nav>
@@ -124,31 +125,6 @@
         </div>
       </div>
 
-      <!-- 워크스페이스 생성 (스킬/커맨드/CLAUDE.md 생성) -->
-      <div id="ws-create-section" class="ws-section">
-        <button id="ws-create-toggle-btn" class="btn btn-primary"
-                data-i18n="workspace.create.btn">+ Create Workspace</button>
-        <div id="ws-create-form" class="ws-create-form" style="display:none;">
-          <p class="ws-create-desc" data-i18n="workspace.create.description">Creates skills, commands, and CLAUDE.md in the specified directory</p>
-          <div class="ws-form-row">
-            <label data-i18n="workspace.create.path.label">Path</label>
-            <div class="ws-path-row">
-              <input type="text" id="ws-create-path-input" class="form-input"
-                     data-i18n-placeholder="workspace.create.path.placeholder" />
-              <button id="ws-create-path-btn" class="btn btn-secondary"
-                      data-i18n="workspace.create.path.select">Select Path</button>
-            </div>
-          </div>
-          <div class="ws-form-actions">
-            <button id="ws-create-submit-btn" class="btn btn-primary"
-                    data-i18n="workspace.create.submit">Create</button>
-            <button id="ws-create-cancel-btn" class="btn btn-secondary"
-                    data-i18n="btn.cancel">Cancel</button>
-          </div>
-          <div id="ws-create-result" class="ws-create-result" style="display:none;"></div>
-        </div>
-      </div>
-
       <!-- 워크스페이스 목록 -->
       <div id="ws-list-section" class="ws-section">
         <label class="section-label" data-i18n="workspace.list.label">Workspace List</label>
@@ -159,6 +135,43 @@
       </div>
 
       <div id="ws-result-bar" class="status-bar"></div>
+    </div>
+
+    <!-- Worktree Create Tab -->
+    <div id="tab-worktree-create" class="tab-content" style="display: none;">
+      <div class="wc-section">
+        <label class="section-label">1. Select Repositories</label>
+        <div id="wc-repo-list" class="wc-repo-list"></div>
+        <div id="wc-no-repos" class="empty-state" style="display:none;">
+          <p>No repositories registered. Add repos in Repository Management first.</p>
+        </div>
+      </div>
+
+      <div id="wc-branch-section" class="wc-section" style="display:none;">
+        <label class="section-label">2. Base Branch (per repo)</label>
+        <div id="wc-branch-list" class="wc-branch-list"></div>
+      </div>
+
+      <div id="wc-config-section" class="wc-section" style="display:none;">
+        <label class="section-label">3. New Branch &amp; Target Path</label>
+        <div class="wc-config-row">
+          <label class="wc-field-label">Branch Name</label>
+          <input type="text" id="wc-new-branch" class="form-input" placeholder="feature/my-branch" />
+        </div>
+        <div class="wc-config-row">
+          <label class="wc-field-label">Target Directory</label>
+          <div class="wc-path-row">
+            <input type="text" id="wc-target-path" class="form-input" placeholder="Select directory..." readonly />
+            <button id="wc-browse-btn" class="btn btn-secondary">Browse</button>
+          </div>
+        </div>
+        <span id="wc-error" class="form-error" style="display:none;"></span>
+        <div class="wc-action-row">
+          <button id="wc-create-btn" class="btn btn-primary">Create Worktrees</button>
+        </div>
+      </div>
+
+      <div id="wc-result" class="wc-result" style="display:none;"></div>
     </div>
 
     <!-- Worktree Management Tab -->
@@ -181,47 +194,6 @@
 
       <div id="rm-loading" class="rm-loading" style="display: none;">
         <span class="rm-spinner"></span> <span data-i18n="repo-worktree.loading">Loading worktree list...</span>
-      </div>
-
-      <!-- Multi-repo Worktree Creation -->
-      <button id="rm-open-create-btn" class="btn btn-primary" style="display:none; margin-bottom:12px;">+ Create Worktree</button>
-
-      <div id="rm-multi-create" class="rm-multi-create" style="display: none;">
-        <div class="rm-multi-header">
-          <strong>Create Worktrees</strong>
-          <button id="rm-multi-close-btn" class="btn btn-secondary btn-sm">Close</button>
-        </div>
-
-        <!-- Step 1: Select repos -->
-        <div class="rm-multi-step">
-          <label class="rm-multi-label">1. Select Repositories</label>
-          <div id="rm-multi-repo-list" class="rm-multi-repo-list"></div>
-        </div>
-
-        <!-- Step 2: Base branch per repo (shown after selection) -->
-        <div id="rm-multi-branch-step" class="rm-multi-step" style="display:none;">
-          <label class="rm-multi-label">2. Select Base Branch (per repo)</label>
-          <div id="rm-multi-branch-list" class="rm-multi-branch-list"></div>
-        </div>
-
-        <!-- Step 3: New branch name + target path -->
-        <div id="rm-multi-config-step" class="rm-multi-step" style="display:none;">
-          <label class="rm-multi-label">3. New Branch &amp; Target Path</label>
-          <div class="rm-multi-config-row">
-            <input type="text" id="rm-multi-new-branch" class="form-input" placeholder="feature/my-branch" />
-          </div>
-          <div class="rm-multi-config-row">
-            <input type="text" id="rm-multi-target-path" class="form-input" placeholder="Target path" readonly />
-            <button id="rm-multi-path-btn" class="btn btn-secondary">Browse</button>
-          </div>
-          <span id="rm-multi-error" class="form-error" style="display:none;"></span>
-        </div>
-
-        <!-- Create button + status -->
-        <div id="rm-multi-action" class="rm-multi-action" style="display:none;">
-          <button id="rm-multi-create-btn" class="btn btn-primary">Create Worktrees</button>
-        </div>
-        <div id="rm-multi-result" class="rm-multi-result" style="display:none;"></div>
       </div>
 
       <div id="rm-list-section" style="display: none;">
@@ -313,6 +285,7 @@
   <script src="scripts/modeToggle.js"></script>
   <script src="scripts/renderer.js"></script>
   <script src="scripts/repoWorktreeRenderer.js"></script>
+  <script src="scripts/worktreeCreateRenderer.js"></script>
   <script src="scripts/hostingButton.js"></script>
   <script src="scripts/workspaceRenderer.js"></script>
   <script src="scripts/commandQueueRenderer.js"></script>

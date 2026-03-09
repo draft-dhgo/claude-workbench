@@ -5,7 +5,7 @@
 
   const MODE_TABS = {
     workspace: ['tab-command-queue', 'tab-workspace-mgmt'],
-    worktree: ['tab-repos', 'tab-repo-worktree']
+    worktree: ['tab-repos', 'tab-worktree-create', 'tab-repo-worktree']
   }
   const MODE_NAVS = {
     workspace: 'tab-nav-workspace',
