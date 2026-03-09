@@ -127,6 +127,27 @@ async function handleReset(event: any, data: { workspacePath?: string; lang?: La
     return { success: false, failedStep: 'create-claude-md', error: e.message }
   }
 
+  // Step 5: wiki/ 스캐폴딩 재생성
+  try {
+    const { buildWikiViewerHtml } = require('../constants/claudeConfigDefaults')
+    const wikiDirs = ['requirements', 'prd', 'specs', 'tests', 'tdd', 'deploy', 'bugfix', 'bugs', 'knowledge', 'mockups', 'views']
+    for (const d of wikiDirs) {
+      fs.mkdirSync(path.join(workspacePath, 'wiki', d), { recursive: true })
+    }
+    const bugsReadme = path.join(workspacePath, 'wiki', 'bugs', 'README.md')
+    if (!fs.existsSync(bugsReadme)) {
+      fs.writeFileSync(bugsReadme, '# Bug Reports\n\n| ID | 설명 | 상태 |\n|----|------|------|\n', 'utf-8')
+    }
+    const reqReadme = path.join(workspacePath, 'wiki', 'requirements', 'README.md')
+    if (!fs.existsSync(reqReadme)) {
+      fs.writeFileSync(reqReadme, '# Requirements\n\n| ID | 제목 | 상태 |\n|----|------|------|\n', 'utf-8')
+    }
+    fs.writeFileSync(path.join(workspacePath, 'wiki', 'views', 'index.html'), buildWikiViewerHtml(), 'utf-8')
+    steps.push({ step: 'rebuild-wiki', status: 'success', message: 'wiki/ 스캐폴딩 재생성 완료 (views/index.html 포함)' })
+  } catch (e: any) {
+    return { success: false, failedStep: 'rebuild-wiki', error: e.message }
+  }
+
   return { success: true, steps }
 }
 
