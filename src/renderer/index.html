@@ -183,6 +183,52 @@
         <span class="rm-spinner"></span> <span data-i18n="repo-worktree.loading">Loading worktree list...</span>
       </div>
 
+      <div id="rm-add-btn-wrapper">
+        <button id="rm-add-btn" class="btn btn-primary" style="display:none;" data-i18n="repo-worktree.add">+ Add Worktree</button>
+        <button id="rm-batch-btn" class="btn btn-secondary" style="display:none;" data-i18n="repo-worktree.batch">+ Batch Create</button>
+      </div>
+
+      <!-- Single Create Form -->
+      <div id="rm-create-form" style="display: none;">
+        <h4 data-i18n="repo-worktree.create.title">Create Worktree</h4>
+        <div class="form-group">
+          <label data-i18n="repo-worktree.create.branch">Branch name</label>
+          <input type="text" id="rm-branch-input" class="form-input" placeholder="feature/my-branch" />
+          <span id="rm-branch-error" class="form-error" style="display: none;"></span>
+        </div>
+        <div class="form-group">
+          <label data-i18n="repo-worktree.create.path">Target path</label>
+          <div class="input-with-btn">
+            <input type="text" id="rm-path-input" class="form-input" placeholder="/path/to/worktree" readonly />
+            <button id="rm-select-path-btn" class="btn btn-secondary" data-i18n="repo-worktree.create.browse">Browse</button>
+          </div>
+          <span id="rm-path-error" class="form-error" style="display: none;"></span>
+        </div>
+        <div class="form-actions">
+          <button id="rm-create-btn" class="btn btn-primary" data-i18n="repo-worktree.create.submit">Create</button>
+          <button id="rm-create-cancel-btn" class="btn btn-secondary" data-i18n="repo-worktree.create.cancel">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Batch Create Panel -->
+      <div id="rm-batch-create-panel" style="display: none;">
+        <h4 data-i18n="repo-worktree.batch.title">Batch Create Worktrees</h4>
+        <div class="form-group">
+          <label data-i18n="repo-worktree.batch.path">Target directory</label>
+          <div class="input-with-btn">
+            <input type="text" id="rm-batch-path-input" class="form-input" placeholder="/path/to/directory" readonly />
+            <button id="rm-batch-select-path-btn" class="btn btn-secondary" data-i18n="repo-worktree.batch.browse">Browse</button>
+          </div>
+          <span id="rm-batch-path-error" class="form-error" style="display: none;"></span>
+        </div>
+        <div id="rm-batch-rows" class="rm-batch-rows"></div>
+        <div class="form-actions">
+          <button id="rm-batch-add-row-btn" class="btn btn-secondary" data-i18n="repo-worktree.batch.add_row">+ Add Branch</button>
+          <button id="rm-batch-submit-btn" class="btn btn-primary" data-i18n="repo-worktree.batch.submit">Create All</button>
+          <button id="rm-batch-cancel-btn" class="btn btn-secondary" data-i18n="repo-worktree.batch.cancel">Cancel</button>
+        </div>
+      </div>
+
       <div id="rm-list-section" style="display: none;">
         <div id="rm-worktree-list" class="rm-card-list"></div>
         <div id="rm-empty-msg" class="empty-state" style="display: none;">

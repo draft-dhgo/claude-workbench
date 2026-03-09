@@ -531,15 +531,32 @@ window.addEventListener('DOMContentLoaded', async () => {
     })
   }
 
+  const rmAddBtn = document.getElementById('rm-add-btn')
+  const rmBatchBtn = document.getElementById('rm-batch-btn')
+  const rmSelectPathBtn = document.getElementById('rm-select-path-btn')
+  const rmCreateBtn = document.getElementById('rm-create-btn')
+  const rmCreateCancelBtn = document.getElementById('rm-create-cancel-btn')
+  const rmBatchSelectPathBtn = document.getElementById('rm-batch-select-path-btn')
+  const rmBatchAddRowBtn = document.getElementById('rm-batch-add-row-btn')
+  const rmBatchSubmitBtn = document.getElementById('rm-batch-submit-btn')
+  const rmBatchCancelBtn = document.getElementById('rm-batch-cancel-btn')
+
   async function onRepoSelected(repoId) {
     if (!repoId) {
       currentRepoId = null
+      _currentRepoId = null
       rmListSection.style.display = 'none'
       if (rmRefreshBtn) rmRefreshBtn.style.display = 'none'
+      if (rmAddBtn) rmAddBtn.style.display = 'none'
+      if (rmBatchBtn) rmBatchBtn.style.display = 'none'
+      hideCreateForm()
+      hideBatchCreatePanel()
       return
     }
 
     currentRepoId = repoId
+    _currentRepoId = repoId
+    setCurrentRepoId(repoId)
     setLoading(true)
 
     try {
@@ -553,6 +570,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
       renderWorktreeList(result.worktrees || [])
       if (rmRefreshBtn) rmRefreshBtn.style.display = 'inline-block'
+      if (rmAddBtn) rmAddBtn.style.display = 'inline-block'
+      if (rmBatchBtn) rmBatchBtn.style.display = 'inline-block'
     } catch (e) {
       setLoading(false)
       showToast(t('repo-worktree.error.list_error'), 'error')
@@ -650,6 +669,24 @@ window.addEventListener('DOMContentLoaded', async () => {
     const isPushed = deleteBtn.dataset.isPushed === 'true'
     showDeleteConfirm(worktreePath, branch, isPushed)
   })
+
+  // Single create form buttons
+  if (rmAddBtn) rmAddBtn.addEventListener('click', showCreateForm)
+  if (rmSelectPathBtn) rmSelectPathBtn.addEventListener('click', onSelectPathClicked)
+  if (rmCreateBtn) rmCreateBtn.addEventListener('click', () => onCreateSubmit(onRepoSelected, showToast))
+  if (rmCreateCancelBtn) rmCreateCancelBtn.addEventListener('click', hideCreateForm)
+
+  // Batch create panel buttons
+  if (rmBatchBtn) {
+    rmBatchBtn.addEventListener('click', () => {
+      showBatchCreatePanel()
+      addWorktreeRow()
+    })
+  }
+  if (rmBatchSelectPathBtn) rmBatchSelectPathBtn.addEventListener('click', onBatchSelectPathClicked)
+  if (rmBatchAddRowBtn) rmBatchAddRowBtn.addEventListener('click', () => addWorktreeRow())
+  if (rmBatchSubmitBtn) rmBatchSubmitBtn.addEventListener('click', () => onBatchCreateSubmit(onRepoSelected, showToast))
+  if (rmBatchCancelBtn) rmBatchCancelBtn.addEventListener('click', hideBatchCreatePanel)
 
   window.loadRepoWorktreeTab = loadRepoWorktreeTab
 
