@@ -158,20 +158,6 @@
         </div>
       </div>
 
-      <!-- Wiki Viewer 호스팅 상태 (항상 표시) -->
-      <div id="wh-global-section" class="ws-section wh-section">
-        <label class="section-label" data-i18n="wikiHost.title">Wiki Viewer Hosting</label>
-        <div class="wh-status-row">
-          <span id="wh-global-indicator" class="wh-indicator wh-stopped"
-                data-i18n="wikiHost.status.stopped">Not Running</span>
-          <span id="wh-global-url" class="wh-url" style="display:none;"></span>
-        </div>
-        <div class="wh-controls">
-          <button id="wh-global-stop-btn" class="btn btn-secondary" disabled
-                  data-i18n="wikiHost.stopButton">Stop Hosting</button>
-        </div>
-      </div>
-
       <div id="ws-result-bar" class="status-bar"></div>
     </div>
 
@@ -286,6 +272,7 @@
   <script src="scripts/modeToggle.js"></script>
   <script src="scripts/renderer.js"></script>
   <script src="scripts/repoWorktreeRenderer.js"></script>
+  <script src="scripts/hostingButton.js"></script>
   <script src="scripts/workspaceRenderer.js"></script>
   <script src="scripts/commandQueueRenderer.js"></script>
 </body>

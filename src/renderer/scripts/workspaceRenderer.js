@@ -23,13 +23,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   const wsCreateCancelBtn = document.getElementById('ws-create-cancel-btn')
   const wsCreateResult  = document.getElementById('ws-create-result')
 
-  // === Wiki Viewer 호스팅 (전역, 항상 표시) ===
-  const whGlobalIndicator = document.getElementById('wh-global-indicator')
-  const whGlobalUrl     = document.getElementById('wh-global-url')
-  const whGlobalStopBtn = document.getElementById('wh-global-stop-btn')
-
-  let wikiHostRunning = false
-  let wikiHostUrl = null
+  // === 호스팅 상태 (행별 버튼 방식) ===
+  // currentHostingPath: 현재 실행 중인 워크스페이스 경로 (Option A)
+  let currentHostingPath = null
 
   function showToast(message, type) {
     const toast = document.getElementById('toast')
@@ -138,15 +134,49 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
       })
 
+      // 각 워크스페이스 항목에 호스팅 버튼 추가
+      const hostingWrapper = createHostingButton(ws.path)
+
       btnGroup.appendChild(resetBtn)
       btnGroup.appendChild(deleteBtn)
+      btnGroup.appendChild(hostingWrapper)
 
       item.appendChild(nameSpan)
       item.appendChild(pathSpan)
       item.appendChild(btnGroup)
       wsList.appendChild(item)
     })
+
+    // 렌더링 후 호스팅 상태 동기화
+    await syncHostingButtonStates()
   }
+
+  // === 호스팅 버튼 상태 동기화 ===
+
+  async function syncHostingButtonStates() {
+    try {
+      const status = await window.electronAPI.invoke('wiki-host:status')
+      if (status.running && currentHostingPath) {
+        const wrapper = document.querySelector(`.hosting-btn-wrapper[data-workspace-path="${currentHostingPath}"]`)
+        if (wrapper) updateHostingButton(wrapper, true)
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // === wiki-host:status-update push 이벤트 처리 ===
+
+  window.electronAPI.on('wiki-host:status-update', (status) => {
+    // 모든 버튼을 Stopped 상태로 초기화
+    document.querySelectorAll('.hosting-btn-wrapper').forEach(w => updateHostingButton(w, false))
+    // 실행 중인 워크스페이스 버튼만 Running으로 갱신
+    if (status.running && currentHostingPath) {
+      const wrapper = document.querySelector(`.hosting-btn-wrapper[data-workspace-path="${currentHostingPath}"]`)
+      if (wrapper) updateHostingButton(wrapper, true)
+    }
+    if (!status.running) {
+      currentHostingPath = null
+    }
+  })
 
   // === 워크스페이스 추가 (등록) ===
 
@@ -261,55 +291,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     })
   }
 
-  // === Wiki Viewer 호스팅 (전역) ===
-
-  function updateWikiHostGlobalUI() {
-    if (!whGlobalIndicator) return
-    if (wikiHostRunning) {
-      whGlobalIndicator.className = 'wh-indicator wh-running'
-      whGlobalIndicator.textContent = t('wikiHost.status.running')
-      if (whGlobalUrl) {
-        whGlobalUrl.textContent = wikiHostUrl || ''
-        whGlobalUrl.style.display = 'inline'
-      }
-      if (whGlobalStopBtn) whGlobalStopBtn.disabled = false
-    } else {
-      whGlobalIndicator.className = 'wh-indicator wh-stopped'
-      whGlobalIndicator.textContent = t('wikiHost.status.stopped')
-      if (whGlobalUrl) whGlobalUrl.style.display = 'none'
-      if (whGlobalStopBtn) whGlobalStopBtn.disabled = true
-    }
-  }
-
-  async function fetchWikiHostGlobalStatus() {
-    try {
-      const status = await window.electronAPI.invoke('wiki-host:status')
-      wikiHostRunning = status.running
-      wikiHostUrl = status.url || null
-      updateWikiHostGlobalUI()
-    } catch (e) { /* ignore */ }
-  }
-
-  window.electronAPI.on('wiki-host:status-update', (status) => {
-    wikiHostRunning = status.running
-    wikiHostUrl = status.url || null
-    updateWikiHostGlobalUI()
-  })
-
-  if (whGlobalStopBtn) {
-    whGlobalStopBtn.addEventListener('click', async () => {
-      await window.electronAPI.invoke('wiki-host:stop')
-    })
-  }
-
   async function loadWorkspaceTab() {
     setResult('')
     await fetchAndRenderList()
-    await fetchWikiHostGlobalStatus()
   }
 
   window.loadWorkspaceTab = loadWorkspaceTab
 
   window.i18n.registerReRender(fetchAndRenderList)
-  window.i18n.registerReRender(updateWikiHostGlobalUI)
 })

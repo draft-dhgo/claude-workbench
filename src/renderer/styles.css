@@ -1423,3 +1423,56 @@ h1 {
 .toggle-switch[aria-checked="true"] .toggle-switch__thumb {
   transform: translateX(20px);
 }
+
+/* ─── Hosting Button (SDD-0001) ─────────────────────────────────── */
+
+/* 호스팅 버튼 wrapper */
+.hosting-btn-wrapper {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 기본 호스팅 버튼 */
+.hosting-btn {
+  min-width: 52px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, color 0.15s;
+}
+
+/* Stopped 상태: 켜기 버튼 */
+.hosting-btn-stopped {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  border-color: var(--btn-border);
+}
+.hosting-btn-stopped:hover {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border-color: var(--success-border);
+}
+
+/* Running 상태: 끄기 버튼 */
+.hosting-btn-running {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border-color: var(--success-border);
+}
+.hosting-btn-running:hover {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-color: var(--danger-border);
+}
+
+/* Pending 상태: 처리 중 */
+.hosting-btn-pending {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border-color: var(--border-subtle);
+  cursor: not-allowed;
+  opacity: 0.7;
+}

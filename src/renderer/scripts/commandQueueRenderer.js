@@ -1,3 +1,5 @@
+let _persistedCwd = null
+
 window.addEventListener('DOMContentLoaded', async () => {
   await window._i18nReady
   const cmdTypeSelect = document.getElementById('cq-cmd-type')
@@ -12,7 +14,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const abortBtn = document.getElementById('cq-abort-btn')
   const toast = document.getElementById('toast')
 
-  let selectedCwd = null
+  let selectedCwd = _persistedCwd
 
   function showToast(message, type) {
     toast.textContent = message
@@ -39,6 +41,19 @@ window.addEventListener('DOMContentLoaded', async () => {
           opt.textContent = entry.name + ' (' + entry.path + ')'
           cmdCwdSelect.appendChild(opt)
         })
+        // Restore persisted workspace selection if it still exists in the new list
+        if (_persistedCwd) {
+          const exists = Array.from(cmdCwdSelect.options)
+            .some(function (opt) { return opt.value === _persistedCwd })
+          if (exists) {
+            cmdCwdSelect.value = _persistedCwd
+            selectedCwd = _persistedCwd
+          } else {
+            // Previously selected workspace no longer in list — reset
+            _persistedCwd = null
+            selectedCwd = null
+          }
+        }
       }
     } catch (e) {
       // ignore
@@ -47,6 +62,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   cmdCwdSelect.addEventListener('change', function () {
     selectedCwd = cmdCwdSelect.value || null
+    _persistedCwd = selectedCwd
   })
 
   // Security warning check
