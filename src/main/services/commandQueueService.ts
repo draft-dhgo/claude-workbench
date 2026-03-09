@@ -15,12 +15,14 @@ class CommandQueueService {
   private _countdownIntervalId: ReturnType<typeof setInterval> | null = null;
   private _securityWarningShown: boolean = false;
   private _persistPath: string | null = null;
+  private _completionCallback: ((item: QueueItem) => void) | null = null;
+  private _queryFn: ((opts: any) => any) | null = null;
 
   // Rate limit pause/resume state
   private _isPaused: boolean = false;
   private _pauseResolve: ((value: boolean) => void) | null = null;
   private _cancelResolve: ((value: boolean) => void) | null = null;
-  private _maxRetries: number = 10;
+  private _maxRetries: number = 60; // 5분 간격 × 60회 = 5시간
   private _rateLimitRetryCount: number = 0;
 
   constructor(userDataPath?: string) {
@@ -180,6 +182,14 @@ class CommandQueueService {
     return this._maxRetries;
   }
 
+  setCompletionCallback(cb: (item: QueueItem) => void): void {
+    this._completionCallback = cb;
+  }
+
+  _setQueryFn(fn: (opts: any) => any): void {
+    this._queryFn = fn;
+  }
+
   forceRetryNow(): void {
     if (!this._isPaused) return;
 
@@ -303,7 +313,7 @@ class CommandQueueService {
       const abortController = new AbortController();
       this._currentAbortController = abortController;
 
-      const { query } = await (new Function('specifier', 'return import(specifier)'))('@anthropic-ai/claude-agent-sdk');
+      const query = this._queryFn ?? (await (new Function('specifier', 'return import(specifier)'))('@anthropic-ai/claude-agent-sdk')).query;
 
       // 시스템에 설치된 claude-code cli.js 경로를 탐색 (symlink가 아닌 실제 JS 파일)
       const home = process.env.HOME || '';
@@ -489,6 +499,7 @@ class CommandQueueService {
       }
     } finally {
       this._currentAbortController = null;
+      try { this._completionCallback?.(item); } catch { /* 콜백 예외는 무시 */ }
       this._saveToDisk();
       this._sendStatusUpdate();
     }
@@ -505,6 +516,7 @@ class CommandQueueService {
       item.status = 'failed';
       item.completedAt = new Date().toISOString();
       item.result = { errorMessage: `Rate limit: max retries (${this._maxRetries}) exceeded` };
+      try { this._completionCallback?.(item); } catch { /* 콜백 예외는 무시 */ }
 
       this._isPaused = false;
       this._rateLimitRetryCount = 0;
@@ -685,7 +697,9 @@ class CommandQueueService {
     this._pauseResolve = null;
     this._cancelResolve = null;
     this._rateLimitRetryCount = 0;
-    this._maxRetries = 10;
+    this._maxRetries = 60;
+    this._queryFn = null;
+    this._completionCallback = null;
   }
 }
 

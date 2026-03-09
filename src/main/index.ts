@@ -7,7 +7,7 @@ import { handleListBranches, handleFetch, handleCreateAll, handleSelectPath, han
 import { handleDetect, handleCopyAll, handleReset } from './handlers/claudeConfigHandlers';
 import { handleOpenTerminal } from './handlers/terminalHandlers';
 import { handleList, handleRegister, handleCreate, handleUpdate, handleDelete } from './handlers/workspaceHandlers';
-import { handleEnqueue, handleDequeue, handleRequeue, handleAbort, handleStatus, handleSecurityWarning, initService as initQueueService } from './handlers/commandQueueHandlers';
+import { handleEnqueue, handleDequeue, handleRequeue, handleAbort, handleStatus, handleSecurityWarning, handleHistoryList, handleHistoryDelete, handleHistoryClear, initService as initQueueService } from './handlers/commandQueueHandlers';
 import { handleWikiHostStart, handleWikiHostStop, handleWikiHostStatus, handleWikiHostOpenBrowser, cleanupWikiHost } from './handlers/wikiHostHandlers';
 import { handleSetActive, handleGetActive, handleGetCommands, handleGetSkills, handleGetConfigStatus, handleResetConfig, handleGetQueueSummary, handleRateLimitRetryNow, handleRateLimitCancel } from './handlers/workspaceManagerHandlers';
 
@@ -73,6 +73,9 @@ ipcMain.handle('queue:requeue', handleRequeue)
 ipcMain.handle('queue:abort', handleAbort)
 ipcMain.handle('queue:status', handleStatus)
 ipcMain.handle('queue:security-warning', handleSecurityWarning)
+ipcMain.handle('queue:history:list', handleHistoryList)
+ipcMain.handle('queue:history:delete', handleHistoryDelete)
+ipcMain.handle('queue:history:clear', handleHistoryClear)
 
 // Wiki Host 핸들러 등록
 ipcMain.handle('wiki-host:start', handleWikiHostStart)

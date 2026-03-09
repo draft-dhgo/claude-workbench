@@ -194,3 +194,18 @@ export interface ActiveWorkspaceChangedPayload {
   activeWorkspacePath: string | null;
   wikiAvailable: boolean;
 }
+
+
+/** 커맨드 히스토리 항목 */
+export interface CommandHistoryEntry {
+  id: string;
+  command: string;
+  args: string;
+  cwd: string;
+  status: 'success' | 'failed' | 'aborted';
+  executedAt: string;
+  costUsd?: number;
+  durationMs?: number;
+  numTurns?: number;
+  errorMessage?: string;
+}

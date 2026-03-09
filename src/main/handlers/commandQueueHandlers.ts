@@ -1,14 +1,24 @@
 import CommandQueueService = require('../services/commandQueueService');
+import CommandHistoryStore = require('../services/commandHistoryStore');
 import { app } from 'electron';
 import { QueueCommandType } from '../../shared/types/models';
+import crypto = require('crypto');
 
 let _service: CommandQueueService | null = null;
+let _historyStore: CommandHistoryStore | null = null;
 
 function getService(): CommandQueueService {
   if (!_service) {
     _service = new CommandQueueService(app.getPath('userData'));
   }
   return _service;
+}
+
+function getHistoryStore(): CommandHistoryStore {
+  if (!_historyStore) {
+    _historyStore = new CommandHistoryStore(app.getPath('userData'));
+  }
+  return _historyStore;
 }
 
 const VALID_COMMANDS: QueueCommandType[] = ['/add-req', '/bugfix', '/teams', '/bugfix-teams'];
@@ -92,13 +102,55 @@ async function handleSecurityWarning(
   return { shown };
 }
 
+async function handleHistoryList(
+  _event: any
+): Promise<{ success: boolean; entries: any[] }> {
+  const entries = getHistoryStore().list();
+  return { success: true, entries };
+}
+
+async function handleHistoryDelete(
+  _event: any,
+  data: { id?: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { id } = data || {};
+  if (!id) return { success: false, error: 'ID_REQUIRED' };
+
+  const deleted = getHistoryStore().delete(id);
+  if (!deleted) return { success: false, error: 'NOT_FOUND' };
+  return { success: true };
+}
+
+async function handleHistoryClear(
+  _event: any
+): Promise<{ success: boolean }> {
+  getHistoryStore().clear();
+  return { success: true };
+}
+
 function initService(): void {
   // 앱 시작 시 서비스 초기화 + 디스크에서 큐 복구 후 pending 아이템 처리 시작
   getService().resumePendingOnStartup();
+  // 히스토리 저장 콜백 등록
+  getService().setCompletionCallback((item: any) => {
+    getHistoryStore().add({
+      id: crypto.randomUUID(),
+      command: item.command,
+      args: item.args,
+      cwd: item.cwd,
+      status: item.status as 'success' | 'failed' | 'aborted',
+      executedAt: item.completedAt ?? new Date().toISOString(),
+      costUsd: item.result?.costUsd,
+      durationMs: item.result?.durationMs,
+      numTurns: item.result?.numTurns,
+      errorMessage: item.result?.errorMessage,
+    });
+  });
 }
 
 function _resetService(): void {
   _service = null;
+  _historyStore = null;
 }
 
 export {
@@ -108,6 +160,9 @@ export {
   handleAbort,
   handleStatus,
   handleSecurityWarning,
+  handleHistoryList,
+  handleHistoryDelete,
+  handleHistoryClear,
   initService,
   _resetService,
   getService as getQueueServiceInstance
