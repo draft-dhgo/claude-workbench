@@ -183,13 +183,45 @@
         <span class="rm-spinner"></span> <span data-i18n="repo-worktree.loading">Loading worktree list...</span>
       </div>
 
-      <!-- Create Worktree: inline form (shown when repo selected) -->
-      <div id="rm-create-inline" class="rm-create-inline" style="display: none;">
-        <div class="rm-create-inline-row">
-          <input type="text" id="rm-new-branch" class="form-input" placeholder="feature/my-branch" />
-          <button id="rm-create-btn" class="btn btn-primary">+ Create</button>
+      <!-- Multi-repo Worktree Creation -->
+      <button id="rm-open-create-btn" class="btn btn-primary" style="display:none; margin-bottom:12px;">+ Create Worktree</button>
+
+      <div id="rm-multi-create" class="rm-multi-create" style="display: none;">
+        <div class="rm-multi-header">
+          <strong>Create Worktrees</strong>
+          <button id="rm-multi-close-btn" class="btn btn-secondary btn-sm">Close</button>
         </div>
-        <span id="rm-create-error" class="form-error" style="display: none;"></span>
+
+        <!-- Step 1: Select repos -->
+        <div class="rm-multi-step">
+          <label class="rm-multi-label">1. Select Repositories</label>
+          <div id="rm-multi-repo-list" class="rm-multi-repo-list"></div>
+        </div>
+
+        <!-- Step 2: Base branch per repo (shown after selection) -->
+        <div id="rm-multi-branch-step" class="rm-multi-step" style="display:none;">
+          <label class="rm-multi-label">2. Select Base Branch (per repo)</label>
+          <div id="rm-multi-branch-list" class="rm-multi-branch-list"></div>
+        </div>
+
+        <!-- Step 3: New branch name + target path -->
+        <div id="rm-multi-config-step" class="rm-multi-step" style="display:none;">
+          <label class="rm-multi-label">3. New Branch &amp; Target Path</label>
+          <div class="rm-multi-config-row">
+            <input type="text" id="rm-multi-new-branch" class="form-input" placeholder="feature/my-branch" />
+          </div>
+          <div class="rm-multi-config-row">
+            <input type="text" id="rm-multi-target-path" class="form-input" placeholder="Target path" readonly />
+            <button id="rm-multi-path-btn" class="btn btn-secondary">Browse</button>
+          </div>
+          <span id="rm-multi-error" class="form-error" style="display:none;"></span>
+        </div>
+
+        <!-- Create button + status -->
+        <div id="rm-multi-action" class="rm-multi-action" style="display:none;">
+          <button id="rm-multi-create-btn" class="btn btn-primary">Create Worktrees</button>
+        </div>
+        <div id="rm-multi-result" class="rm-multi-result" style="display:none;"></div>
       </div>
 
       <div id="rm-list-section" style="display: none;">

@@ -1,420 +1,8 @@
-// ─── Module-level state for exported functions ──────────────────────────────
-// These are used by both the exported API (tests) and the DOMContentLoaded block.
+// ─── Multi-repo Worktree Creation Renderer ────────────────────────────────
 
-let _currentRepoId = null
-let _isCreating = false
-let _isBatchCreating = false
-
-/**
- * Sets the current repo ID (used by tests to inject state).
- * @param {string|null} id
- */
-function setCurrentRepoId(id) {
-  _currentRepoId = id
-}
-
-/**
- * Shows the create-worktree form and hides the list section and Add button.
- * Resets input fields and error messages.
- * Guards on _currentRepoId — does nothing if no repo is selected.
- */
-function showCreateForm() {
-  if (!_currentRepoId) return
-  const form = document.getElementById('rm-create-form')
-  const listSection = document.getElementById('rm-list-section')
-  const addBtn = document.getElementById('rm-add-btn')
-  const branchInput = document.getElementById('rm-branch-input')
-  const pathInput = document.getElementById('rm-path-input')
-  const branchError = document.getElementById('rm-branch-error')
-  const pathError = document.getElementById('rm-path-error')
-  if (form) form.style.display = 'block'
-  if (listSection) listSection.style.display = 'none'
-  if (addBtn) addBtn.style.display = 'none'
-  if (branchInput) branchInput.value = ''
-  if (pathInput) pathInput.value = ''
-  if (branchError) branchError.style.display = 'none'
-  if (pathError) pathError.style.display = 'none'
-}
-
-/**
- * Hides the create-worktree form and restores the list section and Add button.
- */
-function hideCreateForm() {
-  const form = document.getElementById('rm-create-form')
-  const listSection = document.getElementById('rm-list-section')
-  const addBtn = document.getElementById('rm-add-btn')
-  if (form) form.style.display = 'none'
-  if (listSection) listSection.style.display = 'block'
-  if (addBtn) addBtn.style.display = 'block'
-}
-
-/**
- * Sets or clears the pending state for the Create button.
- * While pending: Create button is disabled with "Creating..." text and aria-disabled="true".
- * Cancel button is also disabled.
- * @param {boolean} isPending
- */
-function setCreatePending(isPending) {
-  const createBtn = document.getElementById('rm-create-btn')
-  const cancelBtn = document.getElementById('rm-create-cancel-btn')
-  if (isPending) {
-    if (createBtn) {
-      createBtn.disabled = true
-      createBtn.textContent = 'Creating...'
-      createBtn.setAttribute('aria-disabled', 'true')
-    }
-    if (cancelBtn) {
-      cancelBtn.disabled = true
-    }
-  } else {
-    if (createBtn) {
-      createBtn.disabled = false
-      createBtn.textContent = 'Create'
-      createBtn.setAttribute('aria-disabled', 'false')
-    }
-    if (cancelBtn) {
-      cancelBtn.disabled = false
-    }
-  }
-}
-
-/**
- * Validates branch name and path inputs.
- * Shows error messages for empty fields.
- * @returns {boolean} true if all inputs are valid, false otherwise.
- */
-function validateCreateInputs() {
-  const branchInput = document.getElementById('rm-branch-input')
-  const pathInput = document.getElementById('rm-path-input')
-  const branchError = document.getElementById('rm-branch-error')
-  const pathError = document.getElementById('rm-path-error')
-
-  let valid = true
-  const branch = branchInput ? branchInput.value.trim() : ''
-  const path = pathInput ? pathInput.value.trim() : ''
-
-  if (!branch) {
-    if (branchError) {
-      branchError.textContent = 'Branch name is required'
-      branchError.style.display = 'block'
-    }
-    valid = false
-  } else {
-    if (branchError) branchError.style.display = 'none'
-  }
-
-  if (!path) {
-    if (pathError) {
-      pathError.textContent = 'Target path is required'
-      pathError.style.display = 'block'
-    }
-    valid = false
-  } else {
-    if (pathError) pathError.style.display = 'none'
-  }
-
-  return valid
-}
-
-/**
- * Invokes the worktree:select-path IPC and updates the path input field.
- * Hides path error on success.
- */
-async function onSelectPathClicked() {
-  const result = await window.electronAPI.invoke('worktree:select-path')
-  if (result && result.success && result.path) {
-    const pathInput = document.getElementById('rm-path-input')
-    const pathError = document.getElementById('rm-path-error')
-    if (pathInput) pathInput.value = result.path
-    if (pathError) pathError.style.display = 'none'
-  }
-}
-
-/**
- * Handles the Create Worktree form submission.
- * Validates inputs, calls worktree:create-single IPC, handles success/failure.
- *
- * @param {Function} onRepoSelectedFn - Callback to refresh the worktree list (receives repoId).
- * @param {Function} showToastFn - Callback to show a toast message (receives message, type).
- */
-async function onCreateSubmit(onRepoSelectedFn, showToastFn) {
-  if (_isCreating) return
-  if (!validateCreateInputs()) return
-
-  _isCreating = true
-  setCreatePending(true)
-
-  const branchInput = document.getElementById('rm-branch-input')
-  const pathInput = document.getElementById('rm-path-input')
-  const branch = branchInput ? branchInput.value.trim() : ''
-  const targetPath = pathInput ? pathInput.value.trim() : ''
-
-  try {
-    const result = await window.electronAPI.invoke('worktree:create-single', {
-      repoId: _currentRepoId,
-      branch,
-      targetPath,
-      baseBranch: 'HEAD',
-    })
-
-    if (result && result.success) {
-      hideCreateForm()
-      if (onRepoSelectedFn) await onRepoSelectedFn(_currentRepoId)
-      if (showToastFn) showToastFn('repo-worktree.create.success', 'success')
-    } else {
-      const errCode = result && result.error ? result.error : ''
-      let errKey
-      if (errCode === 'PATH_NOT_EXISTS') {
-        errKey = 'repo-worktree.error.path_not_exists'
-      } else if (errCode === 'DUPLICATE_PATH') {
-        errKey = 'repo-worktree.error.duplicate_path'
-      } else {
-        errKey = 'repo-worktree.error.create_fail'
-      }
-      if (showToastFn) showToastFn(errKey, 'error')
-    }
-  } catch (e) {
-    if (showToastFn) showToastFn('repo-worktree.error.create_error', 'error')
-  } finally {
-    _isCreating = false
-    setCreatePending(false)
-  }
-}
-
-/**
- * 배치 생성 패널을 표시하고 목록/Add 버튼을 숨긴다.
- * 경로 입력 및 행 컨테이너를 초기화한다.
- */
-function showBatchCreatePanel() {
-  if (!_currentRepoId) return
-  const panel = document.getElementById('rm-batch-create-panel')
-  const listSection = document.getElementById('rm-list-section')
-  const addBtnWrapper = document.getElementById('rm-add-btn-wrapper')
-  const pathInput = document.getElementById('rm-batch-path-input')
-  const rows = document.getElementById('rm-batch-rows')
-  const pathError = document.getElementById('rm-batch-path-error')
-
-  if (panel) panel.style.display = 'block'
-  if (listSection) listSection.style.display = 'none'
-  if (addBtnWrapper) addBtnWrapper.style.display = 'none'
-  if (pathInput) pathInput.value = ''
-  if (rows) rows.innerHTML = ''
-  if (pathError) pathError.style.display = 'none'
-}
-
-/**
- * 배치 생성 패널을 숨기고 목록/Add 버튼을 복원한다.
- */
-function hideBatchCreatePanel() {
-  const panel = document.getElementById('rm-batch-create-panel')
-  const listSection = document.getElementById('rm-list-section')
-  const addBtnWrapper = document.getElementById('rm-add-btn-wrapper')
-
-  if (panel) panel.style.display = 'none'
-  if (listSection) listSection.style.display = 'block'
-  if (addBtnWrapper) addBtnWrapper.style.display = 'block'
-}
-
-/**
- * 배치 항목 컨테이너에 새 행(브랜치 입력 + 제거 버튼)을 추가한다.
- * @param {string} [defaultBranch=''] - 행 초기 브랜치값
- */
-function addWorktreeRow(defaultBranch = '') {
-  const rows = document.getElementById('rm-batch-rows')
-  if (!rows) return
-
-  const rowEl = document.createElement('div')
-  rowEl.className = 'rm-batch-row'
-
-  const branchInput = document.createElement('input')
-  branchInput.type = 'text'
-  branchInput.className = 'form-input rm-batch-branch-input'
-  branchInput.placeholder = 'feature/my-branch'
-  branchInput.value = defaultBranch
-
-  const removeBtn = document.createElement('button')
-  removeBtn.className = 'btn rm-batch-remove-row'
-  removeBtn.setAttribute('aria-label', 'Remove')
-  removeBtn.textContent = '×'
-  removeBtn.addEventListener('click', () => removeWorktreeRow(rowEl))
-
-  const statusSpan = document.createElement('span')
-  statusSpan.className = 'rm-batch-row-status'
-
-  rowEl.appendChild(branchInput)
-  rowEl.appendChild(removeBtn)
-  rowEl.appendChild(statusSpan)
-  rows.appendChild(rowEl)
-}
-
-/**
- * 특정 행 엘리먼트를 제거한다. 최소 1행은 유지한다.
- * @param {HTMLElement} rowEl
- */
-function removeWorktreeRow(rowEl) {
-  const rows = document.getElementById('rm-batch-rows')
-  if (!rows) return
-  const allRows = rows.querySelectorAll('.rm-batch-row')
-  if (allRows.length <= 1) return
-  if (rowEl && rowEl.parentNode === rows) {
-    rows.removeChild(rowEl)
-  }
-}
-
-/**
- * 배치 생성 패널의 경로 선택 버튼 핸들러.
- * worktree:select-path IPC 호출 후 #rm-batch-path-input 값 설정.
- */
-async function onBatchSelectPathClicked() {
-  const result = await window.electronAPI.invoke('worktree:select-path')
-  if (result && result.success && result.path) {
-    const pathInput = document.getElementById('rm-batch-path-input')
-    const pathError = document.getElementById('rm-batch-path-error')
-    if (pathInput) pathInput.value = result.path
-    if (pathError) pathError.style.display = 'none'
-  }
-}
-
-/**
- * 배치 입력 검증: 경로 비어있음, 브랜치명 비어있음, 중복 브랜치명 검사.
- * @returns {boolean} 유효하면 true
- */
-function validateBatchInputs() {
-  const pathInput = document.getElementById('rm-batch-path-input')
-  const pathError = document.getElementById('rm-batch-path-error')
-  const rows = document.getElementById('rm-batch-rows')
-
-  const path = pathInput ? pathInput.value.trim() : ''
-  if (!path) {
-    if (pathError) {
-      pathError.textContent = 'Target directory is required'
-      pathError.style.display = 'block'
-    }
-    return false
-  }
-  if (pathError) pathError.style.display = 'none'
-
-  if (!rows) return true
-
-  const branchInputs = rows.querySelectorAll('.rm-batch-branch-input')
-  const branches = []
-  for (const input of branchInputs) {
-    const val = input.value.trim()
-    if (!val) {
-      input.classList.add('input-error')
-      return false
-    }
-    if (branches.includes(val)) {
-      input.classList.add('input-error')
-      return false
-    }
-    branches.push(val)
-  }
-
-  return true
-}
-
-/**
- * 배치 생성 제출 핸들러.
- * 각 행의 브랜치에 대해 순차적으로 worktree:create-single IPC 호출.
- * 성공/실패를 행별로 표시한 후 목록 갱신.
- * @param {Function} onRepoSelectedFn - 목록 갱신 콜백
- * @param {Function} showToastFn - 토스트 표시 콜백
- */
-async function onBatchCreateSubmit(onRepoSelectedFn, showToastFn) {
-  if (_isBatchCreating) return
-  if (!validateBatchInputs()) return
-
-  _isBatchCreating = true
-
-  const pathInput = document.getElementById('rm-batch-path-input')
-  const targetPath = pathInput ? pathInput.value.trim() : ''
-  const rows = document.getElementById('rm-batch-rows')
-  const submitBtn = document.getElementById('rm-batch-submit-btn')
-
-  if (submitBtn) submitBtn.disabled = true
-
-  const rowEls = rows ? Array.from(rows.querySelectorAll('.rm-batch-row')) : []
-
-  // Disable all branch inputs
-  for (const rowEl of rowEls) {
-    const input = rowEl.querySelector('.rm-batch-branch-input')
-    if (input) input.disabled = true
-  }
-
-  let successCount = 0
-
-  for (const rowEl of rowEls) {
-    const input = rowEl.querySelector('.rm-batch-branch-input')
-    const statusSpan = rowEl.querySelector('.rm-batch-row-status')
-    const newBranch = input ? input.value.trim() : ''
-
-    try {
-      const result = await window.electronAPI.invoke('worktree:create-single', {
-        repoId: _currentRepoId,
-        baseBranch: 'HEAD',
-        newBranch,
-        targetPath,
-      })
-
-      if (result && result.success) {
-        if (statusSpan) {
-          statusSpan.textContent = 'Created'
-          statusSpan.className = 'rm-batch-row-status rm-batch-status-success'
-        }
-        successCount++
-      } else {
-        const errMsg = (result && result.error) ? result.error : 'Failed'
-        if (statusSpan) {
-          statusSpan.textContent = 'Failed: ' + errMsg
-          statusSpan.className = 'rm-batch-row-status rm-batch-status-error'
-        }
-      }
-    } catch (e) {
-      const errMsg = e && e.message ? e.message : 'Error'
-      if (statusSpan) {
-        statusSpan.textContent = 'Failed: ' + errMsg
-        statusSpan.className = 'rm-batch-row-status rm-batch-status-error'
-      }
-    }
-  }
-
-  if (submitBtn) submitBtn.disabled = false
-  _isBatchCreating = false
-
-  // Refresh list after all rows processed
-  if (onRepoSelectedFn) await onRepoSelectedFn(_currentRepoId)
-
-  // Show toast if any success
-  if (successCount > 0 && showToastFn) {
-    showToastFn('repo-worktree.batch.create.success', 'success')
-  }
-
-  // Hide panel only if ALL rows succeeded
-  if (successCount === rowEls.length && rowEls.length > 0) {
-    hideBatchCreatePanel()
-  }
-}
-
-// Export for testing
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    showCreateForm,
-    hideCreateForm,
-    setCreatePending,
-    validateCreateInputs,
-    onSelectPathClicked,
-    onCreateSubmit,
-    setCurrentRepoId,
-    showBatchCreatePanel,
-    hideBatchCreatePanel,
-    addWorktreeRow,
-    removeWorktreeRow,
-    onBatchSelectPathClicked,
-    validateBatchInputs,
-    onBatchCreateSubmit,
-  }
-}
+let _allRepos = []
+let _selectedRepos = {} // { repoId: { id, name, path, baseBranch: null, branches: [] } }
+let _isMultiCreating = false
 
 window.addEventListener('DOMContentLoaded', async () => {
   await window._i18nReady
@@ -433,6 +21,22 @@ window.addEventListener('DOMContentLoaded', async () => {
   const rmConfirmBtn     = document.getElementById('rm-confirm-btn')
   const rmStatusBar      = document.getElementById('rm-status-bar')
   const t = window.i18n.t
+
+  // Multi-create elements
+  const rmOpenCreateBtn   = document.getElementById('rm-open-create-btn')
+  const rmMultiCreate     = document.getElementById('rm-multi-create')
+  const rmMultiCloseBtn   = document.getElementById('rm-multi-close-btn')
+  const rmMultiRepoList   = document.getElementById('rm-multi-repo-list')
+  const rmMultiBranchStep = document.getElementById('rm-multi-branch-step')
+  const rmMultiBranchList = document.getElementById('rm-multi-branch-list')
+  const rmMultiConfigStep = document.getElementById('rm-multi-config-step')
+  const rmMultiNewBranch  = document.getElementById('rm-multi-new-branch')
+  const rmMultiTargetPath = document.getElementById('rm-multi-target-path')
+  const rmMultiPathBtn    = document.getElementById('rm-multi-path-btn')
+  const rmMultiError      = document.getElementById('rm-multi-error')
+  const rmMultiAction     = document.getElementById('rm-multi-action')
+  const rmMultiCreateBtn  = document.getElementById('rm-multi-create-btn')
+  const rmMultiResult     = document.getElementById('rm-multi-result')
 
   let currentRepoId = null
   let pendingDelete  = null
@@ -466,16 +70,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     toast.textContent = message
     toast.className = 'toast toast-' + type
     toast.style.display = 'block'
-    setTimeout(() => {
-      toast.style.display = 'none'
-    }, 3000)
+    setTimeout(() => { toast.style.display = 'none' }, 3000)
   }
 
   function showDeleteConfirm(worktreePath, branch, isPushed) {
     pendingDelete = { worktreePath, branch }
-
     rmConfirmBranch.textContent = branch || '(detached HEAD)'
-
     if (!isPushed) {
       rmConfirmWarn.textContent = t('repo-worktree.delete.warn_unpushed')
       rmConfirmWarn.style.display = 'block'
@@ -485,7 +85,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       rmConfirmSafe.style.display = 'block'
       rmConfirmWarn.style.display = 'none'
     }
-
     rmConfirmOverlay.style.display = 'flex'
   }
 
@@ -498,19 +97,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     lastWorktrees = worktrees
     rmWorktreeList.innerHTML = ''
     rmListSection.style.display = 'block'
-
     if (worktrees.length === 0) {
       rmEmptyMsg.style.display = 'block'
       return
     }
     rmEmptyMsg.style.display = 'none'
-
     worktrees.forEach(wt => {
       const branchText = wt.branch || '(detached HEAD)'
       const badgeClass = wt.isPushed ? 'wt-badge-pushed' : 'wt-badge-unpushed'
       const badgeLabel = wt.isPushed ? t('repo-worktree.badge.pushed') : t('repo-worktree.badge.unpushed')
       const disabledAttr = wt.isPushed ? ' disabled' : ''
-
       const card = document.createElement('div')
       card.className = 'wt-card'
       card.innerHTML =
@@ -526,95 +122,44 @@ window.addEventListener('DOMContentLoaded', async () => {
             ' data-is-pushed="' + (wt.isPushed ? 'true' : 'false') + '"' +
             disabledAttr + '>' + t('btn.delete') + '</button>' +
         '</div>'
-
       rmWorktreeList.appendChild(card)
     })
   }
-
-  const rmCreateInline = document.getElementById('rm-create-inline')
-  const rmNewBranch = document.getElementById('rm-new-branch')
-  const rmCreateBtn = document.getElementById('rm-create-btn')
-  const rmCreateError = document.getElementById('rm-create-error')
 
   async function onRepoSelected(repoId) {
     if (!repoId) {
       currentRepoId = null
       rmListSection.style.display = 'none'
       if (rmRefreshBtn) rmRefreshBtn.style.display = 'none'
-      if (rmCreateInline) rmCreateInline.style.display = 'none'
       return
     }
-
     currentRepoId = repoId
     setLoading(true)
-
     try {
       const result = await window.electronAPI.invoke('worktree:list-by-repo', { repoId })
       setLoading(false)
-
       if (!result.success) {
         showToast(t('repo-worktree.error.list_fail', { error: result.error || '' }), 'error')
         return
       }
-
       renderWorktreeList(result.worktrees || [])
       if (rmRefreshBtn) rmRefreshBtn.style.display = 'inline-block'
-      if (rmCreateInline) rmCreateInline.style.display = 'flex'
     } catch (e) {
       setLoading(false)
       showToast(t('repo-worktree.error.list_error'), 'error')
     }
   }
 
-  async function onInlineCreate() {
-    if (!currentRepoId || !rmNewBranch) return
-    const branch = rmNewBranch.value.trim()
-    if (!branch) {
-      if (rmCreateError) {
-        rmCreateError.textContent = 'Branch name is required'
-        rmCreateError.style.display = 'block'
-      }
-      return
-    }
-    if (rmCreateError) rmCreateError.style.display = 'none'
-    if (rmCreateBtn) { rmCreateBtn.disabled = true; rmCreateBtn.textContent = 'Creating...' }
-
-    try {
-      const result = await window.electronAPI.invoke('worktree:create-single', {
-        repoId: currentRepoId,
-        branch,
-        baseBranch: 'HEAD',
-      })
-      if (result && result.success) {
-        rmNewBranch.value = ''
-        showToast('Worktree created', 'success')
-        await onRepoSelected(currentRepoId)
-      } else {
-        showToast('Failed: ' + (result?.error || 'unknown'), 'error')
-      }
-    } catch (e) {
-      showToast('Error creating worktree', 'error')
-    } finally {
-      if (rmCreateBtn) { rmCreateBtn.disabled = false; rmCreateBtn.textContent = '+ Create' }
-    }
-  }
-
   async function onDeleteConfirmed() {
     if (!pendingDelete || !currentRepoId) return
-
     const { worktreePath, branch } = pendingDelete
     hideDeleteConfirm()
-
     rmRepoSelect.disabled = true
     if (rmRefreshBtn) rmRefreshBtn.disabled = true
-
     try {
       const result = await window.electronAPI.invoke('worktree:delete-worktree', {
-        repoId: currentRepoId,
-        worktreePath,
-        branch
+        repoId: currentRepoId, worktreePath, branch
       })
-
       if (result.success) {
         showToast(t('repo-worktree.delete.success'), 'success')
         await onRepoSelected(currentRepoId)
@@ -635,6 +180,229 @@ window.addEventListener('DOMContentLoaded', async () => {
     await onRepoSelected(currentRepoId)
   }
 
+  // ─── Multi-repo creation logic ────────────────────────────────
+
+  function openMultiCreate() {
+    rmMultiCreate.style.display = 'block'
+    if (rmOpenCreateBtn) rmOpenCreateBtn.style.display = 'none'
+    rmMultiBranchStep.style.display = 'none'
+    rmMultiConfigStep.style.display = 'none'
+    rmMultiAction.style.display = 'none'
+    rmMultiResult.style.display = 'none'
+    rmMultiResult.innerHTML = ''
+    if (rmMultiNewBranch) rmMultiNewBranch.value = ''
+    if (rmMultiTargetPath) rmMultiTargetPath.value = ''
+    if (rmMultiError) rmMultiError.style.display = 'none'
+    _selectedRepos = {}
+    renderRepoCheckboxes()
+  }
+
+  function closeMultiCreate() {
+    rmMultiCreate.style.display = 'none'
+    if (rmOpenCreateBtn) rmOpenCreateBtn.style.display = 'block'
+  }
+
+  function renderRepoCheckboxes() {
+    rmMultiRepoList.innerHTML = ''
+    _allRepos.forEach(repo => {
+      const item = document.createElement('label')
+      item.className = 'rm-multi-repo-item'
+      const cb = document.createElement('input')
+      cb.type = 'checkbox'
+      cb.value = repo.id
+      cb.addEventListener('change', () => onRepoCheckChange(repo, cb.checked))
+      const nameSpan = document.createElement('span')
+      nameSpan.className = 'repo-name'
+      nameSpan.textContent = repo.name
+      const pathSpan = document.createElement('span')
+      pathSpan.className = 'repo-path'
+      pathSpan.textContent = repo.path
+      item.appendChild(cb)
+      item.appendChild(nameSpan)
+      item.appendChild(pathSpan)
+      rmMultiRepoList.appendChild(item)
+    })
+  }
+
+  async function onRepoCheckChange(repo, checked) {
+    if (checked) {
+      _selectedRepos[repo.id] = { id: repo.id, name: repo.name, path: repo.path, baseBranch: null, branches: [] }
+      // Fetch branches
+      try {
+        const result = await window.electronAPI.invoke('worktree:list-branches-single', { repoId: repo.id })
+        if (result.success && _selectedRepos[repo.id]) {
+          _selectedRepos[repo.id].branches = result.branches || []
+        }
+      } catch (e) { /* ignore */ }
+    } else {
+      delete _selectedRepos[repo.id]
+    }
+    updateSteps()
+  }
+
+  function updateSteps() {
+    const selectedIds = Object.keys(_selectedRepos)
+    if (selectedIds.length > 0) {
+      rmMultiBranchStep.style.display = 'block'
+      rmMultiConfigStep.style.display = 'block'
+      rmMultiAction.style.display = 'flex'
+      renderBranchSelectors()
+    } else {
+      rmMultiBranchStep.style.display = 'none'
+      rmMultiConfigStep.style.display = 'none'
+      rmMultiAction.style.display = 'none'
+    }
+  }
+
+  function renderBranchSelectors() {
+    rmMultiBranchList.innerHTML = ''
+    Object.values(_selectedRepos).forEach(repo => {
+      const row = document.createElement('div')
+      row.className = 'rm-multi-branch-row'
+
+      const nameSpan = document.createElement('span')
+      nameSpan.className = 'branch-repo-name'
+      nameSpan.textContent = repo.name
+
+      const wrapper = document.createElement('div')
+      wrapper.className = 'branch-search-wrapper'
+
+      const input = document.createElement('input')
+      input.type = 'text'
+      input.className = 'form-input branch-search-input'
+      input.placeholder = 'Search branch...'
+      input.value = repo.baseBranch || ''
+      input.dataset.repoId = repo.id
+
+      const dropdown = document.createElement('div')
+      dropdown.className = 'rm-branch-dropdown'
+      dropdown.style.display = 'none'
+
+      function renderDropdown(filter) {
+        dropdown.innerHTML = ''
+        const branches = repo.branches || []
+        const filtered = filter
+          ? branches.filter(b => b.toLowerCase().includes(filter.toLowerCase()))
+          : branches
+        if (filtered.length === 0) {
+          dropdown.style.display = 'none'
+          return
+        }
+        filtered.slice(0, 50).forEach(b => {
+          const item = document.createElement('div')
+          item.className = 'rm-branch-dropdown-item'
+          item.textContent = b
+          item.addEventListener('mousedown', (e) => {
+            e.preventDefault()
+            input.value = b
+            _selectedRepos[repo.id].baseBranch = b
+            dropdown.style.display = 'none'
+          })
+          dropdown.appendChild(item)
+        })
+        dropdown.style.display = 'block'
+      }
+
+      input.addEventListener('focus', () => renderDropdown(input.value))
+      input.addEventListener('input', () => {
+        _selectedRepos[repo.id].baseBranch = input.value
+        renderDropdown(input.value)
+      })
+      input.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.style.display = 'none' }, 150)
+      })
+
+      wrapper.appendChild(input)
+      wrapper.appendChild(dropdown)
+      row.appendChild(nameSpan)
+      row.appendChild(wrapper)
+      rmMultiBranchList.appendChild(row)
+    })
+  }
+
+  async function onMultiPathClicked() {
+    const result = await window.electronAPI.invoke('worktree:select-path')
+    if (result && result.success && result.path) {
+      rmMultiTargetPath.value = result.path
+      if (rmMultiError) rmMultiError.style.display = 'none'
+    }
+  }
+
+  async function onMultiCreate() {
+    if (_isMultiCreating) return
+    const selectedIds = Object.keys(_selectedRepos)
+    if (selectedIds.length === 0) return
+
+    // Validate
+    const newBranch = rmMultiNewBranch.value.trim()
+    const targetPath = rmMultiTargetPath.value.trim()
+    if (!newBranch || !targetPath) {
+      if (rmMultiError) {
+        rmMultiError.textContent = 'Branch name and target path are required'
+        rmMultiError.style.display = 'block'
+      }
+      return
+    }
+
+    // Check all repos have base branch selected
+    for (const repo of Object.values(_selectedRepos)) {
+      if (!repo.baseBranch) {
+        if (rmMultiError) {
+          rmMultiError.textContent = 'Please select base branch for: ' + repo.name
+          rmMultiError.style.display = 'block'
+        }
+        return
+      }
+    }
+
+    if (rmMultiError) rmMultiError.style.display = 'none'
+    _isMultiCreating = true
+    rmMultiCreateBtn.disabled = true
+    rmMultiCreateBtn.textContent = 'Creating...'
+    rmMultiResult.innerHTML = ''
+    rmMultiResult.style.display = 'block'
+
+    let successCount = 0
+    for (const repo of Object.values(_selectedRepos)) {
+      const itemDiv = document.createElement('div')
+      itemDiv.className = 'rm-multi-result-item'
+      itemDiv.textContent = repo.name + ': creating...'
+      rmMultiResult.appendChild(itemDiv)
+
+      try {
+        const result = await window.electronAPI.invoke('worktree:create-single', {
+          repoId: repo.id,
+          baseBranch: repo.baseBranch,
+          newBranch,
+          targetPath,
+        })
+        if (result && result.success) {
+          itemDiv.textContent = repo.name + ': Created (' + (result.worktreePath || '') + ')'
+          itemDiv.className = 'rm-multi-result-item success'
+          successCount++
+        } else {
+          itemDiv.textContent = repo.name + ': Failed - ' + (result?.error || 'unknown')
+          itemDiv.className = 'rm-multi-result-item error'
+        }
+      } catch (e) {
+        itemDiv.textContent = repo.name + ': Error - ' + (e.message || 'unknown')
+        itemDiv.className = 'rm-multi-result-item error'
+      }
+    }
+
+    _isMultiCreating = false
+    rmMultiCreateBtn.disabled = false
+    rmMultiCreateBtn.textContent = 'Create Worktrees'
+
+    if (successCount > 0) {
+      showToast(successCount + ' worktree(s) created', 'success')
+      // Refresh current repo list if one is selected
+      if (currentRepoId) await onRepoSelected(currentRepoId)
+    }
+  }
+
+  // ─── Tab load ────────────────────────────────
+
   async function loadRepoWorktreeTab() {
     currentRepoId = null
     pendingDelete = null
@@ -645,23 +413,27 @@ window.addEventListener('DOMContentLoaded', async () => {
     rmConfirmOverlay.style.display = 'none'
     if (rmRefreshBtn) rmRefreshBtn.style.display = 'none'
     if (rmStatusBar) rmStatusBar.textContent = ''
+    if (rmMultiCreate) rmMultiCreate.style.display = 'none'
 
     try {
       const result = await window.electronAPI.invoke('repo:list')
       if (!result.success) return
-
       const repos = result.repos || []
+      _allRepos = repos
 
       rmRepoSelect.innerHTML = '<option value="">' + t('repo-worktree.select.placeholder') + '</option>'
 
       if (repos.length === 0) {
         rmNoReposMsg.style.display = 'block'
         rmRepoSelect.style.display = 'none'
+        if (rmOpenCreateBtn) rmOpenCreateBtn.style.display = 'none'
         return
       }
 
       rmNoReposMsg.style.display = 'none'
       rmRepoSelect.style.display = 'block'
+      if (rmOpenCreateBtn) rmOpenCreateBtn.style.display = 'block'
+
       repos.forEach(repo => {
         const option = document.createElement('option')
         option.value = repo.id
@@ -673,12 +445,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // ─── Event bindings ────────────────────────────────
+
   rmRepoSelect.addEventListener('change', () => onRepoSelected(rmRepoSelect.value))
-
-  if (rmRefreshBtn) {
-    rmRefreshBtn.addEventListener('click', onRefresh)
-  }
-
+  if (rmRefreshBtn) rmRefreshBtn.addEventListener('click', onRefresh)
   rmCancelBtn.addEventListener('click', hideDeleteConfirm)
   rmConfirmBtn.addEventListener('click', onDeleteConfirmed)
 
@@ -691,15 +461,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     showDeleteConfirm(worktreePath, branch, isPushed)
   })
 
-  // Inline create button + enter key
-  if (rmCreateBtn) rmCreateBtn.addEventListener('click', onInlineCreate)
-  if (rmNewBranch) rmNewBranch.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') onInlineCreate()
-  })
+  // Multi-create buttons
+  if (rmOpenCreateBtn) rmOpenCreateBtn.addEventListener('click', openMultiCreate)
+  if (rmMultiCloseBtn) rmMultiCloseBtn.addEventListener('click', closeMultiCreate)
+  if (rmMultiPathBtn) rmMultiPathBtn.addEventListener('click', onMultiPathClicked)
+  if (rmMultiCreateBtn) rmMultiCreateBtn.addEventListener('click', onMultiCreate)
 
   window.loadRepoWorktreeTab = loadRepoWorktreeTab
 
-  // Register re-render callback for language switching
   window.i18n.registerReRender(() => {
     if (lastWorktrees.length > 0) {
       renderWorktreeList(lastWorktrees)
