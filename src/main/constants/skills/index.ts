@@ -12,3 +12,8 @@ export { SKILL_PROJECT_KNOWLEDGE, SKILL_PROJECT_KNOWLEDGE_EN } from './projectKn
 export { SKILL_WIKI_VIEWS } from './wikiViews'
 export { SKILL_WIKI_VIEWS_EN } from './wikiViewsEn'
 export { SKILL_RECORD_SKILL_RUN, SKILL_RECORD_SKILL_RUN_EN } from './recordSkillRun'
+
+// Merged skills for pipeline optimization
+export { SKILL_DEV_IMPL, SKILL_DEV_IMPL_EN } from './devImpl'
+export { SKILL_TEST_IMPL, SKILL_TEST_IMPL_EN } from './testImpl'
+export { SKILL_FINALIZE, SKILL_FINALIZE_EN } from './finalize'

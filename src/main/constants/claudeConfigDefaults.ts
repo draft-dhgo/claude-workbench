@@ -12,6 +12,9 @@ import {
   SKILL_PROJECT_KNOWLEDGE, SKILL_PROJECT_KNOWLEDGE_EN,
   SKILL_WIKI_VIEWS, SKILL_WIKI_VIEWS_EN,
   SKILL_RECORD_SKILL_RUN, SKILL_RECORD_SKILL_RUN_EN,
+  SKILL_DEV_IMPL, SKILL_DEV_IMPL_EN,
+  SKILL_TEST_IMPL, SKILL_TEST_IMPL_EN,
+  SKILL_FINALIZE, SKILL_FINALIZE_EN,
 } from './skills'
 
 import {
@@ -103,7 +106,10 @@ function buildDefaultSkills(lang: Lang = 'en'): Record<string, string> {
       'bugfix': SKILL_BUGFIX,
       'project-knowledge': SKILL_PROJECT_KNOWLEDGE,
       'wiki-views': SKILL_WIKI_VIEWS,
-      'record-skill-run': SKILL_RECORD_SKILL_RUN
+      'record-skill-run': SKILL_RECORD_SKILL_RUN,
+      'dev-impl': SKILL_DEV_IMPL,
+      'test-impl': SKILL_TEST_IMPL,
+      'finalize': SKILL_FINALIZE
     }
   }
   // Default: English
@@ -117,7 +123,10 @@ function buildDefaultSkills(lang: Lang = 'en'): Record<string, string> {
     'bugfix': SKILL_BUGFIX_EN,
     'project-knowledge': SKILL_PROJECT_KNOWLEDGE_EN,
     'wiki-views': SKILL_WIKI_VIEWS_EN,
-    'record-skill-run': SKILL_RECORD_SKILL_RUN_EN
+    'record-skill-run': SKILL_RECORD_SKILL_RUN_EN,
+    'dev-impl': SKILL_DEV_IMPL_EN,
+    'test-impl': SKILL_TEST_IMPL_EN,
+    'finalize': SKILL_FINALIZE_EN
   }
 }
 

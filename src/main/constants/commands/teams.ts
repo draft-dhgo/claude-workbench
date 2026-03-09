@@ -29,27 +29,16 @@ export const CMD_TEAMS = `팀 개발 파이프라인을 실행합니다.
 - 예시: \`"/dev-design 실행. PRD: wiki/prd/0003.md. 출력 번호: 0003"\`
 - 파일 내용, 배경 설명, 워크플로 지시를 절대 포함하지 않는다
 
-## 파이프라인
+## 파이프라인 (4단계)
 
 각 단계는 순서대로 실행하며, 검증 통과 후에만 다음 단계로 진행한다.
 
 | Step | 스킬 | 서브에이전트에 전달할 것 | 검증 |
 |------|------|------------------------|------|
 | 1 | /req-manage | REQ-ID, 출력 번호 NNNN | wiki/prd/{NNNN}.md 존재 (>100B) + wiki/requirements/REQ-NNN.md 존재 |
-| 2 | /dev-design | wiki/prd/{NNNN}.md 경로, 출력 번호 | wiki/specs/{NNNN}.md 존재 (>100B) |
-| 2.5 | /ui-mockup | wiki/specs/{NNNN}.md 경로 (UI 있을 때만) | wiki/mockups/ 하위 HTML 존재 |
-| 3 | /test-design | wiki/specs/{NNNN}.md 경로, 출력 번호 | wiki/tests/{NNNN}.md 존재 (>100B) |
-| 4 | /tdd-cycle | wiki/specs/{NNNN}.md, wiki/tests/{NNNN}.md 경로 | wiki/tdd/{NNNN}.md 존재 (>100B) + 테스트 통과 |
-| 5 | /deploy | 출력 번호 NNNN | wiki/deploy/{NNNN}.md 존재 (>100B) + 빌드 산출물 존재 |
-| 6 | wiki-views 직접 갱신 | — | wiki/views/index.html 존재 |
-| 7 | /project-knowledge | "사이클 NNNN 완료" (1줄) | wiki/knowledge/ 갱신 |
-
-### Step 6 상세: wiki-views 갱신
-
-- \`wiki/views/index.html\`이 없으면 Agent로 /wiki-views 스킬을 haiku 모델(\`claude-haiku-4-5-20251001\`)로 실행한다
-- 이미 존재하면 메인 에이전트가 직접 갱신한다:
-  - Glob으로 \`wiki/mockups/{NNNN}-*.html\` 패턴을 검색하여 실제 목업 파일명을 확인한다
-  - \`<!-- Cycle: {NNNN} -->\` 항목이 있으면 mockup 링크만 수정, 없으면 새 사이클 항목을 추가한다
+| 2 | /dev-impl | wiki/prd/{NNNN}.md 경로, 출력 번호 | wiki/specs/{NNNN}.md 존재 (>100B). UI 기능이면 wiki/mockups/ 하위 HTML도 존재 |
+| 3 | /test-impl | wiki/specs/{NNNN}.md 경로, 출력 번호 | wiki/tests/{NNNN}.md + wiki/tdd/{NNNN}.md 존재 (>100B) + 테스트 통과 |
+| 4 | /finalize | 출력 번호 NNNN | wiki/deploy/{NNNN}.md 존재 (>100B) + wiki/views/index.html 존재 |
 
 ### 검증 실패 시
 
