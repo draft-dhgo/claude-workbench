@@ -74,14 +74,20 @@
   }
 
   function updateToggleUI(mode) {
-    const btns = document.querySelectorAll('.mode-btn')
-    btns.forEach(function (btn) {
-      if (btn.dataset.mode === mode) {
-        btn.classList.add('active')
-      } else {
-        btn.classList.remove('active')
-      }
-    })
+    const sw = document.getElementById('mode-toggle-switch')
+    const isWorktree = mode === 'worktree'
+    if (sw) sw.setAttribute('aria-checked', String(isWorktree))
+
+    const leftLabel = document.querySelector('.toggle-switch-label-left')
+    const rightLabel = document.querySelector('.toggle-switch-label-right')
+    if (leftLabel) {
+      if (isWorktree) leftLabel.classList.remove('active')
+      else leftLabel.classList.add('active')
+    }
+    if (rightLabel) {
+      if (isWorktree) rightLabel.classList.add('active')
+      else rightLabel.classList.remove('active')
+    }
   }
 
   function switchMode(mode) {
@@ -110,16 +116,20 @@
     updateToggleUI(savedMode)
     restoreTabIndex(savedMode)
 
-    // Register mode toggle button events
-    const modeBtns = document.querySelectorAll('.mode-btn')
-    modeBtns.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const mode = btn.dataset.mode
-        if (mode && mode !== _currentMode) {
-          switchMode(mode)
+    // Register mode toggle switch event
+    const sw = document.getElementById('mode-toggle-switch')
+    if (sw) {
+      sw.addEventListener('click', function () {
+        const next = _currentMode === 'workspace' ? 'worktree' : 'workspace'
+        switchMode(next)
+      })
+      sw.addEventListener('keydown', function (e) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault()
+          sw.click()
         }
       })
-    })
+    }
   }
 
   window.modeToggle = {

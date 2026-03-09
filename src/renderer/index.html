@@ -17,10 +17,22 @@
       </div>
       <div class="app-header-center">
         <div class="mode-toggle" id="mode-toggle">
-          <button class="mode-btn active" data-mode="workspace"
-                  data-i18n="mode.workspace">Workspace</button>
-          <button class="mode-btn" data-mode="worktree"
-                  data-i18n="mode.worktree">Worktree</button>
+          <span class="toggle-switch-label-left" data-i18n="mode.workspace">Workspace</span>
+          <div class="toggle-switch-wrapper">
+            <button
+              class="toggle-switch"
+              id="mode-toggle-switch"
+              role="switch"
+              aria-checked="false"
+              aria-label="Switch between Workspace and Worktree mode"
+              tabindex="0"
+            >
+              <span class="toggle-switch__track">
+                <span class="toggle-switch__thumb"></span>
+              </span>
+            </button>
+          </div>
+          <span class="toggle-switch-label-right" data-i18n="mode.worktree">Worktree</span>
         </div>
       </div>
       <div class="app-header-right">
