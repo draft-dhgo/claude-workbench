@@ -1,3 +1,198 @@
+// ─── Module-level state for exported functions ──────────────────────────────
+// These are used by both the exported API (tests) and the DOMContentLoaded block.
+
+let _currentRepoId = null
+let _isCreating = false
+
+/**
+ * Sets the current repo ID (used by tests to inject state).
+ * @param {string|null} id
+ */
+function setCurrentRepoId(id) {
+  _currentRepoId = id
+}
+
+/**
+ * Shows the create-worktree form and hides the list section and Add button.
+ * Resets input fields and error messages.
+ * Guards on _currentRepoId — does nothing if no repo is selected.
+ */
+function showCreateForm() {
+  if (!_currentRepoId) return
+  const form = document.getElementById('rm-create-form')
+  const listSection = document.getElementById('rm-list-section')
+  const addBtn = document.getElementById('rm-add-btn')
+  const branchInput = document.getElementById('rm-branch-input')
+  const pathInput = document.getElementById('rm-path-input')
+  const branchError = document.getElementById('rm-branch-error')
+  const pathError = document.getElementById('rm-path-error')
+  if (form) form.style.display = 'block'
+  if (listSection) listSection.style.display = 'none'
+  if (addBtn) addBtn.style.display = 'none'
+  if (branchInput) branchInput.value = ''
+  if (pathInput) pathInput.value = ''
+  if (branchError) branchError.style.display = 'none'
+  if (pathError) pathError.style.display = 'none'
+}
+
+/**
+ * Hides the create-worktree form and restores the list section and Add button.
+ */
+function hideCreateForm() {
+  const form = document.getElementById('rm-create-form')
+  const listSection = document.getElementById('rm-list-section')
+  const addBtn = document.getElementById('rm-add-btn')
+  if (form) form.style.display = 'none'
+  if (listSection) listSection.style.display = 'block'
+  if (addBtn) addBtn.style.display = 'block'
+}
+
+/**
+ * Sets or clears the pending state for the Create button.
+ * While pending: Create button is disabled with "Creating..." text and aria-disabled="true".
+ * Cancel button is also disabled.
+ * @param {boolean} isPending
+ */
+function setCreatePending(isPending) {
+  const createBtn = document.getElementById('rm-create-btn')
+  const cancelBtn = document.getElementById('rm-create-cancel-btn')
+  if (isPending) {
+    if (createBtn) {
+      createBtn.disabled = true
+      createBtn.textContent = 'Creating...'
+      createBtn.setAttribute('aria-disabled', 'true')
+    }
+    if (cancelBtn) {
+      cancelBtn.disabled = true
+    }
+  } else {
+    if (createBtn) {
+      createBtn.disabled = false
+      createBtn.textContent = 'Create'
+      createBtn.setAttribute('aria-disabled', 'false')
+    }
+    if (cancelBtn) {
+      cancelBtn.disabled = false
+    }
+  }
+}
+
+/**
+ * Validates branch name and path inputs.
+ * Shows error messages for empty fields.
+ * @returns {boolean} true if all inputs are valid, false otherwise.
+ */
+function validateCreateInputs() {
+  const branchInput = document.getElementById('rm-branch-input')
+  const pathInput = document.getElementById('rm-path-input')
+  const branchError = document.getElementById('rm-branch-error')
+  const pathError = document.getElementById('rm-path-error')
+
+  let valid = true
+  const branch = branchInput ? branchInput.value.trim() : ''
+  const path = pathInput ? pathInput.value.trim() : ''
+
+  if (!branch) {
+    if (branchError) {
+      branchError.textContent = 'Branch name is required'
+      branchError.style.display = 'block'
+    }
+    valid = false
+  } else {
+    if (branchError) branchError.style.display = 'none'
+  }
+
+  if (!path) {
+    if (pathError) {
+      pathError.textContent = 'Target path is required'
+      pathError.style.display = 'block'
+    }
+    valid = false
+  } else {
+    if (pathError) pathError.style.display = 'none'
+  }
+
+  return valid
+}
+
+/**
+ * Invokes the worktree:select-path IPC and updates the path input field.
+ * Hides path error on success.
+ */
+async function onSelectPathClicked() {
+  const result = await window.electronAPI.invoke('worktree:select-path')
+  if (result && result.success && result.path) {
+    const pathInput = document.getElementById('rm-path-input')
+    const pathError = document.getElementById('rm-path-error')
+    if (pathInput) pathInput.value = result.path
+    if (pathError) pathError.style.display = 'none'
+  }
+}
+
+/**
+ * Handles the Create Worktree form submission.
+ * Validates inputs, calls worktree:create-single IPC, handles success/failure.
+ *
+ * @param {Function} onRepoSelectedFn - Callback to refresh the worktree list (receives repoId).
+ * @param {Function} showToastFn - Callback to show a toast message (receives message, type).
+ */
+async function onCreateSubmit(onRepoSelectedFn, showToastFn) {
+  if (_isCreating) return
+  if (!validateCreateInputs()) return
+
+  _isCreating = true
+  setCreatePending(true)
+
+  const branchInput = document.getElementById('rm-branch-input')
+  const pathInput = document.getElementById('rm-path-input')
+  const branch = branchInput ? branchInput.value.trim() : ''
+  const targetPath = pathInput ? pathInput.value.trim() : ''
+
+  try {
+    const result = await window.electronAPI.invoke('worktree:create-single', {
+      repoId: _currentRepoId,
+      branch,
+      targetPath,
+      baseBranch: 'HEAD',
+    })
+
+    if (result && result.success) {
+      hideCreateForm()
+      if (onRepoSelectedFn) await onRepoSelectedFn(_currentRepoId)
+      if (showToastFn) showToastFn('repo-worktree.create.success', 'success')
+    } else {
+      const errCode = result && result.error ? result.error : ''
+      let errKey
+      if (errCode === 'PATH_NOT_EXISTS') {
+        errKey = 'repo-worktree.error.path_not_exists'
+      } else if (errCode === 'DUPLICATE_PATH') {
+        errKey = 'repo-worktree.error.duplicate_path'
+      } else {
+        errKey = 'repo-worktree.error.create_fail'
+      }
+      if (showToastFn) showToastFn(errKey, 'error')
+    }
+  } catch (e) {
+    if (showToastFn) showToastFn('repo-worktree.error.create_error', 'error')
+  } finally {
+    _isCreating = false
+    setCreatePending(false)
+  }
+}
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    showCreateForm,
+    hideCreateForm,
+    setCreatePending,
+    validateCreateInputs,
+    onSelectPathClicked,
+    onCreateSubmit,
+    setCurrentRepoId,
+  }
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   await window._i18nReady
   const rmRepoSelect     = document.getElementById('rm-repo-select')
