@@ -1,54 +1,34 @@
 /**
  * workspaceHandlers.test.ts
- * TDD Log-0013: TC-0013-01 ~ TC-0013-09
- * BUG-001 fix: class constructor mock pattern (lazy-singleton)
- * jest.resetModules() + jest.doMock() pattern for full isolation
+ * SDD-0027: TC-LIST-01 ~ TC-LIST-06, TC-REG-01 ~ TC-REG-05
+ * (기존 Sets 기반 TC-0013-* 및 TC-MOD-* 교체)
  */
 
-const mockExistsSync  = jest.fn()
-const mockExecFile    = jest.fn()
-const mockGetAllSets  = jest.fn()
-const mockGetRepoById = jest.fn()
-const mockWsGetAll    = jest.fn()
-
-let MockWorkdirSetStore: jest.Mock
-let MockRepoStore: jest.Mock
+const mockWsGetAll = jest.fn()
+const mockWsCreate = jest.fn()
 let MockWorkspaceStore: jest.Mock
-
 let handlers: any
 
 beforeEach(() => {
-  mockExistsSync.mockReset()
-  mockExecFile.mockReset()
-  mockGetAllSets.mockReset()
-  mockGetRepoById.mockReset()
   mockWsGetAll.mockReset()
+  mockWsCreate.mockReset()
 
   jest.resetModules()
 
-  jest.doMock('fs', () => ({
-    existsSync: mockExistsSync,
-  }))
-  jest.doMock('child_process', () => ({
-    execFile: mockExecFile,
-  }))
   jest.doMock('electron', () => ({
     app: { getPath: jest.fn(() => '/mock/userData') },
   }))
-
-  // Class constructor mock (BUG-001 fix pattern)
-  MockWorkdirSetStore = jest.fn().mockImplementation(() => ({
-    getAll: mockGetAllSets,
+  jest.doMock('fs', () => ({
+    existsSync: jest.fn(),
+    mkdirSync: jest.fn(),
+    writeFileSync: jest.fn(),
   }))
-  jest.doMock('../../../src/main/services/workdirSetStore', () => MockWorkdirSetStore)
-
-  MockRepoStore = jest.fn().mockImplementation(() => ({
-    getById: mockGetRepoById,
-  }))
-  jest.doMock('../../../src/main/services/repoStore', () => MockRepoStore)
 
   MockWorkspaceStore = jest.fn().mockImplementation(() => ({
-    getAll: mockWsGetAll.mockReturnValue([]),
+    getAll: mockWsGetAll,
+    create: mockWsCreate,
+    update: jest.fn(),
+    remove: jest.fn(),
   }))
   jest.doMock('../../../src/main/services/workspaceStore', () => MockWorkspaceStore)
 
@@ -63,234 +43,136 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-describe('handleList', () => {
+describe('handleList — SDD-0027 단순화', () => {
 
-  // --- TC-0013-01: normal workspace list ---
-
-  test('TC-0013-01: set with repos returns workspace list (main repo excluded)', async () => {
-    mockGetAllSets.mockReturnValue([
-      { id: 's1', targetPath: '/base', repositories: [{ id: 'r1' }] }
+  test('TC-LIST-01: WorkspaceStore 2개 항목 → type: empty로 반환', async () => {
+    mockWsGetAll.mockReturnValue([
+      { id: 'ws-1', name: 'proj-a', path: '/projects/proj-a', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'ws-2', name: 'proj-b', path: '/projects/proj-b', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
     ])
-    mockGetRepoById.mockImplementation((id: string) => {
-      if (id === 'r1') return { id: 'r1', name: 'repo-a', path: '/src/repo-a', addedAt: '2026-03-01T00:00:00.000Z' }
-      return null
-    })
-
-    const porcelainOutput =
-      'worktree /src/repo-a\nHEAD abc123\nbranch refs/heads/main\n\n' +
-      'worktree /base/repo-a/feature-xyz\nHEAD def456\nbranch refs/heads/feature-xyz\n'
-
-    mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, callback: any) => {
-      callback(null, porcelainOutput, '')
-    })
-
-    mockExistsSync.mockImplementation((p: string) => p === '/base/repo-a/feature-xyz')
 
     const result = await handlers.handleList(null, {})
 
     expect(result.success).toBe(true)
-    expect(result.workspaces).toHaveLength(1)
-    expect(result.workspaces[0].path).toBe('/base/repo-a/feature-xyz')
-    expect(result.workspaces[0].name).toBe('feature-xyz')
-    expect(result.workspaces[0].type).toBe('worktree')
-    // main repo path must be excluded
-    const paths = result.workspaces.map((w: any) => w.path)
-    expect(paths).not.toContain('/src/repo-a')
+    expect(result.workspaces).toHaveLength(2)
+    expect(result.workspaces[0].type).toBe('empty')
+    expect(result.workspaces[1].type).toBe('empty')
   })
 
-  // --- TC-0013-02: empty sets returns empty list (original bug trigger) ---
-
-  test('TC-0013-02: no sets -> workspaces: [] (regression: original bug trigger)', async () => {
-    mockGetAllSets.mockReturnValue([])
+  test('TC-LIST-02: WorkspaceStore 빈 배열 → workspaces: []', async () => {
+    mockWsGetAll.mockReturnValue([])
 
     const result = await handlers.handleList(null, {})
 
     expect(result.success).toBe(true)
     expect(result.workspaces).toEqual([])
-    expect(mockExecFile).not.toHaveBeenCalled()
-    expect(mockExistsSync).not.toHaveBeenCalled()
   })
 
-  // --- TC-0013-03: store method exception -> graceful error ---
-
-  test('TC-0013-03: getAll() throws -> { success: false, error }', async () => {
-    mockGetAllSets.mockImplementation(() => {
+  test('TC-LIST-03: getAll() 예외 → { success: false, error }', async () => {
+    mockWsGetAll.mockImplementation(() => {
       throw new Error('DB 읽기 오류')
     })
 
     const result = await handlers.handleList(null, {})
 
     expect(result.success).toBe(false)
-    expect(result.error).toBeTruthy()
     expect(result.error).toContain('DB 읽기 오류')
-    expect(result.workspaces).toBeUndefined()
-    expect(mockExecFile).not.toHaveBeenCalled()
   })
 
-  // --- TC-0013-04: regression - getAll/getById called as instance methods ---
+  test('TC-LIST-04: WorkdirSetStore 생성자 미호출', async () => {
+    const MockWorkdirSetStore = jest.fn()
+    jest.doMock('../../../src/main/services/workdirSetStore', () => MockWorkdirSetStore)
+    handlers = require('../../../src/main/handlers/workspaceHandlers')
 
-  test('TC-0013-04: stores are instantiated with new and app.getPath (regression)', async () => {
-    mockGetAllSets.mockReturnValue([
-      { id: 's1', targetPath: '/base', repositories: [{ id: 'r1' }] }
-    ])
-    mockGetRepoById.mockImplementation((id: string) => {
-      if (id === 'r1') return { id: 'r1', name: 'repo-a', path: '/src/repo-a', addedAt: '2026-03-01T00:00:00.000Z' }
-      return null
-    })
-
-    const porcelainOutput =
-      'worktree /src/repo-a\nHEAD abc123\nbranch refs/heads/main\n\n' +
-      'worktree /base/repo-a/feature-xyz\nHEAD def456\nbranch refs/heads/feature-xyz\n'
-
-    mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, callback: any) => {
-      callback(null, porcelainOutput, '')
-    })
-
-    mockExistsSync.mockImplementation((p: string) => p === '/base/repo-a/feature-xyz')
-
+    mockWsGetAll.mockReturnValue([])
     await handlers.handleList(null, {})
 
-    // WorkdirSetStore was instantiated with new
-    expect(MockWorkdirSetStore).toHaveBeenCalled()
-    expect(MockWorkdirSetStore.mock.calls[0][0]).toBe('/mock/userData')
-    // getAll was called as instance method
-    expect(mockGetAllSets).toHaveBeenCalled()
-
-    // RepoStore was instantiated with new
-    expect(MockRepoStore).toHaveBeenCalled()
-    expect(MockRepoStore.mock.calls[0][0]).toBe('/mock/userData')
-    // getById was called as instance method
-    expect(mockGetRepoById).toHaveBeenCalledWith('r1')
+    expect(MockWorkdirSetStore).not.toHaveBeenCalled()
   })
 
-  // --- TC-0013-05: set with empty repositories ---
+  test('TC-LIST-05: worktreeHandlers.handleListByRepoPath 미호출', async () => {
+    const mockHandleListByRepoPath = jest.fn()
+    jest.doMock('../../../src/main/handlers/worktreeHandlers', () => ({
+      handleListByRepoPath: mockHandleListByRepoPath,
+    }))
+    handlers = require('../../../src/main/handlers/workspaceHandlers')
 
-  test('TC-0013-05: set with empty repositories -> workspaces: []', async () => {
-    mockGetAllSets.mockReturnValue([
-      { id: 's1', targetPath: '/base', repositories: [] }
-    ])
-
-    const result = await handlers.handleList(null, {})
-
-    expect(result.success).toBe(true)
-    expect(result.workspaces).toEqual([])
-    expect(mockGetRepoById).not.toHaveBeenCalled()
-    expect(mockExecFile).not.toHaveBeenCalled()
-  })
-
-  // --- TC-0013-06: _resetStores() clears singleton cache ---
-
-  test('TC-0013-06: _resetStores() clears cached store instances', async () => {
-    mockGetAllSets.mockReturnValue([])
-
-    // First call - stores get created
+    mockWsGetAll.mockReturnValue([])
     await handlers.handleList(null, {})
-    const firstCallCount = MockWorkdirSetStore.mock.calls.length
 
-    // Reset stores
-    handlers._resetStores()
-
-    // Second call - stores should be re-created
-    await handlers.handleList(null, {})
-    const secondCallCount = MockWorkdirSetStore.mock.calls.length
-
-    expect(firstCallCount).toBe(1)
-    expect(secondCallCount).toBe(2)
+    expect(mockHandleListByRepoPath).not.toHaveBeenCalled()
   })
 
-  // --- TC-0013-07: git command error skips repo ---
-
-  test('TC-0013-07: git command error skips that repo, includes others', async () => {
-    mockGetAllSets.mockReturnValue([
-      { id: 's1', targetPath: '/base', repositories: [{ id: 'r1' }, { id: 'r2' }] }
+  test('TC-LIST-06: workspace 항목에 필수 필드 존재', async () => {
+    mockWsGetAll.mockReturnValue([
+      { id: 'ws-1', name: 'my-project', path: '/projects/my-project', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
     ])
-    mockGetRepoById.mockImplementation((id: string) => {
-      if (id === 'r1') return { id: 'r1', path: '/src/repo-a' }
-      if (id === 'r2') return { id: 'r2', path: '/src/repo-b' }
-      return null
-    })
-
-    const porcelainOutputR2 =
-      'worktree /src/repo-b\nHEAD abc123\nbranch refs/heads/main\n\n' +
-      'worktree /base/repo-b/feature-abc\nHEAD def456\nbranch refs/heads/feature-abc\n'
-
-    mockExecFile
-      .mockImplementationOnce((_cmd: any, _args: any, _opts: any, callback: any) => {
-        callback(new Error('fatal: not a git repository'), '', '')
-      })
-      .mockImplementationOnce((_cmd: any, _args: any, _opts: any, callback: any) => {
-        callback(null, porcelainOutputR2, '')
-      })
-
-    mockExistsSync.mockImplementation((p: string) => p === '/base/repo-b/feature-abc')
 
     const result = await handlers.handleList(null, {})
+    const ws = result.workspaces[0]
+
+    expect(ws).toHaveProperty('id')
+    expect(ws).toHaveProperty('path')
+    expect(ws).toHaveProperty('name')
+    expect(ws).toHaveProperty('type')
+    expect(ws).toHaveProperty('createdAt')
+    expect(ws).toHaveProperty('updatedAt')
+  })
+})
+
+describe('handleRegister — 신규 IPC 채널 workspace:register', () => {
+
+  test('TC-REG-01: 유효한 path + name → WorkspaceStore.create 호출 및 성공 응답', async () => {
+    mockWsCreate.mockReturnValue({
+      id: 'ws-1', name: 'my-ws', path: '/projects/my-ws',
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z'
+    })
+
+    const result = await handlers.handleRegister(null, { path: '/projects/my-ws', name: 'my-ws' })
 
     expect(result.success).toBe(true)
-    expect(result.workspaces).toHaveLength(1)
-    expect(result.workspaces[0].path).toBe('/base/repo-b/feature-abc')
-    expect(result.workspaces[0].name).toBe('feature-abc')
-    expect(result.workspaces[0].type).toBe('worktree')
-
-    const paths = result.workspaces.map((w: any) => w.path)
-    expect(paths).not.toContain('/src/repo-a')
+    expect(result.workspace.id).toBe('ws-1')
+    expect(result.workspace.type).toBe('empty')
+    expect(mockWsCreate).toHaveBeenCalledWith('my-ws', '/projects/my-ws')
   })
 
-  // --- TC-0013-08: existsSync false excludes path ---
+  test('TC-REG-02: path 미전달 → { success: false, error: "PATH_REQUIRED" }', async () => {
+    const result = await handlers.handleRegister(null, {})
 
-  test('TC-0013-08: existsSync false excludes worktree path', async () => {
-    mockGetAllSets.mockReturnValue([
-      { id: 's1', targetPath: '/base', repositories: [{ id: 'r1' }] }
-    ])
-    mockGetRepoById.mockImplementation((id: string) => {
-      if (id === 'r1') return { id: 'r1', path: '/src/repo-a' }
-      return null
-    })
-
-    const porcelainOutput =
-      'worktree /src/repo-a\nHEAD abc123\nbranch refs/heads/main\n\n' +
-      'worktree /base/repo-a/feature-xyz\nHEAD def456\nbranch refs/heads/feature-xyz\n'
-
-    mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, callback: any) => {
-      callback(null, porcelainOutput, '')
-    })
-
-    mockExistsSync.mockReturnValue(false)
-
-    const result = await handlers.handleList(null, {})
-
-    expect(result.success).toBe(true)
-    expect(result.workspaces).toEqual([])
-    expect(mockExistsSync).toHaveBeenCalledWith('/base/repo-a/feature-xyz')
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('PATH_REQUIRED')
+    expect(mockWsCreate).not.toHaveBeenCalled()
   })
 
-  // --- TC-0013-09: duplicate path dedup ---
-
-  test('TC-0013-09: duplicate paths are deduplicated', async () => {
-    mockGetAllSets.mockReturnValue([
-      { id: 's1', targetPath: '/base', repositories: [{ id: 'r1' }] },
-      { id: 's2', targetPath: '/base', repositories: [{ id: 'r1' }] },
-    ])
-    mockGetRepoById.mockImplementation((id: string) => {
-      if (id === 'r1') return { id: 'r1', path: '/src/repo-a' }
-      return null
+  test('TC-REG-03: name 생략 시 path.basename을 이름으로 사용', async () => {
+    mockWsCreate.mockReturnValue({
+      id: 'ws-2', name: 'my-workspace', path: '/projects/my-workspace',
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z'
     })
 
-    const porcelainOutput =
-      'worktree /src/repo-a\nHEAD abc123\nbranch refs/heads/main\n\n' +
-      'worktree /base/repo-a/feature-xyz\nHEAD def456\nbranch refs/heads/feature-xyz\n'
+    await handlers.handleRegister(null, { path: '/projects/my-workspace' })
 
-    mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, callback: any) => {
-      callback(null, porcelainOutput, '')
+    expect(mockWsCreate).toHaveBeenCalledWith('my-workspace', '/projects/my-workspace')
+  })
+
+  test('TC-REG-04: WorkspaceStore.create() 예외 → { success: false, error }', async () => {
+    mockWsCreate.mockImplementation(() => {
+      throw new Error('DUPLICATE_PATH')
     })
 
-    mockExistsSync.mockImplementation((p: string) => p === '/base/repo-a/feature-xyz')
+    const result = await handlers.handleRegister(null, { path: '/projects/existing-ws', name: 'existing-ws' })
 
-    const result = await handlers.handleList(null, {})
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('DUPLICATE_PATH')
+  })
 
-    expect(result.success).toBe(true)
-    expect(result.workspaces).toHaveLength(1)
-    expect(result.workspaces[0].path).toBe('/base/repo-a/feature-xyz')
-    expect(result.workspaces[0].type).toBe('worktree')
+  test('TC-REG-05: data가 null/undefined → PATH_REQUIRED', async () => {
+    const result1 = await handlers.handleRegister(null, null)
+    const result2 = await handlers.handleRegister(null, undefined)
+
+    expect(result1.success).toBe(false)
+    expect(result1.error).toBe('PATH_REQUIRED')
+    expect(result2.success).toBe(false)
+    expect(result2.error).toBe('PATH_REQUIRED')
   })
 })

@@ -1,4 +1,5 @@
 // TC-CQH-01 ~ TC-CQH-08: commandQueueHandlers IPC 핸들러 테스트
+// TC-MIG-04 ~ TC-MIG-06: queue:enqueue cwd optional 하위 호환성 테스트
 
 const mockEnqueue = jest.fn()
 const mockDequeue = jest.fn()
@@ -6,6 +7,7 @@ const mockAbort = jest.fn()
 const mockGetStatus = jest.fn()
 const mockIsSecurityWarningShown = jest.fn()
 const mockSetSecurityWarningShown = jest.fn()
+const mockGetActiveWorkspacePathCQ = jest.fn()
 
 let handlers: any
 
@@ -17,6 +19,7 @@ beforeEach(() => {
   mockGetStatus.mockReset()
   mockIsSecurityWarningShown.mockReset()
   mockSetSecurityWarningShown.mockReset()
+  mockGetActiveWorkspacePathCQ.mockReset()
 
   const MockCommandQueueService = jest.fn().mockImplementation(() => ({
     enqueue: mockEnqueue,
@@ -27,6 +30,13 @@ beforeEach(() => {
     setSecurityWarningShown: mockSetSecurityWarningShown
   }))
   jest.doMock('../../../src/main/services/commandQueueService', () => MockCommandQueueService)
+
+  // workspaceManagerHandlers mock (for active workspace fallback)
+  jest.doMock('../../../src/main/handlers/workspaceManagerHandlers', () => ({
+    getManagerService: jest.fn(() => ({
+      getActiveWorkspacePath: mockGetActiveWorkspacePathCQ,
+    })),
+  }))
 
   handlers = require('../../../src/main/handlers/commandQueueHandlers')
 })
@@ -192,5 +202,50 @@ describe('TC-CQH-08: queue:security-warning — 보안 경고 정보 반환', ()
 
     expect(result.shown).toBe(true)
     expect(mockSetSecurityWarningShown).not.toHaveBeenCalled()
+  })
+})
+
+// ── TC-MIG-04 ~ TC-MIG-06: queue:enqueue cwd optional 하위 호환성 ──
+
+describe('TC-MIG-04: queue:enqueue — 기존 방식으로 cwd 명시적 전달', () => {
+  it('명시적 cwd가 전달되면 해당 경로가 그대로 사용된다', async () => {
+    const mockItem = {
+      id: 'item-1', command: '/teams', args: '', cwd: '/explicit/cwd',
+      status: 'pending', retryCount: 0, createdAt: '2026-03-09T00:00:00.000Z'
+    }
+    mockEnqueue.mockReturnValue(mockItem)
+
+    const result = await handlers.handleEnqueue(null, { command: '/teams', args: '', cwd: '/explicit/cwd' })
+
+    expect(result.success).toBe(true)
+    expect(mockEnqueue).toHaveBeenCalledWith('/teams', '', '/explicit/cwd')
+  })
+})
+
+describe('TC-MIG-05: queue:enqueue — cwd 생략 시 활성 워크스페이스 경로 사용', () => {
+  it('cwd 생략 시 활성 워크스페이스 경로를 자동으로 사용한다', async () => {
+    mockGetActiveWorkspacePathCQ.mockReturnValue('/active/ws')
+    const mockItem = {
+      id: 'item-1', command: '/teams', args: '', cwd: '/active/ws',
+      status: 'pending', retryCount: 0, createdAt: '2026-03-09T00:00:00.000Z'
+    }
+    mockEnqueue.mockReturnValue(mockItem)
+
+    const result = await handlers.handleEnqueue(null, { command: '/teams', args: '' })
+
+    expect(result.success).toBe(true)
+    expect(mockEnqueue).toHaveBeenCalledWith('/teams', '', '/active/ws')
+  })
+})
+
+describe('TC-MIG-06: queue:enqueue — cwd 생략 + 활성 경로 미설정 시 CWD_REQUIRED', () => {
+  it('cwd 생략 + 활성 경로 없을 때 CWD_REQUIRED 에러를 반환한다', async () => {
+    mockGetActiveWorkspacePathCQ.mockReturnValue(null)
+
+    const result = await handlers.handleEnqueue(null, { command: '/teams', args: '' })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('CWD_REQUIRED')
+    expect(mockEnqueue).not.toHaveBeenCalled()
   })
 })

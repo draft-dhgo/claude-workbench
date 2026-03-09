@@ -16,41 +16,59 @@
 
 ---
 
-## Repository Management
+## Workspace / Worktree Mode
 
-Register local Git repositories, check current branches, and find them quickly with search.
+Switch between two modes using the toggle in the header. **Workspace mode** focuses on running Claude Code pipelines; **Worktree mode** manages Git repositories and their worktrees.
 
 ![Repository Management](docs/screenshot-main.png)
 
-## Workdir Sets
+---
 
-Group multiple repositories into a single set. Useful for microservice projects where you work across several repos simultaneously.
+## Workspace Mode
 
-![Workdir Sets](docs/screenshot-sets.png)
-
-## Workspace Creation
-
-Select a set and create worktrees across all repositories with the same branch name in one shot. Track progress in real time.
-
-![Workspace Creation](docs/screenshot-workspace-create.png)
-
-## Worktree Management
-
-View the worktree list per repository and manage deletions based on push status. Shows a warning when deleting an unpushed branch.
-
-![Worktree Management](docs/screenshot-worktree-manage.png)
-
-## Command Queue
+### Command Queue
 
 Queue multiple Claude Code commands and execute them sequentially. Built on the `@anthropic-ai/claude-agent-sdk`, commands run with full permission bypass and auto-retry on rate limits.
 
 ![Command Queue](docs/screenshot-queue.png)
 
 - **FIFO queue**: enqueue `/add-req`, `/teams`, `/bugfix-teams`, `/add-bug` commands
+- **Workspace selector**: choose which workspace each command runs in
+- **Bulk add**: paste multiple commands at once in the bulk input area
 - **Rate limit retry**: exponential backoff (30s → 5min) with countdown timer
 - **Abort**: cancel a running command mid-execution via AbortController
 - **Dequeue**: remove pending commands before they start
 - **Real-time logs**: IPC-based status updates and execution logs in the UI
+
+### Workspace Management
+
+Register existing directories or create new workspaces (with CLAUDE.md, skills, and slash commands pre-installed). Manage wiki viewer hosting from the same screen.
+
+![Workspace Management](docs/screenshot-sets.png)
+
+- **Add Workspace**: register any existing directory as a workspace
+- **Create Workspace**: scaffold a new workspace with CLAUDE.md, `.claude/commands/`, and all pipeline skills installed automatically
+- **Workspace list**: view and delete registered workspaces; WORKTREE and EMPTY badges indicate workspace type
+- **Open Terminal**: open a terminal in the workspace directory
+- **Wiki Hosting**: start/stop a local HTTP server to serve the wiki viewer
+
+![Built-in Hosting](docs/screenshot-wiki-hosting.png)
+
+---
+
+## Worktree Mode
+
+### Repository Management
+
+Register local Git repositories, check current branches, and find them quickly with search.
+
+![Repository Management](docs/screenshot-main.png)
+
+### Worktree Management
+
+View the worktree list per repository and manage deletions based on push status. Shows a warning when deleting an unpushed branch.
+
+![Worktree Management](docs/screenshot-worktree-manage.png)
 
 ---
 
@@ -59,7 +77,7 @@ Queue multiple Claude Code commands and execute them sequentially. Built on the 
 Run Claude Code inside a workspace and automate the scrum development pipeline with slash commands.
 
 ```bash
-cd ~/worktrees/feature-login-api
+cd ~/workspaces/my-feature
 claude
 ```
 
@@ -127,12 +145,12 @@ Click a cycle in the sidebar to visualize pipeline stages and open each stage's 
 
 ### Built-in Hosting
 
-The Wiki Viewer can be hosted directly from the app. In the **Workspace Management** tab, click **Start Server** to launch a local HTTP server that serves the `wiki/views/` directory.
+The Wiki Viewer can be hosted directly from the app. In the **Workspace Management** tab, use the **Wiki Viewer Hosting** section to start a local HTTP server.
 
-- **One-click start/stop**: Start and stop the server from the app UI
+- **One-click start/stop**: Start and stop the server from the Workspace Management tab
 - **Auto port selection**: Automatically picks an available port in the 8080–8099 range
-- **Open in browser**: Click to open the hosted Wiki Viewer in your default browser
-- **Status indicator**: Green dot when running, gray when stopped
+- **Open in browser**: Click the URL to open the hosted Wiki Viewer in your default browser
+- **Status indicator**: Running/Not Running indicator with live URL
 - **Auto cleanup**: Server shuts down automatically when the app quits
 - **localhost only**: Bound to `127.0.0.1` for security
 

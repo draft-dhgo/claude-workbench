@@ -4,6 +4,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const cmdArgsInput = document.getElementById('cq-cmd-args')
   const cmdCwdSelect = document.getElementById('cq-cwd-select')
   const cmdAddBtn = document.getElementById('cq-add-btn')
+  const bulkInput = document.getElementById('cq-bulk-input')
+  const bulkBtn = document.getElementById('cq-bulk-btn')
   const queueList = document.getElementById('cq-queue-list')
   const queueEmpty = document.getElementById('cq-queue-empty')
   const logContent = document.getElementById('cq-log-content')
@@ -127,6 +129,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     var actionHTML = ''
     if (item.status === 'pending') {
       actionHTML = '<button class="btn btn-danger cq-remove-btn" data-id="' + item.id + '">&times;</button>'
+    } else if (item.status === 'aborted' || item.status === 'failed') {
+      actionHTML =
+        '<button class="btn btn-secondary cq-requeue-btn" data-id="' + item.id + '" title="Retry">↺</button>' +
+        '<button class="btn btn-danger cq-remove-btn" data-id="' + item.id + '" title="Remove">&times;</button>'
     }
 
     var resultHTML = ''
@@ -170,9 +176,62 @@ window.addEventListener('DOMContentLoaded', async () => {
   })
 
   // UI event listeners
+  const VALID_COMMANDS = ['/add-req', '/bugfix', '/teams', '/bugfix-teams']
+
+  function parseBulkInput(text) {
+    var lines = text.split('\n')
+    var commands = []
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim()
+      if (!line || line.startsWith('#')) continue
+      // "/" 로 시작하는지 확인
+      var matched = VALID_COMMANDS.find(function (cmd) { return line.startsWith(cmd) })
+      if (!matched) continue
+      var args = line.slice(matched.length).trim()
+      commands.push({ command: matched, args: args })
+    }
+    return commands
+  }
+
+  async function bulkAddToQueue() {
+    if (!selectedCwd) {
+      showToast('Please select a workspace.', 'warning')
+      return
+    }
+    var text = bulkInput.value
+    var commands = parseBulkInput(text)
+    if (commands.length === 0) {
+      showToast('No valid commands found. Lines must start with /add-req, /bugfix, /teams, or /bugfix-teams.', 'warning')
+      return
+    }
+    var failed = 0
+    for (var i = 0; i < commands.length; i++) {
+      try {
+        var result = await window.electronAPI.invoke('queue:enqueue', {
+          command: commands[i].command, args: commands[i].args, cwd: selectedCwd
+        })
+        if (!result.success) failed++
+      } catch (e) {
+        failed++
+      }
+    }
+    var added = commands.length - failed
+    if (added > 0) {
+      bulkInput.value = ''
+      showToast(added + ' command(s) added to queue.' + (failed > 0 ? ' ' + failed + ' failed.' : ''), 'success')
+    } else {
+      showToast('All commands failed to add.', 'error')
+    }
+  }
+
   cmdAddBtn.addEventListener('click', async function () {
     var allowed = await checkSecurityWarning()
     if (allowed) addToQueue()
+  })
+
+  bulkBtn.addEventListener('click', async function () {
+    var allowed = await checkSecurityWarning()
+    if (allowed) bulkAddToQueue()
   })
 
   abortBtn.addEventListener('click', async function () {
@@ -180,9 +239,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   })
 
   queueList.addEventListener('click', async function (e) {
-    var btn = e.target.closest('.cq-remove-btn')
-    if (!btn) return
-    await window.electronAPI.invoke('queue:dequeue', { itemId: btn.dataset.id })
+    var removeBtn = e.target.closest('.cq-remove-btn')
+    if (removeBtn) {
+      await window.electronAPI.invoke('queue:dequeue', { itemId: removeBtn.dataset.id })
+      return
+    }
+    var requeueBtn = e.target.closest('.cq-requeue-btn')
+    if (requeueBtn) {
+      await window.electronAPI.invoke('queue:requeue', { itemId: requeueBtn.dataset.id })
+    }
   })
 
   // Tab load function

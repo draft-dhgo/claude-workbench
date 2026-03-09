@@ -14,9 +14,15 @@ function getService(): WikiHostService {
 
 async function handleWikiHostStart(
   _event: any,
-  data: { workspacePath: string }
+  data: { workspacePath?: string }
 ): Promise<{ success: boolean; url?: string; port?: number; error?: string }> {
-  const { workspacePath } = data || {};
+  let workspacePath = data?.workspacePath;
+
+  // workspacePath 미전달 시 활성 워크스페이스 경로 사용
+  if (!workspacePath) {
+    const { getManagerService } = require('./workspaceManagerHandlers');
+    workspacePath = getManagerService().getActiveWorkspacePath() ?? undefined;
+  }
 
   if (!workspacePath) {
     return { success: false, error: 'WORKSPACE_PATH_REQUIRED' };
@@ -84,5 +90,6 @@ export {
   handleWikiHostStatus,
   handleWikiHostOpenBrowser,
   cleanupWikiHost,
-  _resetService
+  _resetService,
+  getService as getWikiHostServiceInstance
 };

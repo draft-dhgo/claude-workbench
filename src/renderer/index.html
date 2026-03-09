@@ -5,6 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Claude Workbench</title>
+  <script src="scripts/theme-init.js"></script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -14,7 +15,19 @@
         <h1 id="title">Claude Workbench</h1>
         <p id="version">App version: <span id="version-text" data-i18n="app.version.loading">Loading...</span></p>
       </div>
+      <div class="app-header-center">
+        <div class="mode-toggle" id="mode-toggle">
+          <button class="mode-btn active" data-mode="workspace"
+                  data-i18n="mode.workspace">Workspace</button>
+          <button class="mode-btn" data-mode="worktree"
+                  data-i18n="mode.worktree">Worktree</button>
+        </div>
+      </div>
       <div class="app-header-right">
+        <button id="theme-toggle-btn" class="theme-toggle-btn"
+                data-i18n-title="theme.toggle" title="Toggle Theme">
+          <span id="theme-icon" class="theme-icon">🌙</span>
+        </button>
         <label for="lang-select" data-i18n="lang.select.label">Language</label>
         <select id="lang-select" class="lang-select">
           <option value="en">English</option>
@@ -23,17 +36,24 @@
       </div>
     </header>
 
-    <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="repos" data-i18n="tab.repos">Repository Management</button>
-      <button class="tab-btn" data-tab="sets" data-i18n="tab.sets">Workdir Sets</button>
-      <button class="tab-btn" data-tab="worktree" data-i18n="tab.worktree">Create Workspace</button>
-      <button class="tab-btn" data-tab="workspace" data-i18n="tab.workspace">Workspace Management</button>
-      <button class="tab-btn" data-tab="repo-worktree" data-i18n="tab.repo-worktree">Worktree Management</button>
-      <button class="tab-btn" data-tab="command-queue" data-i18n="tab.command-queue">Command Queue</button>
+    <!-- Workspace mode nav -->
+    <nav class="tab-nav" id="tab-nav-workspace">
+      <button class="tab-btn active" data-tab="command-queue"
+              data-i18n="tab.command-queue">Command Queue</button>
+      <button class="tab-btn" data-tab="workspace-mgmt"
+              data-i18n="workspace.management.title">Workspace Management</button>
+    </nav>
+
+    <!-- Worktree mode nav -->
+    <nav class="tab-nav" id="tab-nav-worktree" style="display:none;">
+      <button class="tab-btn active" data-tab="repos"
+              data-i18n="tab.repos">Repository Management</button>
+      <button class="tab-btn" data-tab="repo-worktree"
+              data-i18n="tab.repo-worktree">Worktree Management</button>
     </nav>
 
     <!-- Repository Management Tab -->
-    <div id="tab-repos" class="tab-content active">
+    <div id="tab-repos" class="tab-content" style="display: none;">
       <div class="action-bar">
         <button id="add-repo-btn" class="btn btn-primary" data-i18n="repos.add">+ Add Repository</button>
         <div class="search-wrapper">
@@ -61,140 +81,48 @@
       <div id="status-bar" class="status-bar"></div>
     </div>
 
-    <!-- Workdir Sets Tab -->
-    <div id="tab-sets" class="tab-content" style="display: none;">
-      <div id="set-list-view">
-        <div class="action-bar">
-          <button id="create-set-btn" class="btn btn-primary" data-i18n="sets.create">+ Create Set</button>
-        </div>
+    <!-- Workspace Management Tab (SDD-0027 재구성) -->
+    <div id="tab-workspace-mgmt" class="tab-content active">
 
-        <div id="set-empty-state" class="empty-state" style="display: none;">
-          <div class="empty-icon">&#128230;</div>
-          <p><span data-i18n="sets.empty">No workdir sets.</span><br><strong data-i18n="sets.empty.hint">Click the + Create Set button to get started.</strong></p>
-        </div>
-
-        <div id="set-list" class="set-list"></div>
-        <div id="set-pagination" class="pagination-bar" style="display: none;">
-          <button id="set-prev-btn" class="btn btn-secondary pagination-btn" data-i18n="sets.prev">&lt; Prev</button>
-          <span id="set-page-info" class="pagination-info"></span>
-          <button id="set-next-btn" class="btn btn-secondary pagination-btn" data-i18n="sets.next">Next &gt;</button>
-        </div>
-        <div id="set-status-bar" class="status-bar"></div>
-      </div>
-
-      <div id="set-form-view" style="display: none;">
-        <a id="set-form-back" class="back-link" data-i18n="sets.back">&larr; Back to set list</a>
-        <div class="set-form">
-          <h3 id="set-form-title" data-i18n="sets.form.title.create">Create Set</h3>
-          <div class="form-group">
-            <label for="set-name-input" data-i18n="sets.form.name.label">Set Name</label>
-            <input type="text" class="form-input" id="set-name-input" data-i18n-placeholder="sets.form.name.placeholder" placeholder="e.g. Project A environment" />
-            <div id="set-name-error" class="form-error" style="display: none;"></div>
-          </div>
-          <div class="form-group">
-            <label data-i18n="sets.form.repos.label">Select Repositories</label>
-            <div id="repo-checkbox-list" class="repo-checkbox-list"></div>
-          </div>
-          <div class="form-actions">
-            <button id="set-cancel-btn" class="btn btn-secondary" data-i18n="btn.cancel">Cancel</button>
-            <button id="set-save-btn" class="btn btn-primary" data-i18n="btn.save">Save</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="set-detail-view" style="display: none;">
-        <a id="set-detail-back" class="back-link" data-i18n="sets.detail.back">&larr; Back to set list</a>
-        <div class="set-detail">
-          <div class="set-detail-header">
-            <h3 id="set-detail-name"></h3>
-            <div class="set-detail-actions">
-              <button id="set-edit-btn" class="btn btn-secondary" data-i18n="sets.detail.edit">Edit</button>
-              <button id="set-delete-btn" class="btn btn-danger" data-i18n="sets.detail.delete">Delete</button>
+      <!-- 워크스페이스 추가 (기존 디렉토리 등록) -->
+      <div id="ws-add-section" class="ws-section">
+        <button id="ws-add-toggle-btn" class="btn btn-secondary"
+                data-i18n="workspace.add.btn">+ Add Workspace</button>
+        <div id="ws-add-form" class="ws-create-form" style="display:none;">
+          <div class="ws-form-row">
+            <label data-i18n="workspace.add.path.label">Path</label>
+            <div class="ws-path-row">
+              <input type="text" id="ws-add-path-input" class="form-input"
+                     data-i18n-placeholder="workspace.add.path.placeholder" />
+              <button id="ws-add-path-btn" class="btn btn-secondary"
+                      data-i18n="workspace.add.path.select">Select Path</button>
             </div>
           </div>
-          <div id="set-detail-meta" class="set-detail-meta"></div>
-          <table class="repo-table">
-            <thead>
-              <tr>
-                <th data-i18n="sets.detail.col.name">Name</th>
-                <th data-i18n="sets.detail.col.path">Path</th>
-                <th data-i18n="sets.detail.col.action">Action</th>
-              </tr>
-            </thead>
-            <tbody id="set-detail-repos"></tbody>
-          </table>
-          <div id="set-detail-status" class="status-bar"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Worktree Clone Tab -->
-    <div id="tab-worktree" class="tab-content" style="display: none;">
-      <div class="worktree-section">
-        <label class="section-label" data-i18n="worktree.section1">1. Select Workdir Set</label>
-        <select id="wt-set-select" class="form-input">
-          <option value="" data-i18n="worktree.select.placeholder">-- Select a set --</option>
-        </select>
-        <div id="wt-no-sets-msg" class="empty-state" style="display: none;">
-          <p><span data-i18n="worktree.no_sets">No workdir sets registered.</span><br>
-             <strong data-i18n="worktree.no_sets.hint">Please create a set in the Workdir Sets tab first.</strong></p>
+          <div class="ws-form-row">
+            <label data-i18n="workspace.add.name.label">Name</label>
+            <input type="text" id="ws-add-name-input" class="form-input"
+                   data-i18n-placeholder="workspace.add.name.placeholder" />
+          </div>
+          <div class="ws-form-actions">
+            <button id="ws-add-submit-btn" class="btn btn-primary"
+                    data-i18n="workspace.add.submit">Add</button>
+            <button id="ws-add-cancel-btn" class="btn btn-secondary"
+                    data-i18n="btn.cancel">Cancel</button>
+          </div>
         </div>
       </div>
 
-      <div id="wt-repo-section" class="worktree-section" style="display: none;">
-        <label class="section-label" data-i18n="worktree.section2">2. Verify Base Branch per Repo</label>
-        <div id="wt-repo-list" class="wt-repo-list"></div>
-        <button id="wt-fetch-btn" class="btn btn-secondary" data-i18n="worktree.fetch">Fetch Remote</button>
-      </div>
-
-      <div id="wt-branch-section" class="worktree-section" style="display: none;">
-        <label class="section-label" data-i18n="worktree.section3">3. New Branch Name</label>
-        <input type="text" id="wt-new-branch" class="form-input"
-               data-i18n-placeholder="worktree.branch.placeholder" placeholder="e.g. feature/my-task" />
-        <div id="wt-branch-error" class="form-error" style="display: none;"></div>
-      </div>
-
-      <div id="wt-path-section" class="worktree-section" style="display: none;">
-        <label class="section-label" data-i18n="worktree.section4">4. Worktree Creation Path</label>
-        <div class="wt-path-row">
-          <input type="text" id="wt-target-path" class="form-input wt-path-input"
-                 readonly data-i18n-placeholder="worktree.path.placeholder" placeholder="Select a path" />
-          <button id="wt-select-path-btn" class="btn btn-secondary" data-i18n="worktree.path.select">Select Path</button>
-        </div>
-        <div id="wt-path-error" class="form-error" style="display: none;"></div>
-      </div>
-
-      <div id="wt-action-section" class="worktree-section" style="display: none;">
-        <button id="wt-clone-btn" class="btn btn-primary" data-i18n="worktree.clone.btn">Run Batch Clone</button>
-      </div>
-
-      <div id="wt-result-section" class="worktree-section" style="display: none;">
-        <label class="section-label" data-i18n="worktree.result">Processing Result</label>
-        <div id="wt-progress-list" class="wt-progress-list"></div>
-        <div id="wt-summary" class="wt-summary"></div>
-      </div>
-    </div>
-
-    <!-- Workspace Management Tab -->
-    <div id="tab-workspace" class="tab-content" style="display: none;">
-      <h3 data-i18n="workspace.title">Workspace Management</h3>
-
-      <!-- 빈 워크스페이스 생성 섹션 -->
+      <!-- 워크스페이스 생성 (스킬/커맨드/CLAUDE.md 생성) -->
       <div id="ws-create-section" class="ws-section">
         <button id="ws-create-toggle-btn" class="btn btn-primary"
-                data-i18n="workspace.create.btn">+ Create Empty Workspace</button>
-
-        <div id="ws-create-form" class="ws-create-form" style="display: none;">
+                data-i18n="workspace.create.btn">+ Create Workspace</button>
+        <div id="ws-create-form" class="ws-create-form" style="display:none;">
+          <p class="ws-create-desc" data-i18n="workspace.create.description">Creates skills, commands, and CLAUDE.md in the specified directory</p>
           <div class="ws-form-row">
-            <label data-i18n="workspace.create.name.label">Name</label>
-            <input type="text" id="ws-create-name" class="form-input"
-                   data-i18n-placeholder="workspace.create.name.placeholder" placeholder="Workspace name" />
-          </div>
-          <div class="ws-form-row">
-            <label data-i18n="workspace.create.path.label">Location</label>
+            <label data-i18n="workspace.create.path.label">Path</label>
             <div class="ws-path-row">
-              <span id="ws-create-path-display" class="ws-path-display"
-                    data-i18n="workspace.create.path.placeholder">Select a path</span>
+              <input type="text" id="ws-create-path-input" class="form-input"
+                     data-i18n-placeholder="workspace.create.path.placeholder" />
               <button id="ws-create-path-btn" class="btn btn-secondary"
                       data-i18n="workspace.create.path.select">Select Path</button>
             </div>
@@ -205,54 +133,30 @@
             <button id="ws-create-cancel-btn" class="btn btn-secondary"
                     data-i18n="btn.cancel">Cancel</button>
           </div>
+          <div id="ws-create-result" class="ws-create-result" style="display:none;"></div>
         </div>
       </div>
 
+      <!-- 워크스페이스 목록 -->
       <div id="ws-list-section" class="ws-section">
         <label class="section-label" data-i18n="workspace.list.label">Workspace List</label>
         <div id="ws-list" class="ws-list"></div>
-        <div id="ws-empty-msg" class="empty-state" style="display: none;">
-          <p data-i18n="workspace.empty">No workspaces created.</p>
+        <div id="ws-empty-msg" class="empty-state" style="display:none;">
+          <p data-i18n="workspace.empty">No workspaces registered.</p>
         </div>
       </div>
 
-      <div id="ws-selected-section" class="ws-section" style="display: none;">
-        <label class="section-label" data-i18n="workspace.selected.label">Selected Workspace</label>
-        <div id="ws-selected-path"></div>
-        <div id="ws-rename-section" class="ws-section" style="display: none;">
-          <div class="ws-form-row">
-            <label data-i18n="workspace.rename.label">Workspace Name</label>
-            <input type="text" id="ws-rename-input" class="form-input" />
-            <button id="ws-rename-btn" class="btn btn-secondary"
-                    data-i18n="workspace.rename.btn">Rename</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="ws-action-section" class="ws-section" style="display: none;">
-        <button id="ws-terminal-btn" class="btn btn-secondary" disabled data-i18n="workspace.terminal.btn">Open Terminal</button>
-        <button id="ws-claude-btn" class="btn btn-primary" disabled data-i18n="workspace.claude.btn">Regenerate Claude Config</button>
-        <button id="ws-delete-btn" class="btn btn-danger" style="display: none;"
-                data-i18n="workspace.delete.btn">Delete Workspace</button>
-      </div>
-
-      <!-- Wiki Viewer 호스팅 섹션 -->
-      <div id="wh-section" class="ws-section" style="display: none;">
+      <!-- Wiki Viewer 호스팅 상태 (항상 표시) -->
+      <div id="wh-global-section" class="ws-section wh-section">
         <label class="section-label" data-i18n="wikiHost.title">Wiki Viewer Hosting</label>
-
         <div class="wh-status-row">
-          <span id="wh-indicator" class="wh-indicator wh-stopped"
-                data-i18n="wikiHost.status.stopped">Stopped</span>
-          <span id="wh-url" class="wh-url" style="display: none;"></span>
+          <span id="wh-global-indicator" class="wh-indicator wh-stopped"
+                data-i18n="wikiHost.status.stopped">Not Running</span>
+          <span id="wh-global-url" class="wh-url" style="display:none;"></span>
         </div>
-
         <div class="wh-controls">
-          <button id="wh-start-btn" class="btn btn-primary"
-                  data-i18n="wikiHost.start">Start Server</button>
-          <button id="wh-stop-btn" class="btn btn-secondary" disabled
-                  data-i18n="wikiHost.stop">Stop Server</button>
-          <button id="wh-open-btn" class="btn btn-secondary" disabled
-                  data-i18n="wikiHost.openBrowser">Open in Browser</button>
+          <button id="wh-global-stop-btn" class="btn btn-secondary" disabled
+                  data-i18n="wikiHost.stopButton">Stop Hosting</button>
         </div>
       </div>
 
@@ -330,6 +234,12 @@
               <option value="" data-i18n="cq.workspace.placeholder">-- Select workspace --</option>
             </select>
           </div>
+          <div class="cq-bulk-row">
+            <textarea id="cq-bulk-input" class="form-input cq-bulk-input"
+                      placeholder="/add-req requirement description&#10;/teams&#10;/add-req another requirement&#10;/teams"
+                      rows="4"></textarea>
+            <button id="cq-bulk-btn" class="btn btn-secondary">Bulk Add</button>
+          </div>
         </div>
       </div>
 
@@ -359,10 +269,10 @@
 
     <div id="toast" class="toast" style="display: none;"></div>
   </div>
+  <script src="scripts/themeToggle.js"></script>
   <script src="scripts/i18n.js"></script>
+  <script src="scripts/modeToggle.js"></script>
   <script src="scripts/renderer.js"></script>
-  <script src="scripts/setRenderer.js"></script>
-  <script src="scripts/worktreeRenderer.js"></script>
   <script src="scripts/repoWorktreeRenderer.js"></script>
   <script src="scripts/workspaceRenderer.js"></script>
   <script src="scripts/commandQueueRenderer.js"></script>

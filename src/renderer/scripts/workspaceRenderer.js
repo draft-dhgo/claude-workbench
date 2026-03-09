@@ -2,36 +2,32 @@ window.addEventListener('DOMContentLoaded', async () => {
   await window._i18nReady
   const wsList          = document.getElementById('ws-list')
   const wsEmptyMsg      = document.getElementById('ws-empty-msg')
-  const wsSelectedSection = document.getElementById('ws-selected-section')
-  const wsSelectedPath  = document.getElementById('ws-selected-path')
-  const wsActionSection = document.getElementById('ws-action-section')
-  const wsTerminalBtn   = document.getElementById('ws-terminal-btn')
-  const wsClaudeBtn     = document.getElementById('ws-claude-btn')
   const wsResultBar     = document.getElementById('ws-result-bar')
+  const t = window.i18n.t
+
+  // === 워크스페이스 추가 (기존 경로 등록) ===
+  const wsAddToggleBtn  = document.getElementById('ws-add-toggle-btn')
+  const wsAddForm       = document.getElementById('ws-add-form')
+  const wsAddPathInput  = document.getElementById('ws-add-path-input')
+  const wsAddPathBtn    = document.getElementById('ws-add-path-btn')
+  const wsAddNameInput  = document.getElementById('ws-add-name-input')
+  const wsAddSubmitBtn  = document.getElementById('ws-add-submit-btn')
+  const wsAddCancelBtn  = document.getElementById('ws-add-cancel-btn')
+
+  // === 워크스페이스 생성 (스킬/커맨드/CLAUDE.md) ===
   const wsCreateToggleBtn = document.getElementById('ws-create-toggle-btn')
   const wsCreateForm    = document.getElementById('ws-create-form')
-  const wsCreateName    = document.getElementById('ws-create-name')
-  const wsCreatePathDisplay = document.getElementById('ws-create-path-display')
+  const wsCreatePathInput = document.getElementById('ws-create-path-input')
   const wsCreatePathBtn = document.getElementById('ws-create-path-btn')
   const wsCreateSubmitBtn = document.getElementById('ws-create-submit-btn')
   const wsCreateCancelBtn = document.getElementById('ws-create-cancel-btn')
-  const wsRenameSection = document.getElementById('ws-rename-section')
-  const wsRenameInput   = document.getElementById('ws-rename-input')
-  const wsRenameBtn     = document.getElementById('ws-rename-btn')
-  const wsDeleteBtn     = document.getElementById('ws-delete-btn')
-  const t = window.i18n.t
+  const wsCreateResult  = document.getElementById('ws-create-result')
 
-  const whSection        = document.getElementById('wh-section')
-  const whIndicator      = document.getElementById('wh-indicator')
-  const whUrl            = document.getElementById('wh-url')
-  const whStartBtn       = document.getElementById('wh-start-btn')
-  const whStopBtn        = document.getElementById('wh-stop-btn')
-  const whOpenBtn        = document.getElementById('wh-open-btn')
+  // === Wiki Viewer 호스팅 (전역, 항상 표시) ===
+  const whGlobalIndicator = document.getElementById('wh-global-indicator')
+  const whGlobalUrl     = document.getElementById('wh-global-url')
+  const whGlobalStopBtn = document.getElementById('wh-global-stop-btn')
 
-  let selectedWorkspacePath = null
-  let selectedWorkspace = null
-  let selectedCreatePath = null
-  let isWorking = false
   let wikiHostRunning = false
   let wikiHostUrl = null
 
@@ -45,57 +41,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   function setResult(message, isError) {
+    if (!wsResultBar) return
     wsResultBar.textContent = message
     wsResultBar.className = 'status-bar' + (isError ? ' status-error' : '')
   }
 
-  function selectWorkspace(ws) {
-    selectedWorkspace = ws
-    selectedWorkspacePath = ws.path
-
-    wsList.querySelectorAll('.ws-item').forEach(item => {
-      item.classList.remove('selected')
-    })
-
-    const selectedItem = wsList.querySelector('[data-path="' + CSS.escape(ws.path) + '"]')
-    if (selectedItem) selectedItem.classList.add('selected')
-
-    wsSelectedSection.style.display = 'block'
-    wsSelectedPath.textContent = ws.path
-
-    wsActionSection.style.display = 'flex'
-    wsTerminalBtn.disabled = false
-    wsClaudeBtn.disabled = false
-
-    // 빈 워크스페이스만 이름 변경/삭제 가능
-    if (ws.type === 'empty' && ws.id) {
-      wsRenameSection.style.display = 'block'
-      wsRenameInput.value = ws.name
-      wsDeleteBtn.style.display = 'inline-block'
-    } else {
-      wsRenameSection.style.display = 'none'
-      wsDeleteBtn.style.display = 'none'
-    }
-
-    // 호스팅 섹션 표시
-    whSection.style.display = 'block'
-    fetchWikiHostStatus()
-
-    setResult('')
-  }
+  // === 워크스페이스 목록 렌더링 ===
 
   async function fetchAndRenderList() {
+    if (!wsList) return
     wsList.innerHTML = ''
-    wsEmptyMsg.style.display = 'none'
-    wsSelectedSection.style.display = 'none'
-    wsActionSection.style.display = 'none'
-    wsTerminalBtn.disabled = true
-    wsClaudeBtn.disabled = true
-    selectedWorkspacePath = null
-    selectedWorkspace = null
-    wsRenameSection.style.display = 'none'
-    wsDeleteBtn.style.display = 'none'
-    whSection.style.display = 'none'
+    if (wsEmptyMsg) wsEmptyMsg.style.display = 'none'
 
     let result
     try {
@@ -113,7 +69,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const workspaces = result.workspaces || []
 
     if (workspaces.length === 0) {
-      wsEmptyMsg.style.display = 'block'
+      if (wsEmptyMsg) wsEmptyMsg.style.display = 'block'
       return
     }
 
@@ -123,13 +79,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       item.dataset.path = ws.path
       if (ws.id) item.dataset.id = ws.id
 
-      // 타입 배지
-      const badgeSpan = document.createElement('span')
-      badgeSpan.className = 'ws-badge ws-badge-' + ws.type
-      badgeSpan.textContent = ws.type === 'worktree'
-        ? t('workspace.badge.worktree')
-        : t('workspace.badge.empty')
-
       const nameSpan = document.createElement('span')
       nameSpan.className = 'ws-item-name'
       nameSpan.textContent = ws.name
@@ -138,242 +87,229 @@ window.addEventListener('DOMContentLoaded', async () => {
       pathSpan.className = 'ws-item-path'
       pathSpan.textContent = ws.path
 
-      item.appendChild(badgeSpan)
+      const btnGroup = document.createElement('div')
+      btnGroup.className = 'ws-item-actions'
+
+      const resetBtn = document.createElement('button')
+      resetBtn.className = 'btn btn-secondary btn-sm'
+      resetBtn.textContent = t('workspace.rebuild.btn') || 'Rebuild'
+      resetBtn.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        const confirmed = window.confirm(
+          t('workspace.rebuild.confirm', { name: ws.name, path: ws.path })
+        )
+        if (!confirmed) return
+        resetBtn.disabled = true
+        resetBtn.textContent = t('workspace.rebuild.running') || 'Rebuilding...'
+        try {
+          const res = await window.electronAPI.invoke('claude-config:reset', {
+            workspacePath: ws.path,
+            lang: window.i18n.currentLang
+          })
+          if (res.success) {
+            showToast(t('workspace.rebuild.success'), 'success')
+          } else {
+            showToast(t('workspace.error.rebuild_fail', { error: res.error || '' }), 'error')
+          }
+        } catch (err) {
+          showToast(t('workspace.error.rebuild_fail', { error: err.message || '' }), 'error')
+        } finally {
+          resetBtn.disabled = false
+          resetBtn.textContent = t('workspace.rebuild.btn') || 'Rebuild'
+        }
+      })
+
+      const deleteBtn = document.createElement('button')
+      deleteBtn.className = 'btn btn-danger btn-sm'
+      deleteBtn.textContent = t('workspace.delete.btn') || 'Delete'
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        if (!ws.id) return
+        const confirmed = window.confirm(
+          t('workspace.delete.confirm', { name: ws.name, path: ws.path })
+        )
+        if (!confirmed) return
+        const res = await window.electronAPI.invoke('workspace:delete', { id: ws.id })
+        if (res.success) {
+          showToast(t('workspace.delete.success'), 'success')
+          await fetchAndRenderList()
+        } else {
+          showToast(t('workspace.error.delete_fail', { error: res.error || '' }), 'error')
+        }
+      })
+
+      btnGroup.appendChild(resetBtn)
+      btnGroup.appendChild(deleteBtn)
+
       item.appendChild(nameSpan)
       item.appendChild(pathSpan)
-
-      item.addEventListener('click', () => selectWorkspace(ws))
+      item.appendChild(btnGroup)
       wsList.appendChild(item)
     })
   }
 
-  async function onOpenTerminal() {
-    if (isWorking || !selectedWorkspacePath) return
-    isWorking = true
-    wsTerminalBtn.disabled = true
-    wsClaudeBtn.disabled = true
-    setResult('')
+  // === 워크스페이스 추가 (등록) ===
 
-    try {
-      const result = await window.electronAPI.invoke('terminal:open', { path: selectedWorkspacePath })
-      if (result.success) {
-        setResult(t('workspace.terminal.success'))
-      } else {
-        setResult(t('workspace.error.terminal_fail', { error: result.error || '' }), true)
-      }
-    } catch (e) {
-      setResult(t('workspace.error.terminal_error'), true)
-    } finally {
-      isWorking = false
-      wsTerminalBtn.disabled = false
-      wsClaudeBtn.disabled = false
-    }
+  if (wsAddToggleBtn && wsAddForm) {
+    wsAddToggleBtn.addEventListener('click', () => {
+      wsAddForm.style.display = wsAddForm.style.display === 'none' ? 'block' : 'none'
+    })
   }
 
-  async function onRegenerateClaude() {
-    if (isWorking || !selectedWorkspacePath) return
+  if (wsAddPathBtn && wsAddPathInput) {
+    wsAddPathBtn.addEventListener('click', async () => {
+      const result = await window.electronAPI.invoke('worktree:select-path')
+      if (result && result.path) {
+        wsAddPathInput.value = result.path
+      }
+    })
+  }
 
-    const confirmMessage = t('workspace.reset.confirm', { path: selectedWorkspacePath })
+  if (wsAddSubmitBtn) {
+    wsAddSubmitBtn.addEventListener('click', async () => {
+      const dirPath = wsAddPathInput ? wsAddPathInput.value.trim() : ''
+      if (!dirPath) {
+        showToast(t('workspace.error.path_empty'), 'warning')
+        return
+      }
+      const name = wsAddNameInput ? wsAddNameInput.value.trim() : ''
+      const result = await window.electronAPI.invoke('workspace:register', { path: dirPath, name: name || undefined })
+      if (result.success) {
+        if (wsAddPathInput) wsAddPathInput.value = ''
+        if (wsAddNameInput) wsAddNameInput.value = ''
+        if (wsAddForm) wsAddForm.style.display = 'none'
+        showToast(t('workspace.add.success') || 'Workspace added', 'success')
+        await fetchAndRenderList()
+      } else {
+        showToast(t('workspace.error.create_fail', { error: result.error || '' }), 'error')
+      }
+    })
+  }
 
-    const confirmed = window.confirm(confirmMessage)
-    if (!confirmed) return
+  if (wsAddCancelBtn && wsAddForm) {
+    wsAddCancelBtn.addEventListener('click', () => {
+      wsAddForm.style.display = 'none'
+      if (wsAddPathInput) wsAddPathInput.value = ''
+      if (wsAddNameInput) wsAddNameInput.value = ''
+    })
+  }
 
-    isWorking = true
-    wsTerminalBtn.disabled = true
-    wsClaudeBtn.disabled = true
-    setResult('')
+  // === 워크스페이스 생성 ===
 
-    try {
-      const result = await window.electronAPI.invoke('claude-config:reset', {
-        workspacePath: selectedWorkspacePath,
+  if (wsCreateToggleBtn && wsCreateForm) {
+    wsCreateToggleBtn.addEventListener('click', () => {
+      wsCreateForm.style.display = wsCreateForm.style.display === 'none' ? 'block' : 'none'
+    })
+  }
+
+  if (wsCreatePathBtn && wsCreatePathInput) {
+    wsCreatePathBtn.addEventListener('click', async () => {
+      const result = await window.electronAPI.invoke('worktree:select-path')
+      if (result && result.path) {
+        wsCreatePathInput.value = result.path
+      }
+    })
+  }
+
+  function showCreateResult(steps) {
+    if (!wsCreateResult || !steps) return
+    wsCreateResult.innerHTML = ''
+    steps.forEach(step => {
+      const div = document.createElement('div')
+      div.className = 'ws-create-result-item'
+      div.textContent = step
+      wsCreateResult.appendChild(div)
+    })
+    wsCreateResult.style.display = 'block'
+  }
+
+  if (wsCreateSubmitBtn) {
+    wsCreateSubmitBtn.addEventListener('click', async () => {
+      const targetPath = wsCreatePathInput ? wsCreatePathInput.value.trim() : ''
+      if (!targetPath) {
+        showToast(t('workspace.error.path_empty'), 'warning')
+        return
+      }
+
+      const resetResult = await window.electronAPI.invoke('claude-config:reset', {
+        workspacePath: targetPath,
         lang: window.i18n.currentLang
       })
-      if (result.success) {
-        setResult(t('workspace.reset.success'))
-      } else {
-        setResult(t('workspace.error.reset_fail', { error: result.error || '' }), true)
+      if (!resetResult.success) {
+        showToast(t('workspace.error.create_fail', { error: resetResult.error || '' }), 'error')
+        return
       }
-    } catch (e) {
-      setResult(t('workspace.error.reset_error'), true)
-    } finally {
-      isWorking = false
-      wsTerminalBtn.disabled = false
-      wsClaudeBtn.disabled = false
-    }
-  }
 
-  // 생성 폼 토글
-  wsCreateToggleBtn.addEventListener('click', () => {
-    wsCreateForm.style.display = wsCreateForm.style.display === 'none' ? 'block' : 'none'
-  })
+      const name = targetPath.split('/').pop() || targetPath
+      const registerResult = await window.electronAPI.invoke('workspace:register', { path: targetPath, name })
+      if (!registerResult.success) {
+        showToast(t('workspace.error.create_fail', { error: registerResult.error || '' }), 'error')
+        return
+      }
 
-  // 경로 선택
-  wsCreatePathBtn.addEventListener('click', async () => {
-    const result = await window.electronAPI.invoke('worktree:select-path')
-    if (result && result.path) {
-      selectedCreatePath = result.path
-      wsCreatePathDisplay.textContent = result.path
-    }
-  })
-
-  // 생성 제출
-  wsCreateSubmitBtn.addEventListener('click', async () => {
-    const name = wsCreateName.value.trim()
-    if (!name) {
-      showToast(t('workspace.error.name_empty'), 'warning')
-      return
-    }
-    if (!selectedCreatePath) {
-      showToast(t('workspace.error.path_empty'), 'warning')
-      return
-    }
-
-    const result = await window.electronAPI.invoke('workspace:create', {
-      name,
-      parentPath: selectedCreatePath,
-      lang: window.i18n.currentLang
-    })
-
-    if (result.success) {
-      wsCreateName.value = ''
-      selectedCreatePath = null
-      wsCreatePathDisplay.textContent = t('workspace.create.path.placeholder')
-      wsCreateForm.style.display = 'none'
+      if (resetResult.steps) showCreateResult(resetResult.steps)
       showToast(t('workspace.create.success'), 'success')
       await fetchAndRenderList()
-    } else {
-      showToast(t('workspace.error.create_fail', { error: result.error || '' }), 'error')
-    }
-  })
-
-  // 취소
-  wsCreateCancelBtn.addEventListener('click', () => {
-    wsCreateForm.style.display = 'none'
-    wsCreateName.value = ''
-    selectedCreatePath = null
-    wsCreatePathDisplay.textContent = t('workspace.create.path.placeholder')
-  })
-
-  // 이름 변경
-  wsRenameBtn.addEventListener('click', async () => {
-    if (!selectedWorkspace || !selectedWorkspace.id) return
-
-    const newName = wsRenameInput.value.trim()
-    if (!newName) {
-      showToast(t('workspace.error.name_empty'), 'warning')
-      return
-    }
-
-    const result = await window.electronAPI.invoke('workspace:update', {
-      id: selectedWorkspace.id,
-      name: newName
     })
+  }
 
-    if (result.success) {
-      showToast(t('workspace.rename.success'), 'success')
-      await fetchAndRenderList()
-    } else {
-      showToast(t('workspace.error.rename_fail', { error: result.error || '' }), 'error')
-    }
-  })
-
-  // 삭제
-  wsDeleteBtn.addEventListener('click', async () => {
-    if (!selectedWorkspace || !selectedWorkspace.id) return
-
-    const confirmed = window.confirm(
-      t('workspace.delete.confirm', { name: selectedWorkspace.name, path: selectedWorkspace.path })
-    )
-    if (!confirmed) return
-
-    const result = await window.electronAPI.invoke('workspace:delete', {
-      id: selectedWorkspace.id
+  if (wsCreateCancelBtn && wsCreateForm) {
+    wsCreateCancelBtn.addEventListener('click', () => {
+      wsCreateForm.style.display = 'none'
+      if (wsCreatePathInput) wsCreatePathInput.value = ''
+      if (wsCreateResult) wsCreateResult.style.display = 'none'
     })
+  }
 
-    if (result.success) {
-      selectedWorkspace = null
-      selectedWorkspacePath = null
-      wsSelectedSection.style.display = 'none'
-      wsActionSection.style.display = 'none'
-      wsRenameSection.style.display = 'none'
-      wsDeleteBtn.style.display = 'none'
-      showToast(t('workspace.delete.success'), 'success')
-      await fetchAndRenderList()
-    } else {
-      showToast(t('workspace.error.delete_fail', { error: result.error || '' }), 'error')
-    }
-  })
+  // === Wiki Viewer 호스팅 (전역) ===
 
-  // === Wiki Host UI ===
-
-  function updateWikiHostUI() {
+  function updateWikiHostGlobalUI() {
+    if (!whGlobalIndicator) return
     if (wikiHostRunning) {
-      whIndicator.className = 'wh-indicator wh-running'
-      whIndicator.textContent = t('wikiHost.status.running')
-      whUrl.textContent = wikiHostUrl
-      whUrl.style.display = 'inline'
-      whStartBtn.disabled = true
-      whStopBtn.disabled = false
-      whOpenBtn.disabled = false
+      whGlobalIndicator.className = 'wh-indicator wh-running'
+      whGlobalIndicator.textContent = t('wikiHost.status.running')
+      if (whGlobalUrl) {
+        whGlobalUrl.textContent = wikiHostUrl || ''
+        whGlobalUrl.style.display = 'inline'
+      }
+      if (whGlobalStopBtn) whGlobalStopBtn.disabled = false
     } else {
-      whIndicator.className = 'wh-indicator wh-stopped'
-      whIndicator.textContent = t('wikiHost.status.stopped')
-      whUrl.style.display = 'none'
-      whStartBtn.disabled = false
-      whStopBtn.disabled = true
-      whOpenBtn.disabled = true
+      whGlobalIndicator.className = 'wh-indicator wh-stopped'
+      whGlobalIndicator.textContent = t('wikiHost.status.stopped')
+      if (whGlobalUrl) whGlobalUrl.style.display = 'none'
+      if (whGlobalStopBtn) whGlobalStopBtn.disabled = true
     }
   }
 
-  async function fetchWikiHostStatus() {
+  async function fetchWikiHostGlobalStatus() {
     try {
       const status = await window.electronAPI.invoke('wiki-host:status')
       wikiHostRunning = status.running
       wikiHostUrl = status.url || null
-      updateWikiHostUI()
+      updateWikiHostGlobalUI()
     } catch (e) { /* ignore */ }
   }
 
   window.electronAPI.on('wiki-host:status-update', (status) => {
     wikiHostRunning = status.running
     wikiHostUrl = status.url || null
-    updateWikiHostUI()
+    updateWikiHostGlobalUI()
   })
 
-  whStartBtn.addEventListener('click', async () => {
-    if (!selectedWorkspacePath) return
-    const res = await window.electronAPI.invoke('wiki-host:start', {
-      workspacePath: selectedWorkspacePath
+  if (whGlobalStopBtn) {
+    whGlobalStopBtn.addEventListener('click', async () => {
+      await window.electronAPI.invoke('wiki-host:stop')
     })
-    if (!res.success) {
-      const errKey = res.error === 'VIEWS_DIR_NOT_FOUND'
-        ? 'wikiHost.error.noViewsDir'
-        : res.error === 'INDEX_NOT_FOUND'
-          ? 'wikiHost.error.noIndex'
-          : 'wikiHost.error.startFail'
-      showToast(t(errKey), 'error')
-    }
-  })
-
-  whStopBtn.addEventListener('click', async () => {
-    await window.electronAPI.invoke('wiki-host:stop')
-  })
-
-  whOpenBtn.addEventListener('click', async () => {
-    await window.electronAPI.invoke('wiki-host:open-browser')
-  })
-
-  async function loadWorkspaceTab() {
-    isWorking = false
-    setResult('')
-    await fetchAndRenderList()
   }
 
-  wsTerminalBtn.addEventListener('click', onOpenTerminal)
-  wsClaudeBtn.addEventListener('click', onRegenerateClaude)
+  async function loadWorkspaceTab() {
+    setResult('')
+    await fetchAndRenderList()
+    await fetchWikiHostGlobalStatus()
+  }
 
   window.loadWorkspaceTab = loadWorkspaceTab
 
   window.i18n.registerReRender(fetchAndRenderList)
-  window.i18n.registerReRender(updateWikiHostUI)
+  window.i18n.registerReRender(updateWikiHostGlobalUI)
 })

@@ -50,7 +50,19 @@ async function handleDequeue(
   if (!itemId) return { success: false, error: 'ITEM_ID_REQUIRED' };
 
   const removed = getService().dequeue(itemId);
-  if (!removed) return { success: false, error: 'NOT_FOUND_OR_NOT_PENDING' };
+  if (!removed) return { success: false, error: 'NOT_FOUND_OR_NOT_REMOVABLE' };
+  return { success: true };
+}
+
+async function handleRequeue(
+  _event: any,
+  data: { itemId: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { itemId } = data || {};
+  if (!itemId) return { success: false, error: 'ITEM_ID_REQUIRED' };
+
+  const requeued = getService().requeue(itemId);
+  if (!requeued) return { success: false, error: 'NOT_FOUND_OR_NOT_REQUEUEABLE' };
   return { success: true };
 }
 
@@ -92,6 +104,7 @@ function _resetService(): void {
 export {
   handleEnqueue,
   handleDequeue,
+  handleRequeue,
   handleAbort,
   handleStatus,
   handleSecurityWarning,

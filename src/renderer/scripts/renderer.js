@@ -108,14 +108,28 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderRepos(filtered)
   })
 
-  // Tab switching
+  // Tab switching — mode-aware (SDD-0027)
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+      // Only update active within the same nav
+      const nav = btn.closest('.tab-nav')
+      if (nav) {
+        nav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+      }
       btn.classList.add('active')
-      document.querySelectorAll('.tab-content').forEach(c => {
-        c.style.display = 'none'
-        c.classList.remove('active')
+      // Determine which mode's tabs to affect
+      const currentMode = (window.modeToggle && window.modeToggle.getCurrentMode()) || 'workspace'
+      const modeTabs = {
+        workspace: ['tab-command-queue', 'tab-workspace-mgmt'],
+        worktree: ['tab-repos', 'tab-repo-worktree']
+      }
+      const activeTabs = modeTabs[currentMode] || []
+      activeTabs.forEach(tabId => {
+        const el = document.getElementById(tabId)
+        if (el) {
+          el.style.display = 'none'
+          el.classList.remove('active')
+        }
       })
       const tabId = 'tab-' + btn.dataset.tab
       const tabEl = document.getElementById(tabId)
@@ -123,13 +137,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         tabEl.style.display = 'block'
         tabEl.classList.add('active')
       }
-      if (btn.dataset.tab === 'sets' && typeof window.loadSets === 'function') {
-        window.loadSets()
-      }
-      if (btn.dataset.tab === 'worktree' && typeof window.loadWorktreeSets === 'function') {
-        window.loadWorktreeSets()
-      }
-      if (btn.dataset.tab === 'workspace' && typeof window.loadWorkspaceTab === 'function') {
+      if (btn.dataset.tab === 'workspace-mgmt' && typeof window.loadWorkspaceTab === 'function') {
         window.loadWorkspaceTab()
       }
       if (btn.dataset.tab === 'repo-worktree' && typeof window.loadRepoWorktreeTab === 'function') {

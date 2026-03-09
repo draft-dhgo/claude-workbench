@@ -1,4 +1,5 @@
 // TC-WH-H-01 ~ TC-WH-H-12: wikiHostHandlers IPC 핸들러 테스트
+// TC-MIG-01 ~ TC-MIG-03: wiki-host:start workspacePath optional 하위 호환성 테스트
 
 const mockStart = jest.fn()
 const mockStop = jest.fn()
@@ -7,6 +8,7 @@ const mockIsRunning = jest.fn()
 const mockCleanup = jest.fn()
 const mockServiceReset = jest.fn()
 const mockOpenExternal = jest.fn().mockResolvedValue(undefined)
+const mockGetActiveWorkspacePath = jest.fn()
 
 let handlers: any
 
@@ -20,6 +22,7 @@ beforeEach(() => {
   mockServiceReset.mockReset()
   mockOpenExternal.mockReset()
   mockOpenExternal.mockResolvedValue(undefined)
+  mockGetActiveWorkspacePath.mockReset()
 
   const MockWikiHostService = jest.fn().mockImplementation(() => ({
     start: mockStart,
@@ -33,6 +36,13 @@ beforeEach(() => {
 
   jest.doMock('electron', () => ({
     shell: { openExternal: mockOpenExternal },
+  }))
+
+  // workspaceManagerHandlers mock (for active workspace fallback)
+  jest.doMock('../../../src/main/handlers/workspaceManagerHandlers', () => ({
+    getManagerService: jest.fn(() => ({
+      getActiveWorkspacePath: mockGetActiveWorkspacePath,
+    })),
   }))
 
   handlers = require('../../../src/main/handlers/wikiHostHandlers')
@@ -202,5 +212,48 @@ describe('TC-WH-H-12: _resetService — 서비스 인스턴스 초기화', () =>
 
     // _reset이 호출된 것 확인 (기존 인스턴스의)
     expect(mockServiceReset).toHaveBeenCalled()
+  })
+})
+
+// ── TC-MIG-01 ~ TC-MIG-03: wiki-host:start workspacePath optional 하위 호환성 ──
+
+describe('TC-MIG-01: wiki-host:start — 기존 방식으로 workspacePath 명시적 전달', () => {
+  it('명시적 workspacePath가 전달되면 해당 경로가 그대로 사용된다', async () => {
+    mockStart.mockResolvedValue({ url: 'http://localhost:8080', port: 8080 })
+
+    const result = await handlers.handleWikiHostStart(null, { workspacePath: '/explicit/path' })
+
+    expect(result.success).toBe(true)
+    const callArg = mockStart.mock.calls[0][0]
+    expect(callArg).toContain('/explicit/path')
+    expect(callArg).toContain('wiki')
+    expect(callArg).toContain('views')
+  })
+})
+
+describe('TC-MIG-02: wiki-host:start — workspacePath 생략 시 활성 워크스페이스 경로 사용', () => {
+  it('workspacePath 생략 시 활성 워크스페이스 경로를 자동으로 사용한다', async () => {
+    mockGetActiveWorkspacePath.mockReturnValue('/active/ws')
+    mockStart.mockResolvedValue({ url: 'http://localhost:8080', port: 8080 })
+
+    const result = await handlers.handleWikiHostStart(null, {})
+
+    expect(result.success).toBe(true)
+    const callArg = mockStart.mock.calls[0][0]
+    expect(callArg).toContain('/active/ws')
+    expect(callArg).toContain('wiki')
+    expect(callArg).toContain('views')
+  })
+})
+
+describe('TC-MIG-03: wiki-host:start — workspacePath 생략 + 활성 경로 미설정 시 에러', () => {
+  it('workspacePath 생략 + 활성 경로 없을 때 WORKSPACE_PATH_REQUIRED 에러를 반환한다', async () => {
+    mockGetActiveWorkspacePath.mockReturnValue(null)
+
+    const result = await handlers.handleWikiHostStart(null, {})
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('WORKSPACE_PATH_REQUIRED')
+    expect(mockStart).not.toHaveBeenCalled()
   })
 })

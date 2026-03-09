@@ -242,18 +242,8 @@ describe('handleDelete', () => {
 
 describe('handleList — 통합', () => {
 
-  // TC-WS-H13: handleList — 워크트리 + 빈 워크스페이스 통합 목록
-  test('TC-WS-H13: 워크트리 기반 + 빈 워크스페이스가 병합되어 반환된다', async () => {
-    mockGetAllSets.mockReturnValue([
-      { id: 's1', targetPath: '/base', repositories: [{ id: 'r1' }] }
-    ])
-    mockGetRepoById.mockReturnValue({ id: 'r1', name: 'repo-a', path: '/src/repo-a', addedAt: '2026-03-01T00:00:00.000Z' })
-
-    mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-      cb(null, 'worktree /src/repo-a\nHEAD abc\nbranch refs/heads/main\n\nworktree /base/repo-a/feat\nHEAD def\nbranch refs/heads/feat\n', '')
-    })
-    mockExistsSync.mockReturnValue(true)
-
+  // TC-WS-H13: handleList — SDD-0027: WorkspaceStore 직접 조회, 빈 워크스페이스 목록 반환
+  test('TC-WS-H13: SDD-0027 이후 handleList는 WorkspaceStore 직접 조회로 빈 워크스페이스만 반환한다', async () => {
     mockWsGetAll.mockReturnValue([
       { id: 'ws-1', name: 'Empty WS', path: '/empty/ws', createdAt: '2026-03-08T00:00:00.000Z', updatedAt: '2026-03-08T00:00:00.000Z' }
     ])
@@ -261,34 +251,17 @@ describe('handleList — 통합', () => {
     const result = await handlers.handleList(null, {})
 
     expect(result.success).toBe(true)
-    expect(result.workspaces).toHaveLength(2)
-
-    const worktreeItem = result.workspaces.find((w: any) => w.type === 'worktree')
-    expect(worktreeItem).toBeDefined()
-    expect(worktreeItem.path).toBe('/base/repo-a/feat')
-    expect(worktreeItem.name).toBe('feat')
-
-    const emptyItem = result.workspaces.find((w: any) => w.type === 'empty')
-    expect(emptyItem).toBeDefined()
-    expect(emptyItem.id).toBe('ws-1')
-    expect(emptyItem.name).toBe('Empty WS')
-    expect(emptyItem.path).toBe('/empty/ws')
-    expect(emptyItem.createdAt).toBeDefined()
-    expect(emptyItem.updatedAt).toBeDefined()
+    expect(result.workspaces).toHaveLength(1)
+    expect(result.workspaces[0].type).toBe('empty')
+    expect(result.workspaces[0].id).toBe('ws-1')
+    expect(result.workspaces[0].name).toBe('Empty WS')
+    expect(result.workspaces[0].path).toBe('/empty/ws')
+    // WorkdirSetStore는 사용되지 않아야 함
+    expect(MockWorkdirSetStore).not.toHaveBeenCalled()
   })
 
-  // TC-WS-H14: handleList — 동일 경로 중복 시 워크트리 우선
-  test('TC-WS-H14: 동일 path가 워크트리와 빈 워크스페이스 모두에 존재 시 워크트리 우선', async () => {
-    mockGetAllSets.mockReturnValue([
-      { id: 's1', targetPath: '/base', repositories: [{ id: 'r1' }] }
-    ])
-    mockGetRepoById.mockReturnValue({ id: 'r1', name: 'repo-a', path: '/src/repo-a', addedAt: '2026-03-01T00:00:00.000Z' })
-
-    mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-      cb(null, 'worktree /src/repo-a\nHEAD abc\nbranch refs/heads/main\n\nworktree /shared/path\nHEAD def\nbranch refs/heads/feat\n', '')
-    })
-    mockExistsSync.mockReturnValue(true)
-
+  // TC-WS-H14: handleList — SDD-0027: Sets/worktreeHandlers 미사용 확인
+  test('TC-WS-H14: SDD-0027 이후 handleList는 Sets나 execFile에 의존하지 않는다', async () => {
     mockWsGetAll.mockReturnValue([
       { id: 'ws-dup', name: 'Dup', path: '/shared/path', createdAt: '2026-03-08T00:00:00.000Z', updatedAt: '2026-03-08T00:00:00.000Z' }
     ])
@@ -296,9 +269,11 @@ describe('handleList — 통합', () => {
     const result = await handlers.handleList(null, {})
 
     expect(result.workspaces).toHaveLength(1)
-    expect(result.workspaces[0].type).toBe('worktree')
+    expect(result.workspaces[0].type).toBe('empty')
     expect(result.workspaces[0].path).toBe('/shared/path')
-    expect(result.workspaces.find((w: any) => w.id === 'ws-dup')).toBeUndefined()
+    // Sets, execFile 미사용 확인
+    expect(mockExecFile).not.toHaveBeenCalled()
+    expect(MockWorkdirSetStore).not.toHaveBeenCalled()
   })
 
   // TC-WS-H15: handleList — 빈 워크스페이스만 존재

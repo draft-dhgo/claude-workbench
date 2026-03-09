@@ -136,3 +136,61 @@ export interface WikiHostStatus {
   url?: string;
   port?: number;
 }
+
+/** 워크스페이스 커맨드 정보 */
+export interface CommandInfo {
+  name: string;
+  slashName: string;
+  filePath: string;
+  exists: boolean;
+  description?: string;
+}
+
+/** 워크스페이스 스킬 정보 */
+export interface SkillInfo {
+  name: string;
+  dirPath: string;
+  exists: boolean;
+  description?: string;
+}
+
+/** 워크스페이스 Claude 구성 상태 */
+export interface ConfigStatus {
+  hasClaudeDir: boolean;
+  hasClaudeMd: boolean;
+  commandCount: number;
+  skillCount: number;
+  wikiAvailable: boolean;
+}
+
+/** 커맨드 큐 요약 (워크스페이스별) */
+export interface QueueSummary {
+  pending: number;
+  running: number;
+  success: number;
+  failed: number;
+  aborted: number;
+  total: number;
+}
+
+/** Rate Limit 상태 */
+export interface RateLimitStatus {
+  isWaiting: boolean;
+  remainingMs: number;
+  retryCount: number;
+  maxRetries: number;
+  nextRetryAt: string | null;
+}
+
+/** Rate Limit 초과 이벤트 페이로드 */
+export interface RateLimitExhaustedPayload {
+  itemId: string;
+  retryCount: number;
+  maxRetries: number;
+}
+
+/** 활성 워크스페이스 변경 이벤트 페이로드 */
+export interface ActiveWorkspaceChangedPayload {
+  activeWorkspacePath: string | null;
+  wikiAvailable: boolean;
+}

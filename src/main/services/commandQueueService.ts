@@ -87,11 +87,31 @@ class CommandQueueService {
   }
 
   dequeue(itemId: string): boolean {
-    const idx = this._queue.findIndex(i => i.id === itemId && i.status === 'pending');
+    const idx = this._queue.findIndex(i =>
+      i.id === itemId && (i.status === 'pending' || i.status === 'aborted' || i.status === 'failed')
+    );
     if (idx === -1) return false;
     this._queue.splice(idx, 1);
     this._saveToDisk();
     this._sendStatusUpdate();
+    return true;
+  }
+
+  requeue(itemId: string): boolean {
+    const item = this._queue.find(i =>
+      i.id === itemId && (i.status === 'aborted' || i.status === 'failed')
+    );
+    if (!item) return false;
+    item.status = 'pending';
+    item.retryCount = 0;
+    item.startedAt = undefined;
+    item.completedAt = undefined;
+    item.result = undefined;
+    this._saveToDisk();
+    this._sendStatusUpdate();
+    if (!this._isProcessing) {
+      this._processQueue();
+    }
     return true;
   }
 
@@ -343,34 +363,93 @@ class CommandQueueService {
         if (abortController.signal.aborted) break;
 
         if (message.type === 'rate_limit_event') {
-          const shouldContinue = await this._handleRateLimit(item);
-          if (!shouldContinue) return;
-          await this._executeItem(item);
-          return;
+          const rateLimitInfo = (message as any).rate_limit_info;
+          if (rateLimitInfo?.status === 'rejected') {
+            const shouldContinue = await this._handleRateLimit(item);
+            if (!shouldContinue) return;
+            await this._executeItem(item);
+            return;
+          }
+          // status === 'allowed' 등은 무시
         }
 
         if (message.type === 'assistant') {
           numTurns++;
 
           const innerMsg = (message as any).message;
-          const msgContent = innerMsg?.content;
-          const contentText = Array.isArray(msgContent)
-            ? msgContent.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
-            : typeof msgContent === 'string' ? msgContent : '';
-          if (contentText) {
+          // assistant-level error (e.g. rate_limit, billing_error)
+          if (innerMsg?.error || (message as any).error) {
+            const errVal = innerMsg?.error || (message as any).error;
             this._sendLog({
               itemId: item.id,
-              type: 'assistant',
-              content: contentText,
+              type: 'system',
+              content: `[Assistant error] ${errVal}`,
               timestamp: new Date().toISOString()
             });
           }
+
+          const msgContent = innerMsg?.content;
+          if (Array.isArray(msgContent)) {
+            for (const block of msgContent) {
+              let logContent: string | null = null;
+              if (block.type === 'text' && block.text) {
+                logContent = block.text;
+              } else if (block.type === 'tool_use') {
+                const inputStr = block.input ? JSON.stringify(block.input) : '';
+                logContent = `[Tool: ${block.name}] ${inputStr}`;
+              } else if (block.type === 'thinking' && block.thinking) {
+                logContent = `[Thinking] ${block.thinking}`;
+              } else if (block.type === 'tool_result') {
+                // tool_result는 user 메시지에 오지만 혹시 assistant에 포함될 경우 대비
+                const content = Array.isArray(block.content)
+                  ? block.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
+                  : typeof block.content === 'string' ? block.content : '';
+                if (content) logContent = `[Tool result] ${content}`;
+              }
+              if (logContent) {
+                this._sendLog({
+                  itemId: item.id,
+                  type: 'assistant',
+                  content: logContent,
+                  timestamp: new Date().toISOString()
+                });
+              }
+            }
+          } else if (typeof msgContent === 'string' && msgContent) {
+            this._sendLog({
+              itemId: item.id,
+              type: 'assistant',
+              content: msgContent,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+
+        if (message.type === 'tool_progress') {
+          const toolName = (message as any).tool_name;
+          const elapsed = (message as any).elapsed_time_seconds;
+          this._sendLog({
+            itemId: item.id,
+            type: 'system',
+            content: `[Tool: ${toolName}] ${elapsed?.toFixed(1) ?? '?'}s`,
+            timestamp: new Date().toISOString()
+          });
         }
 
         if (message.type === 'result') {
           sessionId = message.session_id;
           costUsd = message.total_cost_usd ?? 0;
           numTurns = message.num_turns ?? numTurns;
+          // 에러 subtype 로그
+          if ((message as any).subtype && (message as any).subtype !== 'success') {
+            const errors: string[] = (message as any).errors ?? [];
+            this._sendLog({
+              itemId: item.id,
+              type: 'system',
+              content: `[Result error] ${(message as any).subtype}${errors.length ? ': ' + errors.join(', ') : ''}`,
+              timestamp: new Date().toISOString()
+            });
+          }
         }
       }
 
@@ -389,6 +468,12 @@ class CommandQueueService {
     } catch (err: any) {
       const errMsg = err.message || '';
       if (errMsg.includes('rate_limit') || errMsg.includes('429')) {
+        this._sendLog({
+          itemId: item.id,
+          type: 'system',
+          content: `[DEBUG] rate limit catch: ${errMsg}`,
+          timestamp: new Date().toISOString()
+        });
         const shouldContinue = await this._handleRateLimit(item);
         if (!shouldContinue) return;
         await this._executeItem(item);

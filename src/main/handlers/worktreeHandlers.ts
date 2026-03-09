@@ -1,9 +1,10 @@
 import { execFile } from 'child_process';
 import path = require('path');
+import fs = require('fs');
 import { app, BrowserWindow, dialog } from 'electron';
 import WorkdirSetStore = require('../services/workdirSetStore');
 import RepoStore = require('../services/repoStore');
-import { WorktreeInfo } from '../../shared/types/models';
+import { WorktreeInfo, WorktreeWithPushStatus } from '../../shared/types/models';
 
 let _setStore: InstanceType<typeof WorkdirSetStore> | null;
 let _repoStore: InstanceType<typeof RepoStore> | null;
@@ -252,6 +253,21 @@ function parsePushedBranches(output: string): Set<string> {
 }
 
 /**
+ * 내부 헬퍼: 레포의 워크트리 목록 + push 상태를 반환
+ */
+async function getWorktreesWithPushStatus(repoPath: string): Promise<WorktreeWithPushStatus[]> {
+  const worktreeOutput = await execGit(['worktree', 'list', '--porcelain'], repoPath)
+  const worktrees = parseWorktreeList(worktreeOutput)
+  const branchOutput = await execGit(['branch', '-vv'], repoPath)
+  const pushedSet = parsePushedBranches(branchOutput)
+  return worktrees.map(wt => ({
+    worktreePath: wt.worktreePath,
+    branch: wt.branch,
+    isPushed: wt.branch ? pushedSet.has(wt.branch) : true
+  }))
+}
+
+/**
  * 단일 레포의 워크트리 목록 및 push 여부 조회
  */
 async function handleListByRepo(event: any, data: { repoId: string }) {
@@ -260,21 +276,7 @@ async function handleListByRepo(event: any, data: { repoId: string }) {
   const repo = allRepos.find(r => r.id === repoId)
   if (!repo) return { success: false, error: 'NOT_FOUND' }
 
-  // 1. git worktree list --porcelain
-  const worktreeOutput = await execGit(['worktree', 'list', '--porcelain'], repo.path)
-  const worktrees = parseWorktreeList(worktreeOutput)
-
-  // 2. git branch -vv
-  const branchOutput = await execGit(['branch', '-vv'], repo.path)
-  const pushedSet = parsePushedBranches(branchOutput)
-
-  // 3. 결합
-  const result = worktrees.map(wt => ({
-    worktreePath: wt.worktreePath,
-    branch: wt.branch,
-    isPushed: wt.branch ? pushedSet.has(wt.branch) : true // detached HEAD는 삭제 불가 처리
-  }))
-
+  const result = await getWorktreesWithPushStatus(repo.path)
   return { success: true, worktrees: result }
 }
 
@@ -296,12 +298,203 @@ async function handleDeleteWorktree(event: any, data: { repoId: string; worktree
   }
 }
 
+/**
+ * 개별 레포 워크트리 클론
+ * Channel: worktree:create-single
+ */
+async function handleCreateSingle(
+  event: any,
+  data: { repoId: string; baseBranch: string; newBranch: string; targetPath: string }
+): Promise<{ success: boolean; worktreePath?: string; error?: string }> {
+  const { repoId, baseBranch, newBranch, targetPath } = data || {}
+  const repo = getRepoStore().getById(repoId)
+  if (!repo) return { success: false, error: 'NOT_FOUND' }
+
+  const worktreePath = path.join(targetPath, repo.name, newBranch)
+
+  const sendProgress = (payload: { repoId: string; repoName: string; status: string; message: string }) => {
+    const windows = BrowserWindow.getAllWindows()
+    if (windows.length > 0) {
+      windows[0].webContents.send('worktree:progress', payload)
+    }
+  }
+
+  sendProgress({ repoId, repoName: repo.name, status: 'running', message: '처리 중...' })
+
+  try {
+    await execGit(
+      ['worktree', 'add', '-b', newBranch, worktreePath, baseBranch],
+      repo.path
+    )
+    sendProgress({ repoId, repoName: repo.name, status: 'success', message: '완료' })
+    return { success: true, worktreePath }
+  } catch (err: any) {
+    const errMsg = err.message || ''
+    const userMessage = errMsg.includes('already exists')
+      ? '브랜치 이미 존재'
+      : `오류: ${errMsg}`
+    sendProgress({ repoId, repoName: repo.name, status: 'error', message: userMessage })
+    return { success: false, error: userMessage }
+  }
+}
+
+/**
+ * 단일 레포 브랜치 목록 조회
+ * Channel: worktree:list-branches-single
+ */
+async function handleListBranchesSingle(
+  event: any,
+  data: { repoId: string }
+): Promise<{ success: boolean; branches?: string[]; error?: string }> {
+  const { repoId } = data || {}
+  const repo = getRepoStore().getById(repoId)
+  if (!repo) return { success: false, error: 'NOT_FOUND' }
+
+  try {
+    const output = await execGit(['branch', '-a', '--format=%(refname:short)'], repo.path)
+    const branches = output
+      .split('\n')
+      .map(b => b.trim())
+      .filter(Boolean)
+    return { success: true, branches }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * 단일 레포 git fetch --all
+ * Channel: worktree:fetch-single
+ */
+async function handleFetchSingle(
+  event: any,
+  data: { repoId: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { repoId } = data || {}
+  const repo = getRepoStore().getById(repoId)
+  if (!repo) return { success: false, error: 'NOT_FOUND' }
+
+  try {
+    await execGit(['fetch', '--all'], repo.path)
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * push되지 않은 워크트리 목록 조회
+ * Channel: worktree:list-unpushed
+ */
+async function handleListUnpushed(
+  event: any,
+  data: { repoId: string }
+): Promise<{ success: boolean; worktrees?: WorktreeWithPushStatus[]; error?: string }> {
+  const { repoId } = data || {}
+  const allRepos = getRepoStore().getAll()
+  const repo = allRepos.find(r => r.id === repoId)
+  if (!repo) return { success: false, error: 'NOT_FOUND' }
+
+  try {
+    const allWorktrees = await getWorktreesWithPushStatus(repo.path)
+    const unpushed = allWorktrees.filter(wt => !wt.isPushed)
+    return { success: true, worktrees: unpushed }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * 워크트리 연결 해제 (파일 보존, git 메타데이터만 제거)
+ * Channel: worktree:detach
+ */
+async function handleDetachWorktree(
+  event: any,
+  data: { repoId: string; worktreePath: string; branch: string }
+): Promise<{ success: boolean; error?: string }> {
+  const { repoId, worktreePath, branch } = data || {}
+  const allRepos = getRepoStore().getAll()
+  const repo = allRepos.find(r => r.id === repoId)
+  if (!repo) return { success: false, error: 'NOT_FOUND' }
+
+  const sendProgress = (payload: { repoId: string; repoName: string; status: string; message: string }) => {
+    const windows = BrowserWindow.getAllWindows()
+    if (windows.length > 0) {
+      windows[0].webContents.send('worktree:progress', payload)
+    }
+  }
+
+  sendProgress({ repoId, repoName: repo.name, status: 'running', message: '연결 해제 중...' })
+
+  // Step A: .git 파일 검증 및 읽기
+  const dotGitPath = path.join(worktreePath, '.git')
+  if (!fs.existsSync(dotGitPath)) {
+    return { success: false, error: 'DOTGIT_NOT_FOUND' }
+  }
+  if (!fs.statSync(dotGitPath).isFile()) {
+    return { success: false, error: 'NOT_WORKTREE' }
+  }
+
+  const dotGitContent = fs.readFileSync(dotGitPath, 'utf-8')
+  const worktreeGitDir = dotGitContent.replace(/^gitdir:\s*/, '').trim()
+
+  // Step B: git 메타데이터 제거
+  try {
+    fs.unlinkSync(dotGitPath)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  if (fs.existsSync(worktreeGitDir)) {
+    try {
+      fs.rmSync(worktreeGitDir, { recursive: true, force: true })
+    } catch {
+      // warning: .git/worktrees/ 정리 실패, git worktree prune으로 후속 정리 가능
+    }
+  }
+
+  // Step C: 로컬 브랜치 삭제
+  try {
+    await execGit(['branch', '-D', branch], repo.path)
+  } catch {
+    // warning: 브랜치 삭제 실패, 수동 삭제 필요
+  }
+
+  // Step D: 완료
+  sendProgress({ repoId, repoName: repo.name, status: 'success', message: '연결 해제 완료' })
+  return { success: true }
+}
+
+/**
+ * 레포 경로로 직접 워크트리 목록 조회 (workspaceHandlers 위임용)
+ */
+async function handleListByRepoPath(
+  _event: any,
+  data: { repoPath: string }
+): Promise<{ success: boolean; worktrees?: WorktreeWithPushStatus[]; error?: string }> {
+  const { repoPath } = data || {};
+  if (!repoPath) return { success: false, error: 'REPO_PATH_REQUIRED' };
+
+  try {
+    const result = await getWorktreesWithPushStatus(repoPath);
+    return { success: true, worktrees: result };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export {
   handleListBranches,
   handleFetch,
   handleCreateAll,
   handleSelectPath,
   handleListByRepo,
+  handleListByRepoPath,
   handleDeleteWorktree,
+  handleCreateSingle,
+  handleListBranchesSingle,
+  handleFetchSingle,
+  handleListUnpushed,
+  handleDetachWorktree,
   _resetStores
 };

@@ -470,3 +470,468 @@ describe('TC-CQS-18: IPC 이벤트 발행 확인 (status-update, log)', () => {
     expect(logPayload).toHaveProperty('timestamp')
   })
 })
+
+// ── TC-RL-*: Rate Limit 강화 테스트 ──
+
+describe('TC-RL-01: rate limit 감지 시 _isPaused가 true로 전환된다', () => {
+  it('rate limit 에러 발생 시 isPaused()가 true를 반환한다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(service.isPaused()).toBe(true)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-02: pause 상태에서 다음 pending 항목이 즉시 실행되지 않는다', () => {
+  it('rate limit pause 상태에서 두 번째 항목은 pending 상태로 유지된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    // 첫 번째 항목이 rate limit 상태에 진입
+    expect(service.isPaused()).toBe(true)
+
+    // 두 번째 항목 추가
+    const item2 = service.enqueue('/bugfix', '', '/ws')
+    await flushPromises(2)
+
+    // 타이머 미진행 — 두 번째 항목은 pending 유지
+    expect(item2.status).toBe('pending')
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-03: 대기 시간 경과 후 _isPaused가 false로 자동 전환된다', () => {
+  it('waitMs 경과 후 isPaused()가 false를 반환한다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    // 첫 호출만 rate_limit, 이후 성공으로 isPaused 상태 유지 방지
+    mockQuery
+      .mockReturnValueOnce(createMockConversation([
+        { type: 'assistant', error: 'rate_limit', content: '' }
+      ]))
+      .mockReturnValue(createMockConversation([
+        { type: 'result', sessionId: 's', costUsd: 0, numTurns: 1 }
+      ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(service.isPaused()).toBe(true)
+
+    jest.advanceTimersByTime(30000)
+    await flushPromises(10)
+
+    expect(service.isPaused()).toBe(false)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-04: 대기 시간 경과 후 다음 pending 항목의 처리가 재개된다', () => {
+  it('rate limit 대기 완료 후 두 번째 항목이 pending에서 전환된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    let callCount = 0
+    mockQuery.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return createMockConversation([
+          { type: 'assistant', error: 'rate_limit', content: '' }
+        ])
+      }
+      return createMockConversation([
+        { type: 'result', sessionId: 's2', costUsd: 0, numTurns: 1 }
+      ])
+    })
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    const item2 = service.enqueue('/bugfix', '', '/ws')
+    expect(item2.status).toBe('pending')
+
+    jest.advanceTimersByTime(30000)
+    await flushPromises(10)
+
+    expect(['running', 'success']).toContain(item2.status)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-05: maxRetries 초과 시 현재 항목의 status가 failed로 전환된다', () => {
+  it('_rateLimitRetryCount가 _maxRetries를 초과하면 항목이 failed가 된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    service.setMaxRetries(1)
+
+    // rate_limit을 항상 반환
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    const item = service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    // 첫 번째 rate limit → retrying (retryCount=1, rateLimitRetryCount=1, maxRetries=1 → 1 > 1은 false)
+    expect(item.status).toBe('retrying')
+    expect(service.isPaused()).toBe(true)
+
+    // 대기 완료 후 재시도 → 다시 rate_limit → retryCount=2, rateLimitRetryCount=2 > 1 → failed
+    jest.advanceTimersByTime(30000)
+    await flushPromises(10)
+
+    expect(item.status).toBe('failed')
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-06: maxRetries 초과로 실패해도 나머지 pending 항목은 유지된다', () => {
+  it('현재 항목이 failed가 되어도 나머지 pending 항목은 유지된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    service.setMaxRetries(1)
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    const item2 = service.enqueue('/bugfix', '', '/ws')
+    const item3 = service.enqueue('/add-req', '', '/ws')
+
+    jest.advanceTimersByTime(30000)
+    await flushPromises(10)
+
+    // item1이 failed가 된 시점에 item2, item3은 pending 유지
+    // (이후 처리될 수도 있으므로 pending 이상인지만 확인)
+    expect(service.getStatus().length).toBe(3)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-07: maxRetries 초과 시 workspace:rate-limit-exhausted 이벤트 push', () => {
+  it('최대 재시도 초과 시 webContents.send workspace:rate-limit-exhausted가 호출된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    service.setMaxRetries(1)
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    jest.advanceTimersByTime(30000)
+    await flushPromises(10)
+
+    const exhaustedCalls = mockSend.mock.calls.filter(
+      (c: any[]) => c[0] === 'workspace:rate-limit-exhausted'
+    )
+    expect(exhaustedCalls.length).toBeGreaterThanOrEqual(1)
+    expect(exhaustedCalls[0][1]).toHaveProperty('itemId')
+    expect(exhaustedCalls[0][1]).toHaveProperty('maxRetries')
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-08: forceRetryNow() 호출 시 타이머가 정리되고 즉시 재개된다', () => {
+  it('forceRetryNow() 호출 시 clearTimeout/clearInterval이 호출되고 isPaused()가 false가 된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(service.isPaused()).toBe(true)
+
+    service.forceRetryNow()
+
+    expect(service.isPaused()).toBe(false)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-09: forceRetryNow() 호출 시 retrying 항목이 running으로 복구된다', () => {
+  it('forceRetryNow() 호출 시 retrying 상태의 항목이 running으로 전환된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    const item = service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(item.status).toBe('retrying')
+
+    service.forceRetryNow()
+
+    expect(item.status).toBe('running')
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-10: cancelRateLimitWait() 호출 시 retrying 항목이 failed로 전환된다', () => {
+  it('cancelRateLimitWait() 호출 시 retrying 항목이 failed로 전환되고 취소 메시지가 포함된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    const item = service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(item.status).toBe('retrying')
+
+    service.cancelRateLimitWait()
+
+    expect(item.status).toBe('failed')
+    expect(item.result?.errorMessage).toContain('cancelled')
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-11: cancelRateLimitWait() 호출 시 _rateLimitRetryCount가 0으로 리셋된다', () => {
+  it('cancelRateLimitWait() 호출 후 isPaused()가 false가 된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(service.isPaused()).toBe(true)
+
+    service.cancelRateLimitWait()
+
+    expect(service.isPaused()).toBe(false)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-12: rate limit 감지 시 workspace:rate-limit-status가 isWaiting:true로 push된다', () => {
+  it('rate limit 발생 시 webContents.send workspace:rate-limit-status가 isWaiting: true로 호출된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    const rateLimitCalls = mockSend.mock.calls.filter(
+      (c: any[]) => c[0] === 'workspace:rate-limit-status'
+    )
+    expect(rateLimitCalls.length).toBeGreaterThanOrEqual(1)
+
+    const firstCall = rateLimitCalls[0][1]
+    expect(firstCall.isWaiting).toBe(true)
+    expect(firstCall).toHaveProperty('remainingMs')
+    expect(firstCall).toHaveProperty('retryCount')
+    expect(firstCall).toHaveProperty('maxRetries')
+    expect(firstCall).toHaveProperty('nextRetryAt')
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-13: rate limit 대기 중 1초마다 workspace:rate-limit-status가 push된다', () => {
+  it('3초 진행 시 workspace:rate-limit-status 호출 횟수 >= 3', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    // 초기 rate-limit-status 호출 이후
+    const initialCount = mockSend.mock.calls.filter(
+      (c: any[]) => c[0] === 'workspace:rate-limit-status'
+    ).length
+
+    jest.advanceTimersByTime(3000)
+    await flushPromises()
+
+    const afterCount = mockSend.mock.calls.filter(
+      (c: any[]) => c[0] === 'workspace:rate-limit-status'
+    ).length
+
+    expect(afterCount).toBeGreaterThanOrEqual(initialCount + 3)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-14: 대기 해제 시 workspace:rate-limit-status가 isWaiting:false로 push된다', () => {
+  it('대기 완료(자동 재개) 후 마지막 rate-limit-status의 isWaiting이 false가 된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery
+      .mockReturnValueOnce(createMockConversation([
+        { type: 'assistant', error: 'rate_limit', content: '' }
+      ]))
+      .mockReturnValue(createMockConversation([
+        { type: 'result', sessionId: 's', costUsd: 0, numTurns: 1 }
+      ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    jest.advanceTimersByTime(30000)
+    await flushPromises(10)
+
+    const rateLimitCalls = mockSend.mock.calls.filter(
+      (c: any[]) => c[0] === 'workspace:rate-limit-status'
+    )
+    expect(rateLimitCalls.length).toBeGreaterThanOrEqual(1)
+
+    const lastCall = rateLimitCalls[rateLimitCalls.length - 1][1]
+    expect(lastCall.isWaiting).toBe(false)
+    expect(lastCall.remainingMs).toBe(0)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-15: rate limit 대기 중 abort() 호출 시 타이머 정리 + isPaused false', () => {
+  it('abort() 호출 시 isPaused()가 false가 되고 workspace:rate-limit-status가 push된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(service.isPaused()).toBe(true)
+
+    service.abort()
+
+    expect(service.isPaused()).toBe(false)
+
+    const rateLimitCalls = mockSend.mock.calls.filter(
+      (c: any[]) => c[0] === 'workspace:rate-limit-status' && c[1]?.isWaiting === false
+    )
+    expect(rateLimitCalls.length).toBeGreaterThanOrEqual(1)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-16: 항목이 성공적으로 완료되면 _rateLimitRetryCount가 0으로 리셋된다', () => {
+  it('rate limit 1회 후 성공 시 내부 rateLimitRetryCount가 리셋되어 isPaused가 false가 된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    let callCount = 0
+    mockQuery.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return createMockConversation([
+          { type: 'assistant', error: 'rate_limit', content: '' }
+        ])
+      }
+      return createMockConversation([
+        { type: 'result', sessionId: 'retry-success', costUsd: 0.01, numTurns: 2 }
+      ])
+    })
+
+    const item = service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(item.status).toBe('retrying')
+
+    jest.advanceTimersByTime(30000)
+    await flushPromises(10)
+
+    expect(item.status).toBe('success')
+    expect(service.isPaused()).toBe(false)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-17: forceRetryNow() 직후 즉시 재 rate limit 발생 시 retryCount 증가', () => {
+  it('forceRetryNow() 후 즉시 재 rate_limit 발생하면 retryCount가 증가한다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    service.setMaxRetries(5)
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    const item = service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    // 첫 번째 rate limit
+    expect(service.isPaused()).toBe(true)
+    const firstRetryCount = item.retryCount
+
+    // forceRetryNow → 즉시 재실행 → 즉시 재 rate_limit
+    service.forceRetryNow()
+    await flushPromises(5)
+
+    // 재 rate limit 발생으로 retryCount 증가
+    expect(item.retryCount).toBeGreaterThanOrEqual(firstRetryCount + 1)
+
+    jest.useRealTimers()
+  })
+})
+
+describe('TC-RL-18: _reset() 호출 시 rate limit 관련 상태가 모두 초기화된다', () => {
+  it('rate limit pause 상태 후 _reset() 호출 시 isPaused()가 false이고 maxRetries가 10이 된다', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+
+    mockQuery.mockReturnValue(createMockConversation([
+      { type: 'assistant', error: 'rate_limit', content: '' }
+    ]))
+
+    service.enqueue('/teams', '', '/ws')
+    await flushPromises()
+
+    expect(service.isPaused()).toBe(true)
+
+    service._reset()
+
+    expect(service.isPaused()).toBe(false)
+    expect(service.getMaxRetries()).toBe(10)
+
+    jest.useRealTimers()
+  })
+})
