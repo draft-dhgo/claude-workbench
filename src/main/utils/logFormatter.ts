@@ -5,6 +5,12 @@
 export const LOG_CONTENT_MAX_LENGTH = 100;
 
 /**
+ * 렌더러에 표시할 최대 로그 라인 수.
+ * 이 값을 초과하면 가장 오래된 로그부터 제거한다.
+ */
+export const MAX_LOG_LINES = 500;
+
+/**
  * 문자열이 maxLength를 초과하면 maxLength 위치에서 잘라 '...'를 붙여 반환한다.
  * maxLength 이하이면 원본을 그대로 반환한다.
  *

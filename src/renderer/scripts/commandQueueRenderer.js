@@ -307,11 +307,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Append log message
+  var MAX_LOG_LINES = 500
+
   function appendLog(log) {
     var logLine = document.createElement('div')
     logLine.className = 'cq-log-line cq-log-' + log.type
     logLine.textContent = '[' + log.type.toUpperCase() + '] ' + log.content
     logContent.appendChild(logLine)
+
+    while (logContent.children.length > MAX_LOG_LINES) {
+      logContent.removeChild(logContent.firstChild)
+    }
+
     logContent.scrollTop = logContent.scrollHeight
   }
 

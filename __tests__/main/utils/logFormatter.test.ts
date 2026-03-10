@@ -1,7 +1,7 @@
 // Test Design-0003: logFormatter.ts 단위 테스트
 // TC-LF-01 ~ TC-LF-08
 
-import { truncateLogContent, LOG_CONTENT_MAX_LENGTH } from '../../../src/main/utils/logFormatter';
+import { truncateLogContent, LOG_CONTENT_MAX_LENGTH, MAX_LOG_LINES } from '../../../src/main/utils/logFormatter';
 
 describe('TC-LF-07: LOG_CONTENT_MAX_LENGTH 상수 값 검증', () => {
   it('LOG_CONTENT_MAX_LENGTH 는 100이어야 한다', () => {
@@ -65,6 +65,12 @@ describe('TC-LF-06: 커스텀 maxLength 사용', () => {
 
   it('maxLength=5, 길이 5인 문자열은 원본 반환', () => {
     expect(truncateLogContent('abcde', 5)).toBe('abcde');
+  });
+});
+
+describe('TC-LF-09: MAX_LOG_LINES 상수 값 검증', () => {
+  it('MAX_LOG_LINES 는 500이어야 한다', () => {
+    expect(MAX_LOG_LINES).toBe(500);
   });
 });
 
