@@ -18,10 +18,8 @@ import {
 } from './skills'
 
 import {
-  CMD_ADD_REQ, CMD_ADD_BUG, CMD_TEAMS, CMD_BUGFIX_TEAMS,
-  CMD_ADD_REQ_EN, CMD_ADD_BUG_EN, CMD_TEAMS_EN, CMD_BUGFIX_TEAMS_EN,
-  CMD_UPDATE_README, CMD_UPDATE_README_EN,
-  CMD_PULL, CMD_PULL_EN,
+  CMD_ADD_REQ, CMD_ADD_BUG, CMD_TEAMS, CMD_BUGFIX_TEAMS, CMD_EXPLAIN,
+  CMD_ADD_REQ_EN, CMD_ADD_BUG_EN, CMD_TEAMS_EN, CMD_BUGFIX_TEAMS_EN, CMD_EXPLAIN_EN,
 } from './commands'
 
 type Lang = 'en' | 'ko';
@@ -41,6 +39,7 @@ function buildDefaultClaudeMd(workspaceName: string, lang: Lang = 'en'): string 
 | 커맨드 | 설명 |
 |--------|------|
 | /add-req | 신규 요구사항을 wiki/requirements/에 등록한다 |
+| /explain | 요구사항 구현 방향을 사용자와 대화로 결정한다 |
 | /teams | Dev 사이클 파이프라인 실행: REQ → PRD → SDD → Mockup → Tests → TDD → Deploy → Wiki Views |
 | /add-bug | 신규 버그를 wiki/bugs/README.md에 등록한다 |
 | /bugfix-teams | Bug 사이클 파이프라인 실행: Bugfix → SDD → Tests → TDD → Deploy → Wiki Views |
@@ -74,6 +73,7 @@ function buildDefaultClaudeMd(workspaceName: string, lang: Lang = 'en'): string 
 | Command | Description |
 |---------|-------------|
 | /add-req | Register new requirements in wiki/requirements/ |
+| /explain | Discuss implementation direction with user for a requirement |
 | /teams | Dev cycle pipeline: REQ → PRD → SDD → Mockup → Tests → TDD → Deploy → Wiki Views |
 | /add-bug | Register new bugs in wiki/bugs/README.md |
 | /bugfix-teams | Bug cycle pipeline: Bugfix → SDD → Tests → TDD → Deploy → Wiki Views |
@@ -137,20 +137,18 @@ function buildDefaultCommands(lang: Lang = 'en'): Record<string, string> {
     return {
       'add-req': CMD_ADD_REQ,
       'add-bug': CMD_ADD_BUG,
+      'explain': CMD_EXPLAIN,
       'teams': CMD_TEAMS,
-      'bugfix-teams': CMD_BUGFIX_TEAMS,
-      'update-readme': CMD_UPDATE_README,
-      'pull': CMD_PULL
+      'bugfix-teams': CMD_BUGFIX_TEAMS
     }
   }
   // Default: English
   return {
     'add-req': CMD_ADD_REQ_EN,
     'add-bug': CMD_ADD_BUG_EN,
+    'explain': CMD_EXPLAIN_EN,
     'teams': CMD_TEAMS_EN,
-    'bugfix-teams': CMD_BUGFIX_TEAMS_EN,
-    'update-readme': CMD_UPDATE_README_EN,
-    'pull': CMD_PULL_EN
+    'bugfix-teams': CMD_BUGFIX_TEAMS_EN
   }
 }
 

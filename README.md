@@ -32,7 +32,7 @@ Queue multiple Claude Code commands and execute them sequentially. Built on the 
 
 ![Command Queue](docs/screenshot-queue.png?v=3)
 
-- **FIFO queue**: enqueue `/add-req`, `/teams`, `/bugfix-teams`, `/add-bug` commands
+- **FIFO queue**: enqueue `/add-req`, `/explain`, `/teams`, `/bugfix-teams`, `/add-bug` commands
 - **Workspace selector**: choose which workspace each command runs in
 - **Bulk add**: paste multiple commands at once in the bulk input area
 - **Rate limit retry**: exponential backoff (30s → 5min) with countdown timer
@@ -84,6 +84,7 @@ claude
 | Command | Description | Usage |
 |---------|-------------|-------|
 | `/teams` | Run team development pipeline | Automates the full flow: requirements → design → implementation → deploy |
+| `/explain` | Discuss implementation direction | Propose and confirm implementation approach through conversation |
 | `/add-req` | Register a new requirement | Adds a new requirement to `wiki/requirements/` |
 | `/add-bug` | Register a new bug | Registers a bug in `wiki/bugs/README.md` |
 | `/bugfix-teams` | Run bug-fix pipeline | Automates analysis → fix → test flow for a registered bug |
@@ -92,6 +93,9 @@ claude
 # Register a requirement then run the pipeline
 > /add-req
 > "JWT token-based auth needs to be implemented for the login API"
+
+# (Optional) Discuss implementation direction before running the pipeline
+> /explain
 
 > /teams
 > "Implement REQ-001 login API"

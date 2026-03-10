@@ -205,6 +205,41 @@ describe('TC-CQH-08: queue:security-warning — 보안 경고 정보 반환', ()
   })
 })
 
+// ── REQ-033: 삭제된 커맨드 거부 검증 ──
+
+describe('REQ-033: /pull 커맨드가 INVALID_COMMAND로 거부된다', () => {
+  it('/pull 커맨드는 삭제되어 INVALID_COMMAND를 반환한다', async () => {
+    const result = await handlers.handleEnqueue(null, { command: '/pull', args: '', cwd: '/ws' })
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('INVALID_COMMAND')
+    expect(mockEnqueue).not.toHaveBeenCalled()
+  })
+})
+
+describe('REQ-033: /update-readme 커맨드가 INVALID_COMMAND로 거부된다', () => {
+  it('/update-readme 커맨드는 삭제되어 INVALID_COMMAND를 반환한다', async () => {
+    const result = await handlers.handleEnqueue(null, { command: '/update-readme', args: '', cwd: '/ws' })
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('INVALID_COMMAND')
+    expect(mockEnqueue).not.toHaveBeenCalled()
+  })
+})
+
+describe('REQ-033: 기존 5개 커맨드는 정상 동작한다', () => {
+  const validCommands = ['/add-req', '/bugfix', '/teams', '/bugfix-teams', '/merge']
+
+  it.each(validCommands)('%s 커맨드는 정상 enqueue된다', async (cmd) => {
+    mockEnqueue.mockReturnValue({
+      id: 'item-1', command: cmd, args: '', cwd: '/ws',
+      status: 'pending', retryCount: 0, createdAt: '2026-03-10T00:00:00.000Z'
+    })
+
+    const result = await handlers.handleEnqueue(null, { command: cmd, args: '', cwd: '/ws' })
+    expect(result.success).toBe(true)
+    expect(mockEnqueue).toHaveBeenCalledWith(cmd, '', '/ws')
+  })
+})
+
 // ── TC-MIG-04 ~ TC-MIG-06: queue:enqueue cwd optional 하위 호환성 ──
 
 describe('TC-MIG-04: queue:enqueue — 기존 방식으로 cwd 명시적 전달', () => {

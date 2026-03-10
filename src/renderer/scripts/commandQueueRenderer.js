@@ -18,8 +18,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // ── Command Autocomplete ──
   const ALL_COMMANDS = [
-    '/add-req', '/bugfix', '/teams', '/bugfix-teams',
-    '/merge', '/update-readme', '/pull'
+    '/add-req', '/explain', '/bugfix', '/teams', '/bugfix-teams',
+    '/merge'
   ]
   const VALID_COMMANDS = ALL_COMMANDS
   let acIndex = -1

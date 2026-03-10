@@ -86,7 +86,7 @@ export interface StoredWorkspace {
 export type QueueItemStatus = 'pending' | 'running' | 'success' | 'failed' | 'aborted' | 'retrying' | 'conflict';
 
 /** 지원하는 파이프라인 커맨드 타입 */
-export type QueueCommandType = '/add-req' | '/bugfix' | '/teams' | '/bugfix-teams' | '/merge' | '/update-readme' | '/pull';
+export type QueueCommandType = '/add-req' | '/bugfix' | '/teams' | '/bugfix-teams' | '/merge' | '/explain';
 
 /** 큐 항목 실행 결과 */
 export interface QueueItemResult {
