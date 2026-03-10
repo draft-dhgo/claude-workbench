@@ -103,7 +103,7 @@ describe('TC-CQH-04: queue:dequeue — 존재하지 않는 ID 시 NOT_FOUND_OR_N
     const result = await handlers.handleDequeue(null, { itemId: 'non-existent' })
 
     expect(result.success).toBe(false)
-    expect(result.error).toBe('NOT_FOUND_OR_NOT_PENDING')
+    expect(result.error).toBe('NOT_FOUND_OR_NOT_REMOVABLE')
   })
 
   it('itemId가 누락된 경우 ITEM_ID_REQUIRED 에러가 반환된다', async () => {

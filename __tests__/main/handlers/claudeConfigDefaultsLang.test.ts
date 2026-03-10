@@ -98,12 +98,12 @@ describe('buildDefaultCommands', () => {
     const result = buildDefaultCommands('en');
     expect(typeof result).toBe('object');
     expect(result).not.toBeNull();
-    expect(Object.keys(result).length).toBe(4);
+    expect(Object.keys(result).length).toBe(6);
   });
 
   it('lang=ko 으로 호출 시 한국어 콘텐츠 Record를 반환한다 (TC-I18N-11)', () => {
     const result = buildDefaultCommands('ko');
-    expect(Object.keys(result).length).toBe(4);
+    expect(Object.keys(result).length).toBe(6);
     const values = Object.values(result);
     const hasKorean = values.some(v => /[가-힣]/.test(v));
     expect(hasKorean).toBe(true);

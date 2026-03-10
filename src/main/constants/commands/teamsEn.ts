@@ -17,32 +17,61 @@ Output the selected item's REQ-ID and title.
 - Create missing wiki/ subdirectories (prd, specs, tests, tdd, deploy, mockups, views, knowledge)
 - Check existing files in each category to determine the next sequence number (NNNN)
 
-## Sub-agent Principle — Minimal Context
+## Execution Principles
 
-> **Key**: Pass only **skill name + file paths** to sub-agents.
-> Do not read file contents and copy them into the prompt. Sub-agents read files themselves following the skill workflow.
-> The main agent acts only as orchestrator and verifies output existence after sub-agent completion.
+### Step 1 Inline
+Step 1 (req-manage) is always executed main direct by the main agent. PRD writing is lightweight (file reads + document writing) and does not require a sub-agent.
 
-Sub-agent prompt rules:
-- Write in 1-2 lines. Include only: skill name, input file path, output file number (NNNN)
-- Example: \`"/req-manage run. REQ-ID: REQ-001. Output number: 0003"\`
-- Example: \`"/dev-impl run. Input: wiki/prd/0003.md. Output number: 0003"\`
+### Mode Selection — Adaptive Pipeline
+
+After Step 1 completes, read the PRD to assess task size. Classify as Small/Medium/Large based on affected files, new modules, and UI presence.
+
+| Criterion | Small | Medium | Large |
+|-----------|-------|--------|-------|
+| Files changed | ≤3 | 4–10 | >10 |
+| New modules | 0 | 1–2 | ≥3 |
+| UI included | No | N/A | Yes → auto Large |
+
+If any criterion qualifies for a higher mode, apply the higher mode.
+When uncertain, default to Medium.
+
+Output the Pipeline Mode: \`[Pipeline Mode: {Small|Medium|Large}] {N} sub-agents\`
+
+### Sub-agent Usage Rules
+
+When invoking a sub-agent:
+- 1–2 line prompt: skill name + file paths + output number (NNNN) only
 - Never include file contents, background explanations, or workflow instructions
+- The main agent acts only as orchestrator and verifies output existence after completion
 
-## Pipeline (4 steps)
+When running main direct (inline):
+- The main agent executes the skill workflow directly
+
+## Pipeline (4 steps) — Mode-based Execution
 
 Execute each step in order. Proceed to the next only after verification passes.
 
-| Step | Skill | Pass to sub-agent | Verification |
-|------|-------|--------------------|--------------|
-| 1 | /req-manage | REQ-ID, output number NNNN | wiki/prd/{NNNN}.md exists (>100B) + wiki/requirements/REQ-NNN.md exists |
-| 2 | /dev-impl | wiki/prd/{NNNN}.md path, output number | wiki/specs/{NNNN}.md exists (>100B). If UI feature, wiki/mockups/ HTML also exists |
-| 3 | /test-impl | wiki/specs/{NNNN}.md path, output number | wiki/tests/{NNNN}.md + wiki/tdd/{NNNN}.md exist (>100B) + tests pass |
-| 4 | /finalize | output number NNNN | wiki/deploy/{NNNN}.md exists (>100B) + wiki/views/index.html exists |
+### Mode Execution Matrix
+
+| Step | Skill | Small | Medium | Large |
+|------|-------|-------|--------|-------|
+| 1 | /req-manage | main direct | main direct | main direct |
+| 2 | /dev-impl | main direct | main direct | sub-agent |
+| 3 | /test-impl | main direct | sub-agent | sub-agent |
+| 4 | /finalize | main direct | main direct | sub-agent |
+
+### Verification Criteria (same for all modes)
+
+| Step | Verification |
+|------|-------------|
+| 1 | wiki/prd/{NNNN}.md exists (>100B) + wiki/requirements/REQ-NNN.md exists |
+| 2 | wiki/specs/{NNNN}.md exists (>100B). If UI feature, wiki/mockups/ HTML also exists |
+| 3 | wiki/tests/{NNNN}.md + wiki/tdd/{NNNN}.md exist (>100B) + tests pass |
+| 4 | wiki/deploy/{NNNN}.md exists (>100B) + wiki/views/index.html exists |
 
 ### On verification failure
 
-Re-invoke the sub-agent. Pass only paths in the retry prompt as well.
+Re-execute regardless of execution method (main direct or sub-agent).
 
 ## Completion
 

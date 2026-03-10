@@ -83,10 +83,10 @@ export interface StoredWorkspace {
 }
 
 /** 커맨드 큐 항목 상태 */
-export type QueueItemStatus = 'pending' | 'running' | 'success' | 'failed' | 'aborted' | 'retrying';
+export type QueueItemStatus = 'pending' | 'running' | 'success' | 'failed' | 'aborted' | 'retrying' | 'conflict';
 
 /** 지원하는 파이프라인 커맨드 타입 */
-export type QueueCommandType = '/add-req' | '/bugfix' | '/teams' | '/bugfix-teams';
+export type QueueCommandType = '/add-req' | '/bugfix' | '/teams' | '/bugfix-teams' | '/merge' | '/update-readme' | '/pull';
 
 /** 큐 항목 실행 결과 */
 export interface QueueItemResult {
@@ -95,6 +95,13 @@ export interface QueueItemResult {
   durationMs?: number;
   numTurns?: number;
   errorMessage?: string;
+  // merge 결과 필드
+  mergeCommitHash?: string;
+  changedFiles?: number;
+  insertions?: number;
+  deletions?: number;
+  conflictInfo?: MergeConflictInfo;
+  resolvedFiles?: number;
 }
 
 /** 커맨드 큐 항목 */
@@ -170,6 +177,7 @@ export interface QueueSummary {
   success: number;
   failed: number;
   aborted: number;
+  conflict: number;
   total: number;
 }
 
@@ -195,6 +203,35 @@ export interface ActiveWorkspaceChangedPayload {
   wikiAvailable: boolean;
 }
 
+
+/** Merge 충돌 정보 */
+export interface MergeConflictInfo {
+  sourceBranch: string;
+  targetBranch: string;
+  conflictFiles: ConflictFile[];
+}
+
+/** 충돌 파일 */
+export interface ConflictFile {
+  filePath: string;
+  conflictRegions?: ConflictRegion[];
+}
+
+/** 충돌 영역 (라인 범위) */
+export interface ConflictRegion {
+  startLine: number;
+  endLine: number;
+}
+
+/** Merge 해결 전략 */
+export type MergeResolveStrategy = 'ours' | 'theirs' | 'manual';
+
+/** 브랜치 정보 */
+export interface BranchInfo {
+  name: string;
+  isRemote: boolean;
+  lastCommitMessage?: string;
+}
 
 /** 커맨드 히스토리 항목 */
 export interface CommandHistoryEntry {

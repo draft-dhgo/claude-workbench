@@ -2,7 +2,7 @@ import crypto = require('crypto');
 import fs = require('fs');
 import path = require('path');
 import { BrowserWindow } from 'electron';
-import { QueueItem, QueueItemStatus, QueueCommandType, QueueItemResult, QueueLogMessage, QueueStatusUpdate, RateLimitStatus } from '../../shared/types/models';
+import { QueueItem, QueueItemStatus, QueueCommandType, QueueItemResult, QueueLogMessage, QueueStatusUpdate, RateLimitStatus, ConflictFile } from '../../shared/types/models';
 import { truncateLogContent } from '../utils/logFormatter';
 
 const RATE_LIMIT_RETRY_INTERVAL_MS = 5 * 60 * 1000; // 5분 고정
@@ -42,7 +42,7 @@ class CommandQueueService {
       this._queue = items
         .filter(i => i.status !== 'success' && i.status !== 'failed' && i.status !== 'aborted')
         .map(i => {
-          if (i.status === 'running' || i.status === 'retrying') {
+          if (i.status === 'running' || i.status === 'retrying' || i.status === 'conflict') {
             return { ...i, status: 'pending' as QueueItemStatus, startedAt: undefined, retryCount: 0 };
           }
           return i;
@@ -287,6 +287,10 @@ class CommandQueueService {
         if (!shouldContinue) break;
       }
 
+      // 충돌 상태 항목이 있으면 큐 처리 중단
+      const hasConflict = this._queue.some(i => i.status === 'conflict');
+      if (hasConflict) break;
+
       const nextItem = this._queue.find(i => i.status === 'pending');
       if (!nextItem) break;
 
@@ -303,6 +307,12 @@ class CommandQueueService {
   }
 
   private async _executeItem(item: QueueItem): Promise<void> {
+    // /merge 커맨드는 전용 실행 경로
+    if (item.command === '/merge') {
+      await this._executeMerge(item);
+      return;
+    }
+
     item.status = 'running';
     item.startedAt = new Date().toISOString();
     this._sendStatusUpdate();
@@ -675,6 +685,127 @@ class CommandQueueService {
   private _getWindow(): BrowserWindow | null {
     const windows = BrowserWindow.getAllWindows();
     return windows.length > 0 ? windows[0] : null;
+  }
+
+  private _getMergeService(): any {
+    // Lazy require to avoid circular dependency at module load time
+    const MergeService = require('./mergeService');
+    return new MergeService();
+  }
+
+  private async _executeMerge(item: QueueItem): Promise<void> {
+    const mergeService = this._getMergeService();
+    const sourceBranch = item.args.trim();
+
+    item.status = 'running';
+    item.startedAt = new Date().toISOString();
+    this._sendStatusUpdate();
+
+    try {
+      this._sendLog({
+        itemId: item.id,
+        type: 'system',
+        content: `[Merge] Starting merge of '${sourceBranch}'...`,
+        timestamp: new Date().toISOString()
+      });
+
+      const result = await mergeService.merge(item.cwd, sourceBranch);
+
+      if (result.success) {
+        item.status = 'success';
+        item.completedAt = new Date().toISOString();
+        item.result = {
+          mergeCommitHash: result.commitHash,
+          changedFiles: result.changedFiles,
+          durationMs: Date.now() - new Date(item.startedAt!).getTime()
+        };
+
+        this._sendLog({
+          itemId: item.id,
+          type: 'system',
+          content: `[Merge] Success — commit: ${result.commitHash}, ${result.changedFiles} file(s) changed`,
+          timestamp: new Date().toISOString()
+        });
+      } else if (result.isConflict) {
+        const currentBranch = await mergeService.getCurrentBranch(item.cwd);
+        item.status = 'conflict' as QueueItemStatus;
+        item.result = {
+          conflictInfo: {
+            sourceBranch,
+            targetBranch: currentBranch,
+            conflictFiles: result.conflictFiles!
+          }
+        };
+
+        this._sendLog({
+          itemId: item.id,
+          type: 'system',
+          content: `[Merge] CONFLICT — ${result.conflictFiles!.length} file(s) with conflicts`,
+          timestamp: new Date().toISOString()
+        });
+
+        this._sendMergeConflictDetected({
+          itemId: item.id,
+          sourceBranch,
+          targetBranch: currentBranch,
+          conflictFiles: result.conflictFiles!
+        });
+      } else {
+        item.status = 'failed';
+        item.completedAt = new Date().toISOString();
+        item.result = { errorMessage: result.errorMessage };
+
+        this._sendLog({
+          itemId: item.id,
+          type: 'system',
+          content: `[Merge] Failed — ${result.errorMessage}`,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (err: any) {
+      item.status = 'failed';
+      item.completedAt = new Date().toISOString();
+      item.result = { errorMessage: err.message };
+    } finally {
+      try { this._completionCallback?.(item); } catch { /* 콜백 예외는 무시 */ }
+      this._saveToDisk();
+      this._sendStatusUpdate();
+    }
+  }
+
+  updateMergeItemStatus(
+    itemId: string,
+    status: 'success' | 'aborted',
+    resultUpdate?: Partial<QueueItemResult>
+  ): void {
+    const item = this._queue.find(i => i.id === itemId);
+    if (!item) return;
+
+    item.status = status;
+    item.completedAt = new Date().toISOString();
+    if (resultUpdate) {
+      item.result = { ...item.result, ...resultUpdate };
+    }
+
+    try { this._completionCallback?.(item); } catch { /* 콜백 예외는 무시 */ }
+    this._saveToDisk();
+    this._sendStatusUpdate();
+
+    // 큐 처리 재개
+    if (!this._isProcessing) {
+      this._processQueue();
+    }
+  }
+
+  private _sendMergeConflictDetected(payload: {
+    itemId: string;
+    sourceBranch: string;
+    targetBranch: string;
+    conflictFiles: ConflictFile[];
+  }): void {
+    const win = this._getWindow();
+    if (!win) return;
+    win.webContents.send('merge:conflict-detected', payload);
   }
 
   _reset(): void {

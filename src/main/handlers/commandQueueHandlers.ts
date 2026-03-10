@@ -21,7 +21,7 @@ function getHistoryStore(): CommandHistoryStore {
   return _historyStore;
 }
 
-const VALID_COMMANDS: QueueCommandType[] = ['/add-req', '/bugfix', '/teams', '/bugfix-teams'];
+const VALID_COMMANDS: QueueCommandType[] = ['/add-req', '/bugfix', '/teams', '/bugfix-teams', '/merge', '/update-readme', '/pull'];
 
 async function handleEnqueue(
   _event: any,

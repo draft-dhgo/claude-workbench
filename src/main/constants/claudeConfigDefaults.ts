@@ -20,6 +20,8 @@ import {
 import {
   CMD_ADD_REQ, CMD_ADD_BUG, CMD_TEAMS, CMD_BUGFIX_TEAMS,
   CMD_ADD_REQ_EN, CMD_ADD_BUG_EN, CMD_TEAMS_EN, CMD_BUGFIX_TEAMS_EN,
+  CMD_UPDATE_README, CMD_UPDATE_README_EN,
+  CMD_PULL, CMD_PULL_EN,
 } from './commands'
 
 type Lang = 'en' | 'ko';
@@ -136,7 +138,9 @@ function buildDefaultCommands(lang: Lang = 'en'): Record<string, string> {
       'add-req': CMD_ADD_REQ,
       'add-bug': CMD_ADD_BUG,
       'teams': CMD_TEAMS,
-      'bugfix-teams': CMD_BUGFIX_TEAMS
+      'bugfix-teams': CMD_BUGFIX_TEAMS,
+      'update-readme': CMD_UPDATE_README,
+      'pull': CMD_PULL
     }
   }
   // Default: English
@@ -144,7 +148,9 @@ function buildDefaultCommands(lang: Lang = 'en'): Record<string, string> {
     'add-req': CMD_ADD_REQ_EN,
     'add-bug': CMD_ADD_BUG_EN,
     'teams': CMD_TEAMS_EN,
-    'bugfix-teams': CMD_BUGFIX_TEAMS_EN
+    'bugfix-teams': CMD_BUGFIX_TEAMS_EN,
+    'update-readme': CMD_UPDATE_README_EN,
+    'pull': CMD_PULL_EN
   }
 }
 

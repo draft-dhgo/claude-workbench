@@ -10,6 +10,7 @@ import { handleList, handleRegister, handleCreate, handleUpdate, handleDelete } 
 import { handleEnqueue, handleDequeue, handleRequeue, handleAbort, handleStatus, handleSecurityWarning, handleHistoryList, handleHistoryDelete, handleHistoryClear, initService as initQueueService } from './handlers/commandQueueHandlers';
 import { handleWikiHostStart, handleWikiHostStop, handleWikiHostStatus, handleWikiHostOpenBrowser, cleanupWikiHost } from './handlers/wikiHostHandlers';
 import { handleSetActive, handleGetActive, handleGetCommands, handleGetSkills, handleGetConfigStatus, handleResetConfig, handleGetQueueSummary, handleRateLimitRetryNow, handleRateLimitCancel } from './handlers/workspaceManagerHandlers';
+import { handleResolveConflict, handleManualResolveComplete, handleAbortMerge, handleListMergeBranches } from './handlers/mergeHandlers';
 
 function createWindow() {
   const win = new BrowserWindow(getWindowOptions())
@@ -93,6 +94,12 @@ ipcMain.handle('workspace-mgr:reset-config', handleResetConfig)
 ipcMain.handle('workspace-mgr:get-queue-summary', handleGetQueueSummary)
 ipcMain.handle('workspace-mgr:rate-limit-retry-now', handleRateLimitRetryNow)
 ipcMain.handle('workspace-mgr:rate-limit-cancel', handleRateLimitCancel)
+
+// Merge 핸들러 등록
+ipcMain.handle('merge:resolve-conflict', handleResolveConflict)
+ipcMain.handle('merge:manual-resolve-complete', handleManualResolveComplete)
+ipcMain.handle('merge:abort', handleAbortMerge)
+ipcMain.handle('merge:list-branches', handleListMergeBranches)
 
 app.whenReady().then(() => {
   createWindow();

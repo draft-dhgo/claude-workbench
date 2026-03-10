@@ -13,7 +13,8 @@ MockBrowserWindow.getAllWindows = jest.fn().mockReturnValue([])
 const mockApp = {
   quit: jest.fn(),
   whenReady: jest.fn(() => Promise.resolve()),
-  on: jest.fn()
+  on: jest.fn(),
+  getPath: jest.fn().mockReturnValue('/tmp/mock-user-data')
 }
 
 const mockIpcMain = {

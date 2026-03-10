@@ -265,7 +265,7 @@ describe('TC-WH-S-12: 루트 경로(/) 요청 시 index.html 서빙', () => {
     const res = createMockRes()
     capturedRequestHandler(req, res)
 
-    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' })
     expect(mockStream.pipe).toHaveBeenCalledWith(res)
   })
 })
@@ -318,7 +318,7 @@ describe('TC-WH-S-15: 정상 정적 파일(CSS) 요청 시 200 + 올바른 Conte
     const res = createMockRes()
     capturedRequestHandler(req, res)
 
-    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'text/css; charset=utf-8' })
+    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' })
     expect(mockStream.pipe).toHaveBeenCalledWith(res)
   })
 })
@@ -336,7 +336,7 @@ describe('TC-WH-S-16: URL 디코딩된 경로 처리', () => {
     const res = createMockRes()
     capturedRequestHandler(req, res)
 
-    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' })
   })
 })
 
@@ -415,7 +415,7 @@ describe('TC-WH-S-20: .html 파일 MIME 타입 검증', () => {
     const res = createMockRes()
     capturedRequestHandler(req, res)
 
-    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' })
   })
 })
 
@@ -432,7 +432,7 @@ describe('TC-WH-S-21: .js 파일 MIME 타입 검증', () => {
     const res = createMockRes()
     capturedRequestHandler(req, res)
 
-    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/javascript; charset=utf-8' })
+    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' })
   })
 })
 
@@ -449,7 +449,7 @@ describe('TC-WH-S-22: .png 이미지 파일 MIME 타입 검증', () => {
     const res = createMockRes()
     capturedRequestHandler(req, res)
 
-    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'image/png' })
+    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-cache, no-store, must-revalidate' })
   })
 })
 
@@ -466,7 +466,7 @@ describe('TC-WH-S-23: 미등록 확장자 시 application/octet-stream 반환', 
     const res = createMockRes()
     capturedRequestHandler(req, res)
 
-    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/octet-stream' })
+    expect(res.writeHead).toHaveBeenCalledWith(200, { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-cache, no-store, must-revalidate' })
   })
 })
 

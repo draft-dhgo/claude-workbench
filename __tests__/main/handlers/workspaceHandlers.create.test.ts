@@ -77,6 +77,7 @@ beforeEach(() => {
 
   jest.doMock('../../../src/main/constants/claudeConfigDefaults', () => ({
     buildDefaultClaudeMd: mockBuildDefaultClaudeMd,
+    buildWikiViewerHtml: jest.fn(() => '<html>mock wiki viewer</html>'),
   }))
 
   handlers = require('../../../src/main/handlers/workspaceHandlers')

@@ -56,7 +56,11 @@ export type InvokeChannel =
   | 'workspace-mgr:reset-config'
   | 'workspace-mgr:get-queue-summary'
   | 'workspace-mgr:rate-limit-retry-now'
-  | 'workspace-mgr:rate-limit-cancel';
+  | 'workspace-mgr:rate-limit-cancel'
+  | 'merge:resolve-conflict'
+  | 'merge:manual-resolve-complete'
+  | 'merge:abort'
+  | 'merge:list-branches';
 
 /** Send (단방향) IPC 채널 — 현재 없음 */
 export type SendChannel = never;
@@ -70,4 +74,5 @@ export type ReceiveChannel =
   | 'wiki-host:status-update'
   | 'workspace:active-changed'
   | 'workspace:rate-limit-status'
-  | 'workspace:rate-limit-exhausted';
+  | 'workspace:rate-limit-exhausted'
+  | 'merge:conflict-detected';

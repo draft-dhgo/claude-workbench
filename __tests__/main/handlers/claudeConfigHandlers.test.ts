@@ -110,21 +110,23 @@ describe('handleReset', () => {
     rstHandlers = require('../../../src/main/handlers/claudeConfigHandlers')
   })
 
-  test('TC-RST-01: .claude/ 와 CLAUDE.md 모두 존재 → 4단계 모두 success', async () => {
+  test('TC-RST-01: .claude/ 와 CLAUDE.md 모두 존재 → 5단계 모두 success', async () => {
     mockExistsSync
       .mockReturnValueOnce(true)   // .claude/ 존재
       .mockReturnValueOnce(true)   // CLAUDE.md 존재
+      .mockReturnValueOnce(true)   // wiki/ 존재
     mockRmSync.mockReturnValue(undefined)
     mockMkdirSync.mockReturnValue(undefined)
     mockWriteFileSync.mockReturnValue(undefined)
 
     const result = await rstHandlers.handleReset(null, { workspacePath: '/workspace/my-project' })
     expect(result.success).toBe(true)
-    expect(result.steps).toHaveLength(4)
+    expect(result.steps).toHaveLength(5)
     expect(result.steps[0].step).toBe('delete-claude-dir')
     expect(result.steps[1].step).toBe('delete-claude-md')
     expect(result.steps[2].step).toBe('create-claude-dir')
     expect(result.steps[3].step).toBe('create-claude-md')
+    expect(result.steps[4].step).toBe('rebuild-wiki')
     result.steps.forEach(s => expect(s.status).toBe('success'))
   })
 
@@ -257,7 +259,7 @@ describe('handleReset', () => {
     expect(mockExistsSync).not.toHaveBeenCalled()
   })
 
-  test('TC-RST-12: 재생성 시 skills 10개, commands 4개 파일 생성', async () => {
+  test('TC-RST-12: 재생성 시 skills 13개, commands 4개 파일 생성', async () => {
     mockExistsSync
       .mockReturnValueOnce(false)  // .claude/ 없음 (skipped)
       .mockReturnValueOnce(false)  // CLAUDE.md 없음 (skipped)
@@ -270,11 +272,11 @@ describe('handleReset', () => {
     // writeFileSync 호출 중 SKILL.md 파일 생성 확인
     const writeCalls = mockWriteFileSync.mock.calls.map(c => c[0])
     const skillFiles = writeCalls.filter(p => p.includes('SKILL.md'))
-    expect(skillFiles).toHaveLength(10)
+    expect(skillFiles).toHaveLength(13)
 
     // commands 파일 생성 확인
     const cmdFiles = writeCalls.filter(p => p.includes(path.join('commands', '')))
-    expect(cmdFiles).toHaveLength(4)
+    expect(cmdFiles).toHaveLength(6)
 
     // CLAUDE.md 생성 확인
     const claudeMdFiles = writeCalls.filter(p => p.endsWith('CLAUDE.md') && !p.includes('.claude'))
@@ -314,7 +316,7 @@ describe('handleReset', () => {
     expect(result.error).toContain('ENOSPC')
   })
 
-  test('TC-RST-11: wiki/ 디렉토리(산출물) 경로에 대한 rmSync 호출 없음 확인', async () => {
+  test('TC-RST-11: handleReset 시 wiki/ 디렉토리를 삭제 후 재생성한다', async () => {
     mockExistsSync.mockReturnValue(true)
     mockRmSync.mockReturnValue(undefined)
     mockMkdirSync.mockReturnValue(undefined)
@@ -322,11 +324,10 @@ describe('handleReset', () => {
 
     const result = await rstHandlers.handleReset(null, { workspacePath: '/workspace/my-project' })
     expect(result.success).toBe(true)
-    const wikiDirPrefix = path.join('/workspace/my-project', 'wiki')
-    // rmSync 호출 경로에 wiki/ 산출물 디렉토리가 포함되지 않아야 함
-    mockRmSync.mock.calls.forEach(call => {
-      expect(call[0].startsWith(wikiDirPrefix)).toBe(false)
-    })
+    const wikiDirPath = path.join('/workspace/my-project', 'wiki')
+    // wiki/ 루트에 대해 rmSync가 호출되어야 함 (전체 재생성)
+    const wikiRmCalls = mockRmSync.mock.calls.filter(call => call[0] === wikiDirPath)
+    expect(wikiRmCalls.length).toBeGreaterThanOrEqual(1)
   })
 })
 

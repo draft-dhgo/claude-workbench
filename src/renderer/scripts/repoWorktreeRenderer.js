@@ -1,3 +1,276 @@
+// ─── Exportable functions for Single & Batch Worktree Creation ──────────────
+
+let _currentRepoId = null
+let _isCreating = false
+let _isBatchCreating = false
+
+function setCurrentRepoId(id) {
+  _currentRepoId = id
+}
+
+function showCreateForm() {
+  if (!_currentRepoId) return
+  const form = document.getElementById('rm-create-form')
+  const listSection = document.getElementById('rm-list-section')
+  const addBtn = document.getElementById('rm-add-btn')
+  const branchInput = document.getElementById('rm-branch-input')
+  const pathInput = document.getElementById('rm-path-input')
+  const branchError = document.getElementById('rm-branch-error')
+  const pathError = document.getElementById('rm-path-error')
+  if (form) form.style.display = 'block'
+  if (listSection) listSection.style.display = 'none'
+  if (addBtn) addBtn.style.display = 'none'
+  if (branchInput) branchInput.value = ''
+  if (pathInput) pathInput.value = ''
+  if (branchError) branchError.style.display = 'none'
+  if (pathError) pathError.style.display = 'none'
+}
+
+function hideCreateForm() {
+  const form = document.getElementById('rm-create-form')
+  const listSection = document.getElementById('rm-list-section')
+  const addBtn = document.getElementById('rm-add-btn')
+  if (form) form.style.display = 'none'
+  if (listSection) listSection.style.display = 'block'
+  if (addBtn) addBtn.style.display = 'inline-block'
+}
+
+function setCreatePending(pending) {
+  const createBtn = document.getElementById('rm-create-btn')
+  const cancelBtn = document.getElementById('rm-create-cancel-btn')
+  if (createBtn) {
+    createBtn.disabled = pending
+    createBtn.textContent = pending ? 'Creating...' : 'Create'
+    createBtn.setAttribute('aria-disabled', pending ? 'true' : 'false')
+  }
+  if (cancelBtn) {
+    cancelBtn.disabled = pending
+  }
+}
+
+function validateCreateInputs() {
+  const branchInput = document.getElementById('rm-branch-input')
+  const pathInput = document.getElementById('rm-path-input')
+  const branchError = document.getElementById('rm-branch-error')
+  const pathError = document.getElementById('rm-path-error')
+  let valid = true
+  if (!branchInput || !branchInput.value.trim()) {
+    if (branchError) branchError.style.display = 'block'
+    valid = false
+  } else {
+    if (branchError) branchError.style.display = 'none'
+  }
+  if (!pathInput || !pathInput.value.trim()) {
+    if (pathError) pathError.style.display = 'block'
+    valid = false
+  } else {
+    if (pathError) pathError.style.display = 'none'
+  }
+  return valid
+}
+
+async function onSelectPathClicked() {
+  const pathInput = document.getElementById('rm-path-input')
+  const pathError = document.getElementById('rm-path-error')
+  try {
+    const result = await window.electronAPI.invoke('worktree:select-path')
+    if (result.success && result.path) {
+      if (pathInput) pathInput.value = result.path
+    }
+    if (pathError) pathError.style.display = 'none'
+  } catch (e) {
+    // ignore
+  }
+}
+
+async function onCreateSubmit(onRepoSelectedCb, showToastCb) {
+  if (_isCreating) return
+  if (!validateCreateInputs()) return
+  const branchInput = document.getElementById('rm-branch-input')
+  const pathInput = document.getElementById('rm-path-input')
+  if (!branchInput || !pathInput) return
+  _isCreating = true
+  setCreatePending(true)
+  try {
+    const result = await window.electronAPI.invoke('worktree:create-single', {
+      repoId: _currentRepoId,
+      branch: branchInput.value.trim(),
+      targetPath: pathInput.value.trim(),
+      baseBranch: 'HEAD',
+    })
+    if (result.success) {
+      hideCreateForm()
+      if (onRepoSelectedCb) await onRepoSelectedCb(_currentRepoId)
+      if (showToastCb) showToastCb('create_success', 'success')
+    } else {
+      const errorKey = result.error === 'PATH_NOT_EXISTS' ? 'path_not_exists'
+        : result.error === 'DUPLICATE_PATH' ? 'duplicate_path'
+        : result.error === 'NOT_FOUND' ? 'not_found'
+        : 'create_fail'
+      if (showToastCb) showToastCb(errorKey, 'error')
+    }
+  } catch (e) {
+    if (showToastCb) showToastCb('create_error', 'error')
+  } finally {
+    _isCreating = false
+    setCreatePending(false)
+  }
+}
+
+// ─── Batch Worktree Creation ────────────────────────────────────────────────
+
+function showBatchCreatePanel() {
+  if (!_currentRepoId) return
+  const panel = document.getElementById('rm-batch-create-panel')
+  const listSection = document.getElementById('rm-list-section')
+  const addBtnWrapper = document.getElementById('rm-add-btn-wrapper')
+  const pathInput = document.getElementById('rm-batch-path-input')
+  const rows = document.getElementById('rm-batch-rows')
+  const result = document.getElementById('rm-batch-result')
+  if (panel) panel.style.display = 'block'
+  if (listSection) listSection.style.display = 'none'
+  if (addBtnWrapper) addBtnWrapper.style.display = 'none'
+  if (pathInput) pathInput.value = ''
+  if (rows) rows.innerHTML = ''
+  if (result) result.style.display = 'none'
+}
+
+function hideBatchCreatePanel() {
+  const panel = document.getElementById('rm-batch-create-panel')
+  const listSection = document.getElementById('rm-list-section')
+  const addBtnWrapper = document.getElementById('rm-add-btn-wrapper')
+  if (panel) panel.style.display = 'none'
+  if (listSection) listSection.style.display = 'block'
+  if (addBtnWrapper) addBtnWrapper.style.display = 'block'
+}
+
+function addWorktreeRow(defaultBranch) {
+  const rows = document.getElementById('rm-batch-rows')
+  if (!rows) return
+  const row = document.createElement('div')
+  row.className = 'rm-batch-row'
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.className = 'rm-batch-branch-input'
+  input.value = defaultBranch || ''
+  const removeBtn = document.createElement('button')
+  removeBtn.className = 'rm-batch-remove-row'
+  removeBtn.textContent = 'X'
+  removeBtn.addEventListener('click', () => removeWorktreeRow(row))
+  const status = document.createElement('span')
+  status.className = 'rm-batch-row-status'
+  row.appendChild(input)
+  row.appendChild(removeBtn)
+  row.appendChild(status)
+  rows.appendChild(row)
+}
+
+function removeWorktreeRow(rowElement) {
+  const rows = document.getElementById('rm-batch-rows')
+  if (!rows) return
+  const allRows = rows.querySelectorAll('.rm-batch-row')
+  if (allRows.length <= 1) return
+  rowElement.remove()
+}
+
+function validateBatchInputs() {
+  const pathInput = document.getElementById('rm-batch-path-input')
+  const pathError = document.getElementById('rm-batch-path-error')
+  let valid = true
+  if (!pathInput || !pathInput.value.trim()) {
+    if (pathError) pathError.style.display = 'block'
+    valid = false
+  } else {
+    if (pathError) pathError.style.display = 'none'
+  }
+  const rows = document.querySelectorAll('#rm-batch-rows .rm-batch-row')
+  const branches = []
+  rows.forEach(row => {
+    const input = row.querySelector('.rm-batch-branch-input')
+    if (!input || !input.value.trim()) {
+      valid = false
+    } else {
+      branches.push(input.value.trim())
+    }
+  })
+  // check duplicates
+  if (new Set(branches).size !== branches.length) {
+    valid = false
+  }
+  return valid
+}
+
+async function onBatchSelectPathClicked() {
+  const pathInput = document.getElementById('rm-batch-path-input')
+  const pathError = document.getElementById('rm-batch-path-error')
+  try {
+    const result = await window.electronAPI.invoke('worktree:select-path')
+    if (result.success && result.path) {
+      if (pathInput) pathInput.value = result.path
+    }
+    if (pathError) pathError.style.display = 'none'
+  } catch (e) {
+    // ignore
+  }
+}
+
+async function onBatchCreateSubmit(onRepoSelectedCb, showToastCb) {
+  if (_isBatchCreating) return
+  if (!validateBatchInputs()) return
+  _isBatchCreating = true
+  const pathInput = document.getElementById('rm-batch-path-input')
+  const targetPath = pathInput ? pathInput.value.trim() : ''
+  const rows = document.querySelectorAll('#rm-batch-rows .rm-batch-row')
+  let allSuccess = true
+  for (const row of rows) {
+    const input = row.querySelector('.rm-batch-branch-input')
+    const status = row.querySelector('.rm-batch-row-status')
+    const branch = input ? input.value.trim() : ''
+    try {
+      const result = await window.electronAPI.invoke('worktree:create-single', {
+        repoId: _currentRepoId,
+        baseBranch: 'HEAD',
+        newBranch: branch,
+        targetPath: targetPath,
+      })
+      if (result.success) {
+        if (status) status.textContent = 'OK'
+      } else {
+        if (status) status.textContent = 'FAIL'
+        allSuccess = false
+      }
+    } catch (e) {
+      if (status) status.textContent = 'ERROR'
+      allSuccess = false
+    }
+  }
+  if (allSuccess) {
+    hideBatchCreatePanel()
+    if (onRepoSelectedCb) await onRepoSelectedCb(_currentRepoId)
+  }
+  if (showToastCb) showToastCb(allSuccess ? 'batch_success' : 'batch_partial', allSuccess ? 'success' : 'warning')
+  _isBatchCreating = false
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    setCurrentRepoId,
+    showCreateForm,
+    hideCreateForm,
+    setCreatePending,
+    validateCreateInputs,
+    onSelectPathClicked,
+    onCreateSubmit,
+    showBatchCreatePanel,
+    hideBatchCreatePanel,
+    addWorktreeRow,
+    removeWorktreeRow,
+    validateBatchInputs,
+    onBatchSelectPathClicked,
+    onBatchCreateSubmit,
+  }
+}
+
 // ─── Worktree Management Renderer (list + delete) ──────────────────────────
 
 window.addEventListener('DOMContentLoaded', async () => {

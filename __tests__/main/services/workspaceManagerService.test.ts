@@ -113,15 +113,17 @@ describe('TC-WMS-08: getCommands() — 디렉토리 없으면 모두 false', () 
   });
 });
 
-describe('TC-WMS-09: getCommands() — 기본 4개 커맨드', () => {
-  it('getCommands()는 add-req, add-bug, teams, bugfix-teams 기본 4개 커맨드를 반환한다', () => {
+describe('TC-WMS-09: getCommands() — 기본 6개 커맨드', () => {
+  it('getCommands()는 add-req, add-bug, teams, bugfix-teams, update-readme, pull 기본 6개 커맨드를 반환한다', () => {
     const commands = service.getCommands(tmpDir);
-    expect(commands).toHaveLength(4);
+    expect(commands).toHaveLength(6);
     const names = commands.map((c: any) => c.name);
     expect(names).toContain('add-req');
     expect(names).toContain('add-bug');
     expect(names).toContain('teams');
     expect(names).toContain('bugfix-teams');
+    expect(names).toContain('update-readme');
+    expect(names).toContain('pull');
   });
 });
 
@@ -147,10 +149,10 @@ describe('TC-WMS-11: getSkills() — 디렉토리 없으면 모두 false', () =>
   });
 });
 
-describe('TC-WMS-12: getSkills() — 기본 10개 스킬', () => {
-  it('getSkills()는 기본 스킬 10개를 반환한다', () => {
+describe('TC-WMS-12: getSkills() — 기본 13개 스킬', () => {
+  it('getSkills()는 기본 스킬 13개를 반환한다', () => {
     const skills = service.getSkills(tmpDir);
-    expect(skills).toHaveLength(10);
+    expect(skills).toHaveLength(13);
   });
 });
 

@@ -10,7 +10,8 @@ const ALLOWED_RECEIVE_CHANNELS: string[] = [
   'wiki-host:status-update',
   'workspace:active-changed',
   'workspace:rate-limit-status',
-  'workspace:rate-limit-exhausted'
+  'workspace:rate-limit-exhausted',
+  'merge:conflict-detected'
 ]
 const ALLOWED_INVOKE_CHANNELS: string[] = [
   'app:ping', 'app:version',
@@ -49,7 +50,11 @@ const ALLOWED_INVOKE_CHANNELS: string[] = [
   'workspace-mgr:reset-config',
   'workspace-mgr:get-queue-summary',
   'workspace-mgr:rate-limit-retry-now',
-  'workspace-mgr:rate-limit-cancel'
+  'workspace-mgr:rate-limit-cancel',
+  'merge:resolve-conflict',
+  'merge:manual-resolve-complete',
+  'merge:abort',
+  'merge:list-branches'
 ]
 
 contextBridge.exposeInMainWorld('electronAPI', {

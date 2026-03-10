@@ -2,8 +2,8 @@ let _persistedCwd = null
 
 window.addEventListener('DOMContentLoaded', async () => {
   await window._i18nReady
-  const cmdTypeSelect = document.getElementById('cq-cmd-type')
-  const cmdArgsInput = document.getElementById('cq-cmd-args')
+  const cmdTypeInput = document.getElementById('cq-cmd-type')
+  const cmdSuggestions = document.getElementById('cq-cmd-suggestions')
   const cmdCwdSelect = document.getElementById('cq-cwd-select')
   const cmdAddBtn = document.getElementById('cq-add-btn')
   const bulkInput = document.getElementById('cq-bulk-input')
@@ -16,6 +16,127 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   let selectedCwd = _persistedCwd
 
+  // ── Command Autocomplete ──
+  const ALL_COMMANDS = [
+    '/add-req', '/bugfix', '/teams', '/bugfix-teams',
+    '/merge', '/update-readme', '/pull'
+  ]
+  const VALID_COMMANDS = ALL_COMMANDS
+  let acIndex = -1
+  let acFiltered = []
+  let selectedCommand = ''
+
+  function fuzzyMatch(query, target) {
+    var qi = 0
+    for (var ti = 0; ti < target.length && qi < query.length; ti++) {
+      if (query[qi].toLowerCase() === target[ti].toLowerCase()) qi++
+    }
+    return qi === query.length
+  }
+
+  function getFirstToken(text) {
+    var spaceIdx = text.indexOf(' ')
+    return spaceIdx === -1 ? text : text.slice(0, spaceIdx)
+  }
+
+  function isCommandConfirmed(text) {
+    var firstToken = getFirstToken(text)
+    return ALL_COMMANDS.indexOf(firstToken) !== -1 && text.indexOf(' ') !== -1
+  }
+
+  function showSuggestions(filter) {
+    var token = getFirstToken(filter)
+    if (!token.startsWith('/') || isCommandConfirmed(filter)) {
+      hideSuggestions()
+      return
+    }
+    acFiltered = ALL_COMMANDS.filter(function (cmd) {
+      return fuzzyMatch(token, cmd)
+    })
+    if (acFiltered.length === 0) {
+      hideSuggestions()
+      return
+    }
+    acIndex = 0
+    renderSuggestions()
+    cmdSuggestions.classList.add('open')
+  }
+
+  function hideSuggestions() {
+    acFiltered = []
+    acIndex = -1
+    cmdSuggestions.classList.remove('open')
+    cmdSuggestions.innerHTML = ''
+  }
+
+  function renderSuggestions() {
+    cmdSuggestions.innerHTML = ''
+    acFiltered.forEach(function (cmd, i) {
+      var div = document.createElement('div')
+      div.className = 'cq-suggestion-item' + (i === acIndex ? ' active' : '')
+      div.textContent = cmd
+      div.addEventListener('mousedown', function (e) {
+        e.preventDefault()
+        selectCommand(cmd)
+      })
+      cmdSuggestions.appendChild(div)
+    })
+  }
+
+  function selectCommand(cmd) {
+    selectedCommand = cmd
+    cmdTypeInput.value = cmd + ' '
+    hideSuggestions()
+    cmdTypeInput.focus()
+  }
+
+  cmdTypeInput.addEventListener('input', function () {
+    var val = cmdTypeInput.value
+    if (isCommandConfirmed(val)) {
+      selectedCommand = getFirstToken(val)
+    } else {
+      selectedCommand = ''
+    }
+    showSuggestions(val)
+  })
+
+  cmdTypeInput.addEventListener('keydown', async function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (cmdSuggestions.classList.contains('open') && acIndex >= 0 && acIndex < acFiltered.length) {
+        selectCommand(acFiltered[acIndex])
+      } else {
+        var allowed = await checkSecurityWarning()
+        if (allowed) addToQueue()
+      }
+      return
+    }
+    if (!cmdSuggestions.classList.contains('open')) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      acIndex = Math.min(acIndex + 1, acFiltered.length - 1)
+      renderSuggestions()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      acIndex = Math.max(acIndex - 1, 0)
+      renderSuggestions()
+    } else if (e.key === 'Escape') {
+      hideSuggestions()
+    }
+  })
+
+  cmdTypeInput.addEventListener('blur', function () {
+    // Delay to allow mousedown on suggestion
+    setTimeout(hideSuggestions, 150)
+  })
+
+  cmdTypeInput.addEventListener('focus', function () {
+    if (cmdTypeInput.value.startsWith('/')) {
+      showSuggestions(cmdTypeInput.value)
+    }
+  })
+
+  // ── Utility ──
   function showToast(message, type) {
     toast.textContent = message
     toast.className = 'toast toast-' + type
@@ -86,10 +207,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function parseCommandInput(text) {
+    var trimmed = text.trim()
+    var matched = VALID_COMMANDS.find(function (cmd) { return trimmed.startsWith(cmd) })
+    if (!matched) return { command: trimmed.split(/\s+/)[0], args: '' }
+    var args = trimmed.slice(matched.length).trim()
+    return { command: matched, args: args }
+  }
+
   // Add command to queue
   async function addToQueue() {
-    var command = cmdTypeSelect.value
-    var args = cmdArgsInput.value.trim()
+    var parsed = parseCommandInput(cmdTypeInput.value)
+    if (!parsed.command) {
+      showToast('Please select a command.', 'warning')
+      return
+    }
     if (!selectedCwd) {
       showToast('Please select a workspace.', 'warning')
       return
@@ -97,10 +229,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     try {
       var result = await window.electronAPI.invoke('queue:enqueue', {
-        command: command, args: args, cwd: selectedCwd
+        command: parsed.command, args: parsed.args, cwd: selectedCwd
       })
       if (result.success) {
-        cmdArgsInput.value = ''
+        cmdTypeInput.value = ''
+        selectedCommand = ''
       } else {
         showToast('Queue add failed: ' + (result.error || ''), 'error')
       }
@@ -192,15 +325,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   })
 
   // UI event listeners
-  const VALID_COMMANDS = ['/add-req', '/bugfix', '/teams', '/bugfix-teams']
-
   function parseBulkInput(text) {
     var lines = text.split('\n')
     var commands = []
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i].trim()
       if (!line || line.startsWith('#')) continue
-      // "/" 로 시작하는지 확인
       var matched = VALID_COMMANDS.find(function (cmd) { return line.startsWith(cmd) })
       if (!matched) continue
       var args = line.slice(matched.length).trim()
@@ -217,7 +347,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     var text = bulkInput.value
     var commands = parseBulkInput(text)
     if (commands.length === 0) {
-      showToast('No valid commands found. Lines must start with /add-req, /bugfix, /teams, or /bugfix-teams.', 'warning')
+      showToast('No valid commands found. Lines must start with a valid slash command.', 'warning')
       return
     }
     var failed = 0

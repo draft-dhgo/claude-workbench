@@ -133,7 +133,7 @@ class WorkspaceManagerService {
     const filtered = items.filter(i => i.cwd === workspacePath);
     const summary: QueueSummary = {
       pending: 0, running: 0, success: 0,
-      failed: 0, aborted: 0, total: filtered.length
+      failed: 0, aborted: 0, conflict: 0, total: filtered.length
     };
 
     for (const item of filtered) {
@@ -143,6 +143,7 @@ class WorkspaceManagerService {
         case 'success': summary.success++; break;
         case 'failed': summary.failed++; break;
         case 'aborted': summary.aborted++; break;
+        case 'conflict': summary.conflict++; break;
       }
     }
 

@@ -229,14 +229,11 @@
         <label class="section-label" data-i18n="cq.form.label">Register Command</label>
         <div class="cq-form">
           <div class="cq-form-row">
-            <select id="cq-cmd-type" class="form-input cq-cmd-select">
-              <option value="/add-req">/add-req</option>
-              <option value="/bugfix">/bugfix</option>
-              <option value="/teams">/teams</option>
-              <option value="/bugfix-teams">/bugfix-teams</option>
-            </select>
-            <input type="text" id="cq-cmd-args" class="form-input cq-cmd-args"
-                   data-i18n-placeholder="cq.args.placeholder" placeholder="Arguments (optional)" />
+            <div class="cq-cmd-autocomplete">
+              <input type="text" id="cq-cmd-type" class="form-input cq-cmd-input"
+                     placeholder="Type command... (e.g. /teams arg1)" autocomplete="off" />
+              <div id="cq-cmd-suggestions" class="cq-suggestions"></div>
+            </div>
             <button id="cq-add-btn" class="btn btn-primary" data-i18n="cq.add.btn">+ Add</button>
           </div>
           <div class="cq-form-row">

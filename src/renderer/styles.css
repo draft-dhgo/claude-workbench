@@ -1094,8 +1094,51 @@ h1 {
   flex-shrink: 0;
 }
 
-.cq-cmd-args {
+.cq-cmd-autocomplete {
+  position: relative;
   flex: 1;
+}
+
+.cq-cmd-input {
+  width: 100%;
+}
+
+.cq-suggestions {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.cq-suggestions.open {
+  display: block;
+}
+
+.cq-suggestion-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-family: monospace;
+  color: var(--text-primary);
+}
+
+.cq-suggestion-item:hover,
+.cq-suggestion-item.active {
+  background: var(--bg-hover);
+}
+
+.cq-suggestion-item .cq-match {
+  font-weight: 700;
+  color: var(--accent-color);
 }
 
 .cq-cwd-label {
