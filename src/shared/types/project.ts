@@ -32,6 +32,8 @@ export interface ProjectSettings {
   testCommand?: string;
   /** 프로젝트 언어 */
   lang: 'en' | 'ko';
+  /** 파이프라인 최대 재시도 횟수 (default: 3) */
+  maxPipelineRetries?: number;
 }
 
 /** 프로젝트 영속 파일(projects.json) 구조 */

@@ -236,6 +236,76 @@ class ContainerPoolService {
     }
   }
 
+  // --- Orphaned Resource Cleanup ---
+
+  /**
+   * 앱 재시작 시 orphaned worktree와 Docker 컨테이너 정리
+   * .containers/ 디렉토리의 잔여 폴더와 cwb- prefix Docker 컨테이너를 감지/삭제
+   */
+  async cleanupOrphaned(project: Project): Promise<{ worktreesRemoved: number; containersRemoved: number }> {
+    let worktreesRemoved = 0;
+    let containersRemoved = 0;
+
+    // 1. .containers/ 디렉토리의 orphaned worktree 폴더 정리
+    const containersDir = path.join(project.localBasePath, '.containers');
+    if (fs.existsSync(containersDir)) {
+      const pool = this._pools.get(project.id);
+      const activeContainerIds = new Set(pool?.containers.map(c => c.id) ?? []);
+
+      try {
+        const entries = fs.readdirSync(containersDir);
+        for (const entry of entries) {
+          if (!activeContainerIds.has(entry)) {
+            const orphanedPath = path.join(containersDir, entry);
+            try {
+              // worktree로 등록된 것이 있으면 git worktree remove 먼저 시도
+              for (const repo of project.devRepos) {
+                const repoPath = path.join(project.issueRepoPath, repo.submodulePath);
+                if (fs.existsSync(repoPath)) {
+                  try {
+                    const worktrees = await this._git.listWorktrees(repoPath);
+                    for (const wt of worktrees) {
+                      if (wt.path.startsWith(orphanedPath)) {
+                        await this._git.removeWorktree(repoPath, wt.path, true).catch(() => {});
+                      }
+                    }
+                  } catch { /* ignore */ }
+                }
+              }
+              fs.rmSync(orphanedPath, { recursive: true, force: true });
+              worktreesRemoved++;
+            } catch { /* ignore individual cleanup errors */ }
+          }
+        }
+      } catch { /* ignore readdir errors */ }
+    }
+
+    // 2. orphaned Docker 컨테이너 정리 (cwb- prefix)
+    const dockerAvailable = await this._docker.isDockerAvailable();
+    if (dockerAvailable) {
+      try {
+        const pool = this._pools.get(project.id);
+        const activeDockerIds = new Set(
+          pool?.containers.map(c => c.dockerContainerId).filter(Boolean) ?? []
+        );
+
+        const projectPrefix = `cwb-${project.id.substring(0, 8)}-`;
+        const containers = await this._docker.listContainers(projectPrefix);
+
+        for (const container of containers) {
+          if (!activeDockerIds.has(container.id)) {
+            try {
+              await this._docker.removeContainer(container.id, true);
+              containersRemoved++;
+            } catch { /* ignore */ }
+          }
+        }
+      } catch { /* ignore docker errors */ }
+    }
+
+    return { worktreesRemoved, containersRemoved };
+  }
+
   // --- Internal ---
 
   private async _createContainer(project: Project, issue: Issue): Promise<DevContainer> {

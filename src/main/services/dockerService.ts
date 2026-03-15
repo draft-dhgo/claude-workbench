@@ -119,6 +119,25 @@ class DockerService {
     }
   }
 
+  /**
+   * 특정 이름 prefix로 Docker 컨테이너 목록 조회
+   */
+  async listContainers(namePrefix?: string): Promise<Array<{ id: string; name: string; status: string }>> {
+    try {
+      const args = ['ps', '-a', '--format', '{{.ID}}|{{.Names}}|{{.Status}}'];
+      if (namePrefix) {
+        args.push('--filter', `name=${namePrefix}`);
+      }
+      const output = await this._exec(args);
+      return output.trim().split('\n').filter(l => l.trim()).map(line => {
+        const [id, name, status] = line.split('|');
+        return { id: id.trim(), name: name.trim(), status: status.trim() };
+      });
+    } catch {
+      return [];
+    }
+  }
+
   // --- Exec in Container ---
 
   async execInContainer(containerId: string, command: string[]): Promise<DockerExecResult> {

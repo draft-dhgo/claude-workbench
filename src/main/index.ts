@@ -114,8 +114,24 @@ ipcMain.handle('github:search-repos', handleGitHubSearchRepos)
 ipcMain.handle('pipeline:status', handlePipelineStatus)
 ipcMain.handle('pipeline:abort', handlePipelineAbort)
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
+
+  // Orphaned worktree/container cleanup on app restart
+  try {
+    const { getContainerPoolInstance } = require('./handlers/containerHandlers');
+    const { getManager } = require('./handlers/projectHandlers');
+    const ProjectStore = require('./services/projectStore');
+    const store = new ProjectStore(app.getPath('userData'));
+    const projects = store.list();
+    const pool = getContainerPoolInstance();
+    for (const project of projects) {
+      try {
+        pool.initPool(project);
+        await pool.cleanupOrphaned(project);
+      } catch { /* ignore per-project cleanup errors */ }
+    }
+  } catch { /* ignore startup cleanup errors */ }
 })
 
 app.on('before-quit', async () => {

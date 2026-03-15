@@ -169,6 +169,31 @@ class GitService {
     await this.exec(args, cwd);
   }
 
+  /**
+   * push with retry: 실패 시 pull --rebase --autostash 후 재시도
+   * @param maxRetries 최대 재시도 횟수 (default: 3)
+   * @returns { pushed: boolean; attempts: number; error?: string }
+   */
+  async pushWithRetry(cwd: string, maxRetries = 3): Promise<{ pushed: boolean; attempts: number; error?: string }> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.push(cwd);
+        return { pushed: true, attempts: attempt };
+      } catch (err: any) {
+        if (attempt >= maxRetries) {
+          return { pushed: false, attempts: attempt, error: err.message };
+        }
+        // pull --rebase 후 재시도
+        try {
+          await this.exec(['pull', '--rebase', '--autostash'], cwd);
+        } catch {
+          // pull도 실패하면 다음 시도에서 다시 push
+        }
+      }
+    }
+    return { pushed: false, attempts: maxRetries, error: 'Max retries exceeded' };
+  }
+
   // --- Status ---
 
   async isClean(cwd: string): Promise<boolean> {

@@ -299,6 +299,52 @@ describe('GitService.commit', () => {
   });
 });
 
+describe('GitService.pushWithRetry', () => {
+  it('succeeds on first attempt', async () => {
+    mockExecSuccess();
+    const result = await git.pushWithRetry('/repo');
+    expect(result).toEqual({ pushed: true, attempts: 1 });
+  });
+
+  it('retries with pull --rebase after push failure', async () => {
+    let callCount = 0;
+    mockExecFile.mockImplementation((_cmd: any, args: any, _opts: any, cb: any) => {
+      callCount++;
+      if (args[0] === 'push' && callCount === 1) {
+        // First push fails
+        const err: any = new Error('rejected');
+        err.code = 1;
+        cb(err, '', 'rejected');
+      } else if (args[0] === 'pull') {
+        // pull --rebase succeeds
+        cb(null, '', '');
+      } else {
+        // Second push succeeds
+        cb(null, '', '');
+      }
+    });
+    const result = await git.pushWithRetry('/repo', 3);
+    expect(result.pushed).toBe(true);
+    expect(result.attempts).toBe(2);
+  });
+
+  it('returns failure after max retries', async () => {
+    mockExecFailure('rejected');
+    const result = await git.pushWithRetry('/repo', 2);
+    expect(result.pushed).toBe(false);
+    expect(result.attempts).toBe(2);
+    expect(result.error).toContain('rejected');
+  });
+
+  it('continues retrying even when pull --rebase fails', async () => {
+    // All push and pull attempts fail
+    mockExecFailure('network error');
+    const result = await git.pushWithRetry('/repo', 2);
+    expect(result.pushed).toBe(false);
+    expect(result.attempts).toBe(2);
+  });
+});
+
 describe('GitService.clone', () => {
   it('resolves on success', async () => {
     mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {

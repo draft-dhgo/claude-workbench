@@ -17,6 +17,7 @@ const mockDocker = {
   createContainer: jest.fn().mockResolvedValue('docker-abc123'),
   startContainer: jest.fn().mockResolvedValue(undefined),
   removeContainer: jest.fn().mockResolvedValue(undefined),
+  listContainers: jest.fn().mockResolvedValue([]),
 };
 
 // Mock GitService
@@ -24,6 +25,7 @@ const mockGit = {
   fetch: jest.fn().mockResolvedValue(undefined),
   createWorktree: jest.fn().mockResolvedValue(undefined),
   removeWorktree: jest.fn().mockResolvedValue(undefined),
+  listWorktrees: jest.fn().mockResolvedValue([]),
 };
 
 import ContainerPoolService = require('../../../src/main/services/containerPoolService');
@@ -346,5 +348,49 @@ describe('ContainerPoolService.getContainerLogs', () => {
 
   it('returns empty array for unknown container', () => {
     expect(service.getContainerLogs('unknown')).toEqual([]);
+  });
+});
+
+describe('ContainerPoolService.cleanupOrphaned', () => {
+  it('removes orphaned .containers/ directories not tracked by pool', async () => {
+    service.initPool(testProject);
+    const containersDir = path.join(tmpDir, '.containers');
+    fs.mkdirSync(containersDir, { recursive: true });
+
+    // Create orphaned directory
+    const orphanedDir = path.join(containersDir, 'orphaned-uuid');
+    fs.mkdirSync(orphanedDir, { recursive: true });
+    fs.writeFileSync(path.join(orphanedDir, 'marker.txt'), 'test');
+
+    const result = await service.cleanupOrphaned(testProject);
+    expect(result.worktreesRemoved).toBe(1);
+    expect(fs.existsSync(orphanedDir)).toBe(false);
+  });
+
+  it('does not remove active container directories', async () => {
+    const container = await service.acquireContainer(testProject, testIssue);
+    // The container's worktreeBasePath is inside .containers/
+    const result = await service.cleanupOrphaned(testProject);
+    expect(result.worktreesRemoved).toBe(0);
+    expect(fs.existsSync(container.worktreeBasePath)).toBe(true);
+  });
+
+  it('removes orphaned Docker containers with cwb- prefix', async () => {
+    service.initPool(testProject);
+    mockDocker.isDockerAvailable.mockResolvedValueOnce(true);
+    mockDocker.listContainers.mockResolvedValueOnce([
+      { id: 'docker-orphan-1', name: `cwb-${testProject.id.substring(0, 8)}-deadbeef`, status: 'running' },
+    ]);
+
+    const result = await service.cleanupOrphaned(testProject);
+    expect(result.containersRemoved).toBe(1);
+    expect(mockDocker.removeContainer).toHaveBeenCalledWith('docker-orphan-1', true);
+  });
+
+  it('handles missing .containers/ directory gracefully', async () => {
+    service.initPool(testProject);
+    const result = await service.cleanupOrphaned(testProject);
+    expect(result.worktreesRemoved).toBe(0);
+    expect(result.containersRemoved).toBe(0);
   });
 });

@@ -159,11 +159,26 @@ class PipelineOrchestratorService {
   }
 
   /**
-   * 이슈 재시도
+   * 이슈 재시도 (maxPipelineRetries 제한 적용)
    */
   async retryIssue(projectId: string, issueId: string): Promise<void> {
     const project = this._projectStore.getById(projectId);
     if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    const issue = await this._issueService.getIssue(project.issueRepoPath, issueId);
+    if (!issue) throw new Error('ISSUE_NOT_FOUND');
+
+    const maxRetries = project.settings.maxPipelineRetries ?? 3;
+    const currentRetryCount = issue.result?.retryCount ?? 0;
+
+    if (currentRetryCount >= maxRetries) {
+      throw new Error(`MAX_RETRIES_EXCEEDED: ${currentRetryCount}/${maxRetries}`);
+    }
+
+    // 재시도 카운트 증가
+    await this._issueService.updateIssue(project.issueRepoPath, issueId, {
+      result: { ...issue.result, retryCount: currentRetryCount + 1 },
+    });
 
     await this._issueService.transitionStatus(project.issueRepoPath, issueId, 'created');
     this._notifyIssueUpdated();

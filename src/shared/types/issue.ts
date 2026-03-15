@@ -66,6 +66,8 @@ export interface IssueResult {
   durationMs?: number;
   errorMessage?: string;
   diffSummary?: DiffSummary;
+  /** 파이프라인 실행 시도 횟수 */
+  retryCount?: number;
 }
 
 /** 이슈 매니페스트: issue repo 내 issues/manifest.json 구조 */

@@ -9,9 +9,24 @@ import { Issue, IssueManifest, IssueStatus, CreateIssueData } from '../../shared
  */
 class IssueService {
   private _git: GitService;
+  private _pendingPush: Set<string> = new Set();
 
   constructor(git?: GitService) {
     this._git = git || new GitService();
+  }
+
+  /**
+   * push가 실패하여 동기화 대기 중인 repo 경로 목록
+   */
+  get pendingPushPaths(): string[] {
+    return Array.from(this._pendingPush);
+  }
+
+  /**
+   * 특정 경로의 동기화 대기 상태 확인
+   */
+  hasPendingPush(issueRepoPath: string): boolean {
+    return this._pendingPush.has(issueRepoPath);
   }
 
   // --- CRUD ---
@@ -181,14 +196,19 @@ class IssueService {
       // git commit 실패는 무시
     }
 
-    // 자동 push (remote가 있으면)
+    // 자동 push (remote가 있으면) — 실패 시 pull --rebase 후 재시도
     try {
       const remotes = await this._git.exec(['remote'], issueRepoPath);
       if (remotes.trim()) {
-        await this._git.push(issueRepoPath);
+        const result = await this._git.pushWithRetry(issueRepoPath, 3);
+        if (result.pushed) {
+          this._pendingPush.delete(issueRepoPath);
+        } else {
+          this._pendingPush.add(issueRepoPath);
+        }
       }
     } catch {
-      // push 실패는 무시 (오프라인 등)
+      this._pendingPush.add(issueRepoPath);
     }
   }
 }

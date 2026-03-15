@@ -9,6 +9,8 @@ const mockGit = {
   addAll: jest.fn().mockResolvedValue(undefined),
   status: jest.fn().mockResolvedValue(' M file\n'),
   commit: jest.fn().mockResolvedValue('abc1234'),
+  exec: jest.fn().mockResolvedValue('origin\n'),
+  pushWithRetry: jest.fn().mockResolvedValue({ pushed: true, attempts: 1 }),
 };
 
 jest.mock('../../../src/main/services/gitService', () => {
@@ -27,6 +29,8 @@ beforeEach(() => {
   mockGit.addAll.mockClear();
   mockGit.status.mockClear().mockResolvedValue(' M file\n');
   mockGit.commit.mockClear();
+  mockGit.exec.mockClear().mockResolvedValue('origin\n');
+  mockGit.pushWithRetry.mockClear().mockResolvedValue({ pushed: true, attempts: 1 });
   service = new IssueService(mockGit as any);
 });
 
@@ -276,5 +280,37 @@ describe('IssueService git commit error handling', () => {
     // (the _commitChanges sees empty status and skips commit)
     // However, the first call to addAll + status happens in _commitChanges
     // When status returns '', commit should not be called in that _commitChanges invocation
+  });
+});
+
+describe('IssueService push retry and pending push tracking', () => {
+  it('calls pushWithRetry when remote exists', async () => {
+    await service.createIssue(issueRepoPath, createIssueData());
+    expect(mockGit.pushWithRetry).toHaveBeenCalledWith(issueRepoPath, 3);
+  });
+
+  it('tracks pending push when pushWithRetry fails', async () => {
+    mockGit.pushWithRetry.mockResolvedValueOnce({ pushed: false, attempts: 3, error: 'rejected' });
+    await service.createIssue(issueRepoPath, createIssueData());
+    expect(service.hasPendingPush(issueRepoPath)).toBe(true);
+    expect(service.pendingPushPaths).toContain(issueRepoPath);
+  });
+
+  it('clears pending push when pushWithRetry succeeds', async () => {
+    // First: fail to create pending state
+    mockGit.pushWithRetry.mockResolvedValueOnce({ pushed: false, attempts: 3, error: 'fail' });
+    await service.createIssue(issueRepoPath, createIssueData());
+    expect(service.hasPendingPush(issueRepoPath)).toBe(true);
+
+    // Second: succeed to clear pending state
+    mockGit.pushWithRetry.mockResolvedValueOnce({ pushed: true, attempts: 1 });
+    await service.createIssue(issueRepoPath, createIssueData({ title: 'Second' }));
+    expect(service.hasPendingPush(issueRepoPath)).toBe(false);
+  });
+
+  it('skips push when no remote exists', async () => {
+    mockGit.exec.mockResolvedValueOnce('');
+    await service.createIssue(issueRepoPath, createIssueData());
+    expect(mockGit.pushWithRetry).not.toHaveBeenCalled();
   });
 });
