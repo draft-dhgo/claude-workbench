@@ -31,11 +31,23 @@ const mockIpcRenderer = {
   invoke: jest.fn()
 }
 
+const mockDialog = {
+  showOpenDialog: jest.fn().mockResolvedValue({ canceled: false, filePaths: ['/tmp/test-path'] }),
+  showSaveDialog: jest.fn().mockResolvedValue({ canceled: false, filePath: '/tmp/test-file' })
+}
+
+MockBrowserWindow.getFocusedWindow = jest.fn().mockReturnValue(mockWin)
+
+const mockWebContentsSend = jest.fn()
+mockWin.webContents.send = mockWebContentsSend
+
 module.exports = {
   app: mockApp,
   BrowserWindow: MockBrowserWindow,
   ipcMain: mockIpcMain,
   contextBridge: mockContextBridge,
   ipcRenderer: mockIpcRenderer,
-  _mockWin: mockWin
+  dialog: mockDialog,
+  _mockWin: mockWin,
+  _mockWebContentsSend: mockWebContentsSend
 }
