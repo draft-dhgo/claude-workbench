@@ -13,7 +13,7 @@ export type InvokeChannel =
   | 'project:list'
   | 'project:get'
   | 'project:create'
-  | 'project:clone'
+  | 'project:import'
   | 'project:update'
   | 'project:delete'
   | 'project:set-active'

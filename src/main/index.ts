@@ -6,7 +6,7 @@ import { handleOpenTerminal } from './handlers/terminalHandlers';
 import { handleWikiHostStart, handleWikiHostStop, handleWikiHostStatus, handleWikiHostOpenBrowser, cleanupWikiHost } from './handlers/wikiHostHandlers';
 import { handleListMergeBranches } from './handlers/mergeHandlers';
 import {
-  handleProjectList, handleProjectGet, handleProjectCreate, handleProjectClone,
+  handleProjectList, handleProjectGet, handleProjectCreate, handleProjectImport,
   handleProjectUpdate, handleProjectDelete, handleProjectSetActive, handleProjectGetActive,
   handleProjectGetDashboard, handleProjectGetConfigStatus,
   handleRepoAdd, handleRepoRemove, handleRepoList, handleSyncSubmodules,
@@ -43,7 +43,7 @@ ipcMain.handle('app:docker:check', handleDockerCheck)
 ipcMain.handle('project:list', handleProjectList)
 ipcMain.handle('project:get', handleProjectGet)
 ipcMain.handle('project:create', handleProjectCreate)
-ipcMain.handle('project:clone', handleProjectClone)
+ipcMain.handle('project:import', handleProjectImport)
 ipcMain.handle('project:update', handleProjectUpdate)
 ipcMain.handle('project:delete', handleProjectDelete)
 ipcMain.handle('project:set-active', handleProjectSetActive)

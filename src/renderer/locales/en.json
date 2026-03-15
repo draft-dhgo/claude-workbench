@@ -14,9 +14,14 @@
 
   "project.select.placeholder": "-- Select Project --",
   "project.new": "+ New Project",
+  "project.import": "Import Project",
   "project.create_title": "Create Project",
+  "project.import_title": "Import Project",
+  "project.import_desc": "Select an existing issue repo directory that contains .cwb/project-settings.json",
+  "project.import_btn": "Import",
   "project.field.name": "Project Name",
   "project.field.path": "Local Base Path",
+  "project.field.issue_repo_path": "Issue Repo Path",
 
   "dashboard.title": "Dashboard",
   "dashboard.no_project": "Select or create a project to get started.",

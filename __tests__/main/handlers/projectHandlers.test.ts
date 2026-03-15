@@ -50,13 +50,14 @@ beforeEach(() => {
   jest.doMock('../../../src/main/services/projectManagerService', () => {
     return jest.fn().mockImplementation(() => ({
       createProject: mockCreateProject,
-      cloneProject: mockCloneProject,
+      importProject: mockCloneProject,
       setActiveProject: mockSetActiveProject,
       getActiveProject: mockGetActiveProject,
       getProjectDashboard: mockGetProjectDashboard,
       getProjectConfigStatus: mockGetProjectConfigStatus,
       addDevRepo: mockAddDevRepo,
       removeDevRepo: mockRemoveDevRepo,
+      saveProjectSettings: jest.fn().mockResolvedValue(undefined),
     }));
   });
 

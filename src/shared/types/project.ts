@@ -76,12 +76,29 @@ export interface ActivityEntry {
 export interface ProjectConfigStatus {
   hasClaudeDir: boolean;
   hasClaudeMd: boolean;
+  hasCwbDir: boolean;
+  hasProjectSettings: boolean;
   commandCount: number;
   skillCount: number;
   wikiAvailable: boolean;
   issueRepoValid: boolean;
   submodulesInitialized: boolean;
 }
+
+/**
+ * .cwb/project-settings.json 구조
+ * 이슈 repo 안에 저장되어 repo와 함께 공유됨
+ */
+export interface CwbProjectSettingsFile {
+  version: number;
+  name: string;
+  settings: ProjectSettings;
+  devRepos: DevRepoRef[];
+}
+
+/** .cwb/project-settings.json 경로 상수 */
+export const CWB_DIR = '.cwb';
+export const CWB_SETTINGS_FILE = 'project-settings.json';
 
 /** 프로젝트 설정 기본값 */
 export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {

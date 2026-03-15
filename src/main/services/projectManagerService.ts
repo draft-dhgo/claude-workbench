@@ -3,12 +3,18 @@ import path = require('path');
 import ProjectStore = require('./projectStore');
 import IssueService = require('./issueService');
 import GitService = require('./gitService');
-import { Project, ProjectDashboard, ProjectConfigStatus, DevRepoRef } from '../../shared/types/project';
-import { Issue } from '../../shared/types/issue';
+import {
+  Project, ProjectDashboard, ProjectConfigStatus, DevRepoRef,
+  ProjectSettings, CwbProjectSettingsFile, CWB_DIR, CWB_SETTINGS_FILE,
+  DEFAULT_PROJECT_SETTINGS,
+} from '../../shared/types/project';
 
 /**
  * 프로젝트 매니저 서비스
- * 활성 프로젝트 상태 + 프로젝트 생성/클론 + 대시보드
+ * 활성 프로젝트 상태 + 프로젝트 생성/임포트 + 대시보드
+ *
+ * 프로젝트 설정은 이슈 repo 내 .cwb/project-settings.json에 저장되어
+ * repo와 함께 공유됨
  */
 class ProjectManagerService {
   private _projectStore: ProjectStore;
@@ -40,7 +46,7 @@ class ProjectManagerService {
     return this._activeProjectId;
   }
 
-  // --- Project Creation ---
+  // --- Project Creation (새 이슈 repo 생성) ---
 
   async createProject(data: {
     name: string;
@@ -49,56 +55,117 @@ class ProjectManagerService {
   }): Promise<Project> {
     const issueRepoPath = path.join(data.localBasePath, `${data.name}-issues`);
 
+    if (fs.existsSync(issueRepoPath)) {
+      throw new Error('DIRECTORY_ALREADY_EXISTS');
+    }
+
     // issue repo 디렉토리 생성
     fs.mkdirSync(issueRepoPath, { recursive: true });
 
     // git init
     await this._git.init(issueRepoPath);
 
-    // 디렉토리 구조 스캐폴드
-    this._scaffoldIssueRepo(issueRepoPath, data.name, data.lang || 'ko');
+    const settings: ProjectSettings = { ...DEFAULT_PROJECT_SETTINGS, lang: data.lang || 'ko' };
+
+    // 디렉토리 구조 스캐폴드 (.cwb/project-settings.json 포함)
+    this._scaffoldIssueRepo(issueRepoPath, data.name, settings);
 
     // 초기 commit
     await this._git.addAll(issueRepoPath);
     await this._git.commit(issueRepoPath, 'init: project scaffolding');
 
-    // 프로젝트 저장
+    // 앱 내부 프로젝트 저장
     const project = this._projectStore.create({
       name: data.name,
       issueRepoPath,
       localBasePath: data.localBasePath,
-      settings: { lang: data.lang || 'ko' },
+      settings,
     });
 
     return project;
   }
 
-  // --- Clone Existing Project ---
+  // --- Import Existing Project (기존 이슈 repo 경로 지정) ---
 
-  async cloneProject(data: {
-    issueRepoUrl: string;
-    localBasePath: string;
+  async importProject(data: {
+    issueRepoPath: string;
   }): Promise<Project> {
-    const repoName = path.basename(data.issueRepoUrl, '.git');
-    const issueRepoPath = path.join(data.localBasePath, repoName);
+    const issueRepoPath = path.resolve(data.issueRepoPath);
 
-    // clone issue repo
-    await this._git.clone(data.issueRepoUrl, issueRepoPath);
+    // 유효성 검증
+    if (!fs.existsSync(issueRepoPath)) {
+      throw new Error('DIRECTORY_NOT_FOUND');
+    }
+    if (!fs.existsSync(path.join(issueRepoPath, '.git'))) {
+      throw new Error('NOT_A_GIT_REPO');
+    }
 
-    // submodule init + update
-    await this._git.initSubmodules(issueRepoPath);
-    await this._git.updateSubmodules(issueRepoPath, true);
+    // .cwb/project-settings.json 확인
+    const cwbSettingsPath = path.join(issueRepoPath, CWB_DIR, CWB_SETTINGS_FILE);
+    if (!fs.existsSync(cwbSettingsPath)) {
+      throw new Error('CWB_SETTINGS_NOT_FOUND');
+    }
 
-    // manifest에서 프로젝트명 추출
-    const name = repoName.replace(/-issues$/, '');
+    // 설정 파일 읽기
+    const cwbSettings = this._readCwbSettings(issueRepoPath);
 
+    // submodule 동기화
+    try {
+      await this._git.initSubmodules(issueRepoPath);
+      await this._git.updateSubmodules(issueRepoPath, true);
+    } catch {
+      // submodule 없거나 실패해도 import 진행
+    }
+
+    // 앱 내부 프로젝트 등록
     const project = this._projectStore.create({
-      name,
+      name: cwbSettings.name,
       issueRepoPath,
-      localBasePath: data.localBasePath,
+      localBasePath: path.dirname(issueRepoPath),
+      settings: cwbSettings.settings,
     });
 
-    return project;
+    // devRepos 동기화 (.cwb에 기록된 repo 정보를 store에 반영)
+    for (const repo of cwbSettings.devRepos || []) {
+      try {
+        this._projectStore.addDevRepo(project.id, {
+          name: repo.name,
+          remoteUrl: repo.remoteUrl,
+          submodulePath: repo.submodulePath,
+        });
+      } catch {
+        // 중복 등 무시
+      }
+    }
+
+    return this._projectStore.getById(project.id)!;
+  }
+
+  // --- Settings Sync (.cwb/project-settings.json ↔ store) ---
+
+  /**
+   * 프로젝트 설정을 .cwb/project-settings.json에 저장하고 git commit
+   */
+  async saveProjectSettings(projectId: string): Promise<void> {
+    const project = this._projectStore.getById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    this._writeCwbSettings(project.issueRepoPath, {
+      version: 1,
+      name: project.name,
+      settings: project.settings,
+      devRepos: project.devRepos,
+    });
+
+    try {
+      await this._git.addAll(project.issueRepoPath);
+      const status = await this._git.status(project.issueRepoPath);
+      if (status.trim()) {
+        await this._git.commit(project.issueRepoPath, 'cwb: update project settings');
+      }
+    } catch {
+      // git commit 실패 무시
+    }
   }
 
   // --- Dev Repo Management ---
@@ -111,15 +178,18 @@ class ProjectManagerService {
 
     // git submodule add
     await this._git.addSubmodule(project.issueRepoPath, repoUrl, submodulePath);
-    await this._git.addAll(project.issueRepoPath);
-    await this._git.commit(project.issueRepoPath, `repo: add submodule ${name}`);
 
     // store에 반영
-    return this._projectStore.addDevRepo(projectId, {
+    const devRepo = this._projectStore.addDevRepo(projectId, {
       name,
       remoteUrl: repoUrl,
       submodulePath,
     });
+
+    // .cwb/project-settings.json 동기화
+    await this.saveProjectSettings(projectId);
+
+    return devRepo;
   }
 
   async removeDevRepo(projectId: string, repoId: string): Promise<void> {
@@ -132,13 +202,14 @@ class ProjectManagerService {
     // git submodule remove
     try {
       await this._git.removeSubmodule(project.issueRepoPath, repo.submodulePath);
-      await this._git.addAll(project.issueRepoPath);
-      await this._git.commit(project.issueRepoPath, `repo: remove submodule ${repo.name}`);
     } catch {
       // submodule 제거 실패해도 store에서는 제거
     }
 
     this._projectStore.removeDevRepo(projectId, repoId);
+
+    // .cwb/project-settings.json 동기화
+    await this.saveProjectSettings(projectId);
   }
 
   // --- Dashboard ---
@@ -179,6 +250,8 @@ class ProjectManagerService {
     const p = project.issueRepoPath;
     const hasClaudeDir = fs.existsSync(path.join(p, '.claude'));
     const hasClaudeMd = fs.existsSync(path.join(p, 'CLAUDE.md'));
+    const hasCwbDir = fs.existsSync(path.join(p, CWB_DIR));
+    const hasProjectSettings = fs.existsSync(path.join(p, CWB_DIR, CWB_SETTINGS_FILE));
 
     let commandCount = 0;
     let skillCount = 0;
@@ -207,6 +280,8 @@ class ProjectManagerService {
     return {
       hasClaudeDir,
       hasClaudeMd,
+      hasCwbDir,
+      hasProjectSettings,
       commandCount,
       skillCount,
       wikiAvailable,
@@ -215,9 +290,41 @@ class ProjectManagerService {
     };
   }
 
+  // --- .cwb/project-settings.json 읽기/쓰기 ---
+
+  private _readCwbSettings(issueRepoPath: string): CwbProjectSettingsFile {
+    const filePath = path.join(issueRepoPath, CWB_DIR, CWB_SETTINGS_FILE);
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw);
+    return {
+      version: data.version || 1,
+      name: data.name || path.basename(issueRepoPath).replace(/-issues$/, ''),
+      settings: { ...DEFAULT_PROJECT_SETTINGS, ...data.settings },
+      devRepos: data.devRepos || [],
+    };
+  }
+
+  private _writeCwbSettings(issueRepoPath: string, data: CwbProjectSettingsFile): void {
+    const dirPath = path.join(issueRepoPath, CWB_DIR);
+    fs.mkdirSync(dirPath, { recursive: true });
+    fs.writeFileSync(
+      path.join(dirPath, CWB_SETTINGS_FILE),
+      JSON.stringify(data, null, 2),
+      'utf-8'
+    );
+  }
+
   // --- Scaffold ---
 
-  private _scaffoldIssueRepo(repoPath: string, projectName: string, lang: 'en' | 'ko'): void {
+  private _scaffoldIssueRepo(repoPath: string, projectName: string, settings: ProjectSettings): void {
+    // .cwb/project-settings.json
+    this._writeCwbSettings(repoPath, {
+      version: 1,
+      name: projectName,
+      settings,
+      devRepos: [],
+    });
+
     // issues/
     const issuesDir = path.join(repoPath, 'issues');
     fs.mkdirSync(path.join(issuesDir, 'details'), { recursive: true });
@@ -250,41 +357,37 @@ class ProjectManagerService {
       'utf-8'
     );
 
-    // .claude/ + CLAUDE.md (claudeConfigDefaults 활용)
+    // .claude/ + CLAUDE.md
     try {
       const { buildDefaultClaudeMd, buildDefaultSkills, buildDefaultCommands, buildWikiViewerHtml } =
         require('../constants/claudeConfigDefaults');
 
-      // CLAUDE.md
       fs.writeFileSync(
         path.join(repoPath, 'CLAUDE.md'),
-        buildDefaultClaudeMd(projectName, lang),
+        buildDefaultClaudeMd(projectName, settings.lang),
         'utf-8'
       );
 
-      // .claude/skills + commands
       const claudeDir = path.join(repoPath, '.claude');
-      const skills = buildDefaultSkills(lang);
+      const skills = buildDefaultSkills(settings.lang);
       for (const [name, content] of Object.entries(skills)) {
         const skillDir = path.join(claudeDir, 'skills', name);
         fs.mkdirSync(skillDir, { recursive: true });
         fs.writeFileSync(path.join(skillDir, 'SKILL.md'), content as string, 'utf-8');
       }
-      const commands = buildDefaultCommands(lang);
+      const commands = buildDefaultCommands(settings.lang);
       const commandsDir = path.join(claudeDir, 'commands');
       fs.mkdirSync(commandsDir, { recursive: true });
       for (const [name, content] of Object.entries(commands)) {
         fs.writeFileSync(path.join(commandsDir, `${name}.md`), content as string, 'utf-8');
       }
 
-      // wiki viewer
       fs.writeFileSync(
         path.join(repoPath, 'wiki', 'views', 'index.html'),
         buildWikiViewerHtml(),
         'utf-8'
       );
     } catch {
-      // claudeConfigDefaults 없으면 기본 CLAUDE.md만
       fs.mkdirSync(path.join(repoPath, '.claude'), { recursive: true });
       fs.writeFileSync(
         path.join(repoPath, 'CLAUDE.md'),

@@ -101,6 +101,54 @@
     }
   });
 
+  // --- Import Project Modal ---
+  const importProjectBtn = document.getElementById('import-project-btn');
+  const importModalOverlay = document.getElementById('import-modal-overlay');
+  const importModalCancel = document.getElementById('import-modal-cancel');
+  const importModalSubmit = document.getElementById('import-modal-submit');
+  const importFormPath = document.getElementById('import-form-path');
+  const importFormBrowse = document.getElementById('import-form-browse');
+
+  importProjectBtn.addEventListener('click', () => {
+    importFormPath.value = '';
+    importModalOverlay.style.display = 'flex';
+  });
+
+  importModalCancel.addEventListener('click', () => {
+    importModalOverlay.style.display = 'none';
+  });
+
+  importFormBrowse.addEventListener('click', async () => {
+    try {
+      const result = await api.invoke('dialog:select-directory');
+      if (result && result.path) {
+        importFormPath.value = result.path;
+      }
+    } catch (e) { /* ignore */ }
+  });
+
+  importModalSubmit.addEventListener('click', async () => {
+    const issueRepoPath = importFormPath.value.trim();
+    if (!issueRepoPath) return;
+    try {
+      const result = await api.invoke('project:import', { issueRepoPath });
+      if (result && result.success) {
+        importModalOverlay.style.display = 'none';
+        await loadProjects();
+        projectSelect.value = result.project.id;
+        projectSelect.dispatchEvent(new Event('change'));
+        showToast('Project imported successfully');
+      } else {
+        const errMsg = result?.error === 'CWB_SETTINGS_NOT_FOUND'
+          ? 'No .cwb/project-settings.json found in this repo'
+          : result?.error || 'Failed to import project';
+        showToast(errMsg, 'error');
+      }
+    } catch (e) {
+      showToast('Failed to import project', 'error');
+    }
+  });
+
   // --- Issue Create Modal ---
   const issueModalOverlay = document.getElementById('issue-modal-overlay');
   const issueModalCancel = document.getElementById('issue-modal-cancel');

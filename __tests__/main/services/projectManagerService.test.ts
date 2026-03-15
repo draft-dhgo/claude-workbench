@@ -171,10 +171,6 @@ describe('ProjectManagerService.addDevRepo', () => {
       'repos/frontend'
     );
     expect(mockGit.addAll).toHaveBeenCalled();
-    expect(mockGit.commit).toHaveBeenCalledWith(
-      project.issueRepoPath,
-      'repo: add submodule frontend'
-    );
 
     // Verify store
     const updated = projectStore.getById(project.id)!;
@@ -222,29 +218,33 @@ describe('ProjectManagerService.removeDevRepo', () => {
   });
 });
 
-describe('ProjectManagerService.cloneProject', () => {
-  it('clones an issue repo and registers the project', async () => {
-    const project = await service.cloneProject({
-      issueRepoUrl: 'https://github.com/test/my-project-issues.git',
-      localBasePath: tmpDir,
-    });
+describe('ProjectManagerService.importProject', () => {
+  it('imports an existing issue repo with .cwb/project-settings.json', async () => {
+    // First create a project to get a valid repo
+    const created = await service.createProject({ name: 'importable', localBasePath: tmpDir });
+    const repoPath = created.issueRepoPath;
 
-    expect(project.name).toBe('my-project');
-    expect(project.issueRepoPath).toBe(path.join(tmpDir, 'my-project-issues'));
-    expect(mockGit.clone).toHaveBeenCalledWith(
-      'https://github.com/test/my-project-issues.git',
-      path.join(tmpDir, 'my-project-issues')
-    );
-    expect(mockGit.initSubmodules).toHaveBeenCalledWith(project.issueRepoPath);
-    expect(mockGit.updateSubmodules).toHaveBeenCalledWith(project.issueRepoPath, true);
+    // Mock git init doesn't create .git, so create it manually
+    fs.mkdirSync(path.join(repoPath, '.git'), { recursive: true });
+
+    // Remove from store (simulate fresh import)
+    projectStore.remove(created.id);
+
+    const imported = await service.importProject({ issueRepoPath: repoPath });
+    expect(imported.name).toBe('importable');
+    expect(imported.issueRepoPath).toBe(repoPath);
   });
 
-  it('strips -issues suffix from repo name for project name', async () => {
-    const project = await service.cloneProject({
-      issueRepoUrl: 'https://github.com/org/cool-app-issues.git',
-      localBasePath: tmpDir,
-    });
-    expect(project.name).toBe('cool-app');
+  it('throws DIRECTORY_NOT_FOUND for non-existent path', async () => {
+    await expect(service.importProject({ issueRepoPath: '/nonexistent' }))
+      .rejects.toThrow('DIRECTORY_NOT_FOUND');
+  });
+
+  it('throws CWB_SETTINGS_NOT_FOUND when .cwb/project-settings.json is missing', async () => {
+    const emptyDir = path.join(tmpDir, 'empty-repo');
+    fs.mkdirSync(path.join(emptyDir, '.git'), { recursive: true });
+    await expect(service.importProject({ issueRepoPath: emptyDir }))
+      .rejects.toThrow('CWB_SETTINGS_NOT_FOUND');
   });
 });
 

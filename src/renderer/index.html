@@ -84,6 +84,7 @@
         </ul>
         <div class="sidebar-footer">
           <button id="new-project-btn" class="btn btn-primary sidebar-new-project-btn" data-i18n="project.new">+ New Project</button>
+          <button id="import-project-btn" class="btn btn-secondary sidebar-new-project-btn" style="margin-top:6px;" data-i18n="project.import">Import Project</button>
         </div>
       </nav>
 
@@ -413,6 +414,27 @@
             <div class="dialog-actions">
               <button id="project-modal-cancel" class="btn btn-secondary" data-i18n="btn.cancel">Cancel</button>
               <button id="project-modal-submit" class="btn btn-primary" data-i18n="btn.create">Create</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Import Project Modal -->
+        <div id="import-modal-overlay" class="dialog-overlay" style="display:none;">
+          <div class="dialog-box">
+            <h3 data-i18n="project.import_title">Import Project</h3>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;" data-i18n="project.import_desc">
+              Select an existing issue repo directory that contains .cwb/project-settings.json
+            </p>
+            <div class="form-group">
+              <label data-i18n="project.field.issue_repo_path">Issue Repo Path</label>
+              <div class="input-with-btn">
+                <input type="text" id="import-form-path" class="form-input" readonly />
+                <button id="import-form-browse" class="btn btn-secondary" data-i18n="btn.browse">Browse</button>
+              </div>
+            </div>
+            <div class="dialog-actions">
+              <button id="import-modal-cancel" class="btn btn-secondary" data-i18n="btn.cancel">Cancel</button>
+              <button id="import-modal-submit" class="btn btn-primary" data-i18n="project.import_btn">Import</button>
             </div>
           </div>
         </div>

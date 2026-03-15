@@ -64,9 +64,9 @@ async function handleProjectCreate(_event: any, data: { name: string; localBaseP
   }
 }
 
-async function handleProjectClone(_event: any, data: { issueRepoUrl: string; localBasePath: string }): Promise<{ success: boolean; project?: any; error?: string }> {
+async function handleProjectImport(_event: any, data: { issueRepoPath: string }): Promise<{ success: boolean; project?: any; error?: string }> {
   try {
-    const project = await getManager().cloneProject(data);
+    const project = await getManager().importProject({ issueRepoPath: data.issueRepoPath });
     return { success: true, project };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -79,6 +79,8 @@ async function handleProjectUpdate(_event: any, data: { projectId: string; name?
       name: data.name,
       settings: data.settings,
     });
+    // .cwb/project-settings.json 동기화
+    await getManager().saveProjectSettings(data.projectId).catch(() => {});
     return { success: true, project };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -195,7 +197,7 @@ export {
   handleProjectList,
   handleProjectGet,
   handleProjectCreate,
-  handleProjectClone,
+  handleProjectImport,
   handleProjectUpdate,
   handleProjectDelete,
   handleProjectSetActive,
