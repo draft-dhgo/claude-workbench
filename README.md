@@ -150,9 +150,10 @@ Navigate to the **Issues** page. You can view issues in **List** (default) or **
 |--------|---------|
 | **Created** | Issue defined, waiting to be started |
 | **In Progress** | Container allocated, Claude Code pipeline running |
-| **Testing** | Pipeline completed, tests running |
-| **Review** | Claude Code reviewing changes |
-| **Merged** | Changes merged to target branch |
+| **Completed** | Pipeline done, waiting for user merge approval |
+| **Merging** | User approved, merge in progress |
+| **Merged** | Changes merged to baseBranch and pushed |
+| **Failed** | Pipeline or merge failed (can retry) |
 | **Closed** | Issue resolved and archived |
 
 #### Kanban View
@@ -169,14 +170,21 @@ The system will:
 1. **Acquire a container** from the pool (or create a new one if under the limit)
 2. **Create branches** in each dev repo: `issue/ISSUE-XXX` based on the base branch
 3. **Run the pipeline command** (`/teams` or `/bugfix-teams`) via Claude Code
-4. **Auto-merge** the issue branch into the target branch (if enabled in settings)
-5. **Push** the merged result
-6. **Release** the container back to the pool
+4. **Transition to `Completed`** — pipeline work done, waiting for your review
+
+**After completion**, review the branch changes and click **Merge** to approve:
+1. The app merges `issue/ISSUE-XXX` → `baseBranch` in each dev repo
+2. Pushes the merged result to remote
+3. Cleans up the issue branch and releases the container
 
 If the container pool is full, the issue is queued and will start automatically when a container becomes available.
 
-To stop a running issue: click **Abort**.
-To retry a failed issue: click **Retry**.
+| Action | When |
+|--------|------|
+| **Start** | Issue is `Created` — begins pipeline execution |
+| **Abort** | Issue is `In Progress` — stops execution |
+| **Merge** | Issue is `Completed` — approves and merges to baseBranch |
+| **Retry** | Issue `Failed` — resets to Created for another attempt |
 
 ### 5. Container Monitor
 
@@ -228,10 +236,7 @@ Navigate to the **Settings** page.
 | Setting | Description | Default |
 |---------|-------------|---------|
 | **Max Containers** | Maximum concurrent dev containers for this project | 3 |
-| **Auto Merge** | Automatically merge on pipeline success | Enabled |
-| **Merge Strategy** | `merge`, `squash`, or `rebase` | merge |
 | **Test Command** | Custom test command (e.g., `npm test`) | (none) |
-| **Claude Review** | Enable Claude Code review before merge | Enabled |
 
 #### App Settings
 
@@ -339,11 +344,13 @@ PipelineOrchestratorService.processIssue()
     |-- Claude Code: /teams or /bugfix-teams
     |-- OAuth authentication (no API key needed)
     |-- Real-time log streaming
+    |-- Issue status -> completed
     |
-4. AUTO-MERGE (if enabled)
-    |-- git merge issue/ISSUE-XXX -> target branch
-    |-- Conflict? Claude attempts resolution
-    |-- Success? Push + Issue status -> merged
+4. USER REVIEWS & APPROVES MERGE
+    |-- User checks branch changes
+    |-- Clicks "Merge" button
+    |-- git merge issue/ISSUE-XXX -> baseBranch + push
+    |-- Issue status -> merged
     |
 5. CLEANUP
     |-- Remove worktrees, delete branches
