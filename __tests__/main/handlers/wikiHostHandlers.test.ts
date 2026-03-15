@@ -10,6 +10,20 @@ const mockServiceReset = jest.fn()
 const mockOpenExternal = jest.fn().mockResolvedValue(undefined)
 const mockGetActiveWorkspacePath = jest.fn()
 
+// WikiPanelService mock (SDD-0003: handleWikiHostOpenBrowser now uses panel)
+const mockPanelOpen = jest.fn()
+const mockPanelHide = jest.fn()
+const mockPanelDestroy = jest.fn()
+
+const mockWinForOldTests = {
+  addBrowserView: jest.fn(),
+  removeBrowserView: jest.fn(),
+  on: jest.fn(),
+  getBounds: jest.fn().mockReturnValue({ x: 0, y: 0, width: 1200, height: 800 }),
+}
+const mockGetFocusedWindow = jest.fn().mockReturnValue(mockWinForOldTests)
+const mockGetAllWindows = jest.fn().mockReturnValue([mockWinForOldTests])
+
 let handlers: any
 
 beforeEach(() => {
@@ -23,6 +37,13 @@ beforeEach(() => {
   mockOpenExternal.mockReset()
   mockOpenExternal.mockResolvedValue(undefined)
   mockGetActiveWorkspacePath.mockReset()
+  mockPanelOpen.mockReset()
+  mockPanelHide.mockReset()
+  mockPanelDestroy.mockReset()
+  mockGetFocusedWindow.mockReset()
+  mockGetFocusedWindow.mockReturnValue(mockWinForOldTests)
+  mockGetAllWindows.mockReset()
+  mockGetAllWindows.mockReturnValue([mockWinForOldTests])
 
   const MockWikiHostService = jest.fn().mockImplementation(() => ({
     start: mockStart,
@@ -34,8 +55,23 @@ beforeEach(() => {
   }))
   jest.doMock('../../../src/main/services/wikiHostService', () => MockWikiHostService)
 
+  const MockWikiPanelService = jest.fn().mockImplementation(() => ({
+    open: mockPanelOpen,
+    hide: mockPanelHide,
+    destroy: mockPanelDestroy,
+    isVisible: jest.fn().mockReturnValue(false),
+    updateBounds: jest.fn(),
+    panelWidth: 400,
+  }))
+  jest.doMock('../../../src/main/services/wikiPanelService', () => MockWikiPanelService)
+
+  const MockBrowserWindow = jest.fn()
+  MockBrowserWindow.getFocusedWindow = mockGetFocusedWindow
+  MockBrowserWindow.getAllWindows = mockGetAllWindows
+
   jest.doMock('electron', () => ({
     shell: { openExternal: mockOpenExternal },
+    BrowserWindow: MockBrowserWindow,
   }))
 
   // workspaceManagerHandlers mock (for active workspace fallback)
@@ -148,14 +184,15 @@ describe('TC-WH-H-07: handleWikiHostStatus — 상태 조회 시 WikiHostStatus 
   })
 })
 
-describe('TC-WH-H-08: handleWikiHostOpenBrowser — 서버 실행 중 브라우저 열기 성공', () => {
-  it('서버가 실행 중일 때 shell.openExternal이 호출된다', async () => {
+describe('TC-WH-H-08: handleWikiHostOpenBrowser — 서버 실행 중 인앱 패널 열기 성공 (SDD-0003)', () => {
+  it('서버가 실행 중일 때 panelService.open이 호출된다 (shell.openExternal 대신)', async () => {
     mockGetStatus.mockReturnValue({ running: true, url: 'http://localhost:8080', port: 8080 })
 
     const result = await handlers.handleWikiHostOpenBrowser(null)
 
     expect(result.success).toBe(true)
-    expect(mockOpenExternal).toHaveBeenCalledWith('http://localhost:8080')
+    expect(mockPanelOpen).toHaveBeenCalledWith(mockWinForOldTests, 'http://localhost:8080')
+    expect(mockOpenExternal).not.toHaveBeenCalled()
   })
 })
 
@@ -171,15 +208,17 @@ describe('TC-WH-H-09: handleWikiHostOpenBrowser — 서버 미실행 시 SERVER_
   })
 })
 
-describe('TC-WH-H-10: handleWikiHostOpenBrowser — shell.openExternal 에러 시 에러 전달', () => {
-  it('shell.openExternal이 에러를 throw하면 에러 응답을 반환한다', async () => {
+describe('TC-WH-H-10: handleWikiHostOpenBrowser — 창 없을 때 NO_WINDOW 반환 (SDD-0003)', () => {
+  it('포커스 창이 없고 열린 창도 없으면 NO_WINDOW를 반환한다', async () => {
     mockGetStatus.mockReturnValue({ running: true, url: 'http://localhost:8080', port: 8080 })
-    mockOpenExternal.mockRejectedValue(new Error('browser launch failed'))
+    mockGetFocusedWindow.mockReturnValue(null)
+    mockGetAllWindows.mockReturnValue([])
 
     const result = await handlers.handleWikiHostOpenBrowser(null)
 
     expect(result.success).toBe(false)
-    expect(result.error).toBe('browser launch failed')
+    expect(result.error).toBe('NO_WINDOW')
+    expect(mockPanelOpen).not.toHaveBeenCalled()
   })
 })
 

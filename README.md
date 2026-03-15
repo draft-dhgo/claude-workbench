@@ -39,6 +39,9 @@ Queue multiple Claude Code commands and execute them sequentially. Built on the 
 - **Abort**: cancel a running command mid-execution via AbortController
 - **Dequeue**: remove pending commands before they start
 - **Real-time logs**: IPC-based status updates and execution logs in the UI
+- **Log grouping**: each queued command's logs are collapsed by default; expand any group to inspect details
+- **Color-coded logs**: assistant output (green), user messages (blue), system events (gray) for at-a-glance parsing
+- **Expand / Collapse all**: one-click toggle to open or close all log groups simultaneously
 
 ### Workspace Management
 
@@ -50,7 +53,8 @@ Register existing directories or create new workspaces (with CLAUDE.md, skills, 
 - **Create Workspace**: scaffold a new workspace with CLAUDE.md, `.claude/commands/`, and all pipeline skills installed automatically
 - **Workspace list**: view and delete registered workspaces; WORKTREE and EMPTY badges indicate workspace type
 - **Open Terminal**: open a terminal in the workspace directory
-- **Wiki Hosting**: start/stop a local HTTP server to serve the wiki viewer
+- **Wiki Hosting**: start/stop a local HTTP server; once running, the Wiki Viewer opens automatically as an in-app side panel
+- **Open Wiki (in-app panel)**: toggle the built-in Wiki side panel without leaving the app — powered by Electron BrowserView
 
 ![Built-in Hosting](docs/screenshot-wiki-hosting.png?v=3)
 
@@ -150,7 +154,8 @@ A Wiki Viewer is included to browse all pipeline artifacts in your browser. The 
 
 The Wiki Viewer can be hosted directly from the app. In the **Workspace Management** tab, use the **Wiki Viewer Hosting** section to start a local HTTP server.
 
-- **One-click start/stop**: Start and stop the server from the Workspace Management tab
+- **One-click start/stop**: Start and stop the server from the Workspace Management tab; starting the server automatically opens the in-app Wiki panel
+- **In-app panel**: Wiki Viewer loads inside the app window as a side panel (400px right-side overlay) powered by BrowserView — no browser context switch needed
 - **Auto port selection**: Automatically picks an available port in the 8080–8099 range
 - **Open in browser**: Click the URL to open the hosted Wiki Viewer in your default browser
 - **Status indicator**: Running/Not Running indicator with live URL

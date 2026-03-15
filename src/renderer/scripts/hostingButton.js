@@ -38,8 +38,11 @@ function createHostingButton(workspacePath, onToggle) {
         const res = await window.electronAPI.invoke('wiki-host:start', { workspacePath })
         const newRunning = res.success ? true : false
         updateHostingButton(wrapper, newRunning)
-        if (res.success && typeof onToggle === 'function') {
-          try { onToggle(workspacePath, true) } catch (_) { /* ignore callback errors */ }
+        if (res.success) {
+          window.electronAPI.invoke('wiki-panel:open').catch(() => {})
+          if (typeof onToggle === 'function') {
+            try { onToggle(workspacePath, true) } catch (_) { /* ignore callback errors */ }
+          }
         }
       }
     } finally {

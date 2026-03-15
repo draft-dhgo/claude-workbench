@@ -266,7 +266,13 @@
       </div>
 
       <div class="cq-section">
-        <label class="section-label" data-i18n="cq.log.label">Execution Log</label>
+        <div class="cq-section-header">
+          <label class="section-label" data-i18n="cq.log.label">Execution Log</label>
+          <div class="cq-log-controls">
+            <button id="cq-collapse-all-btn" class="btn btn-secondary btn-sm">Collapse All</button>
+            <button id="cq-expand-all-btn"   class="btn btn-secondary btn-sm">Expand All</button>
+          </div>
+        </div>
         <div id="cq-log-container" class="cq-log-container">
           <div id="cq-log-content" class="cq-log-content"></div>
         </div>

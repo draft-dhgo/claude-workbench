@@ -525,7 +525,7 @@ h1 {
   border-radius: 4px;
   cursor: pointer;
 }
-.wc-repo-item:hover { background: var(--hover-bg); }
+.wc-repo-item:hover { background: var(--bg-hover); }
 .wc-repo-item input[type="checkbox"] { margin: 0; }
 .wc-repo-name { font-weight: 500; }
 .wc-repo-path { font-size: 0.82em; color: var(--text-secondary); margin-left: auto; }
@@ -561,7 +561,7 @@ h1 {
   overflow-y: auto;
   border: 1px solid var(--border-primary);
   border-radius: 4px;
-  background: var(--card-bg);
+  background: var(--bg-card);
   z-index: 20;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
@@ -570,7 +570,7 @@ h1 {
   cursor: pointer;
   font-size: 0.88em;
 }
-.wc-branch-dropdown-item:hover { background: var(--hover-bg); }
+.wc-branch-dropdown-item:hover { background: var(--bg-hover); }
 .wc-config-row { margin-bottom: 10px; }
 .wc-field-label {
   display: block;
@@ -1310,6 +1310,56 @@ h1 {
 
 .cq-log-user {
   color: var(--log-user);
+}
+
+/* 로그 그룹 (큐 항목 단위) */
+.cq-log-group {
+  border-bottom: 1px solid var(--border-subtle);
+}
+.cq-log-group:last-child {
+  border-bottom: none;
+}
+
+.cq-log-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.cq-log-group-header:hover {
+  background: var(--bg-hover);
+}
+
+.cq-log-group-chevron {
+  font-size: 0.75em;
+  transition: transform 0.25s ease;
+}
+.cq-log-group.expanded .cq-log-group-chevron {
+  transform: rotate(90deg);
+}
+
+.cq-log-group-title {
+  font-size: 0.82em;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.cq-log-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease;
+  padding: 0 14px;
+}
+.cq-log-group.expanded .cq-log-body {
+  max-height: 600px;
+  padding: 4px 14px 8px;
+}
+
+.cq-log-controls {
+  display: flex;
+  gap: 6px;
 }
 
 /* ─── Empty Workspace Create Form ─────────────────── */

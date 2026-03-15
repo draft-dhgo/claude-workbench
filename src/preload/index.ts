@@ -54,7 +54,9 @@ const ALLOWED_INVOKE_CHANNELS: string[] = [
   'merge:resolve-conflict',
   'merge:manual-resolve-complete',
   'merge:abort',
-  'merge:list-branches'
+  'merge:list-branches',
+  'wiki-panel:open',
+  'wiki-panel:close'
 ]
 
 contextBridge.exposeInMainWorld('electronAPI', {

@@ -60,7 +60,9 @@ export type InvokeChannel =
   | 'merge:resolve-conflict'
   | 'merge:manual-resolve-complete'
   | 'merge:abort'
-  | 'merge:list-branches';
+  | 'merge:list-branches'
+  | 'wiki-panel:open'
+  | 'wiki-panel:close';
 
 /** Send (단방향) IPC 채널 — 현재 없음 */
 export type SendChannel = never;

@@ -1,15 +1,24 @@
 import WikiHostService = require('../services/wikiHostService');
+import WikiPanelService = require('../services/wikiPanelService');
 import path = require('path');
-import { shell } from 'electron';
+import { BrowserWindow } from 'electron';
 import { WikiHostStatus } from '../../shared/types/models';
 
 let _service: WikiHostService | null = null;
+let _panelService: WikiPanelService | null = null;
 
 function getService(): WikiHostService {
   if (!_service) {
     _service = new WikiHostService();
   }
   return _service;
+}
+
+function getPanelService(): WikiPanelService {
+  if (!_panelService) {
+    _panelService = new WikiPanelService();
+  }
+  return _panelService;
 }
 
 async function handleWikiHostStart(
@@ -62,13 +71,32 @@ async function handleWikiHostOpenBrowser(
   if (!status.running || !status.url) {
     return { success: false, error: 'SERVER_NOT_RUNNING' };
   }
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  if (!win) return { success: false, error: 'NO_WINDOW' };
+  getPanelService().open(win, status.url);
+  return { success: true };
+}
 
-  try {
-    await shell.openExternal(status.url);
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message };
+async function handleWikiPanelOpen(
+  _event: any
+): Promise<{ success: boolean; error?: string }> {
+  const status = getService().getStatus();
+  if (!status.running || !status.url) {
+    return { success: false, error: 'SERVER_NOT_RUNNING' };
   }
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  if (!win) return { success: false, error: 'NO_WINDOW' };
+  getPanelService().open(win, status.url);
+  return { success: true };
+}
+
+async function handleWikiPanelClose(
+  _event: any
+): Promise<{ success: boolean; error?: string }> {
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  if (!win) return { success: true };
+  getPanelService().hide(win);
+  return { success: true };
 }
 
 async function cleanupWikiHost(): Promise<void> {
@@ -77,11 +105,16 @@ async function cleanupWikiHost(): Promise<void> {
   }
 }
 
+function cleanupWikiPanel(): void {
+  getPanelService().destroy();
+}
+
 function _resetService(): void {
   if (_service) {
     _service._reset();
   }
   _service = null;
+  _panelService = null;
 }
 
 export {
@@ -89,7 +122,10 @@ export {
   handleWikiHostStop,
   handleWikiHostStatus,
   handleWikiHostOpenBrowser,
+  handleWikiPanelOpen,
+  handleWikiPanelClose,
   cleanupWikiHost,
+  cleanupWikiPanel,
   _resetService,
   getService as getWikiHostServiceInstance
 };

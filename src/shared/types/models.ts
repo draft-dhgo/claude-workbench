@@ -144,6 +144,12 @@ export interface WikiHostStatus {
   port?: number;
 }
 
+/** Wiki 인앱 패널 상태 */
+export interface WikiPanelStatus {
+  visible: boolean;
+  url?: string;
+}
+
 /** 워크스페이스 커맨드 정보 */
 export interface CommandInfo {
   name: string;

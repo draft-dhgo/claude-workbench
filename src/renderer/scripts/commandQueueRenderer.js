@@ -1,5 +1,87 @@
 let _persistedCwd = null
 
+// ── 로그 그룹 관리 ────────────────────────────────────────────────────────────
+
+// itemId → { command: string, args: string } 매핑
+const _queueItemMeta = {}
+
+function getOrCreateLogGroup(itemId, commandSummary) {
+  var logContent = document.getElementById('cq-log-content')
+  var existing = logContent ? logContent.querySelector('[data-item-id="' + itemId + '"]') : null
+  if (existing) return existing
+
+  var group = document.createElement('div')
+  group.className = 'cq-log-group collapsed'
+  group.dataset.itemId = itemId
+
+  var header = document.createElement('div')
+  header.className = 'cq-log-group-header'
+
+  var chevron = document.createElement('span')
+  chevron.className = 'cq-log-group-chevron'
+  chevron.textContent = '\u25B6'
+
+  var title = document.createElement('span')
+  title.className = 'cq-log-group-title'
+  var titleText = commandSummary != null ? commandSummary : 'Item ' + itemId
+  title.textContent = titleText
+
+  header.appendChild(chevron)
+  header.appendChild(title)
+  header.addEventListener('click', function () { toggleGroup(group) })
+
+  var body = document.createElement('div')
+  body.className = 'cq-log-body'
+
+  group.appendChild(header)
+  group.appendChild(body)
+
+  if (logContent) logContent.appendChild(group)
+
+  return group
+}
+
+function toggleGroup(groupEl) {
+  if (groupEl.classList.contains('expanded')) {
+    groupEl.classList.remove('expanded')
+    groupEl.classList.add('collapsed')
+    var body = groupEl.querySelector('.cq-log-body')
+    if (body) body.style.maxHeight = null
+  } else {
+    groupEl.classList.remove('collapsed')
+    groupEl.classList.add('expanded')
+    var body = groupEl.querySelector('.cq-log-body')
+    if (body) body.style.maxHeight = body.scrollHeight + 'px'
+  }
+}
+
+function collapseAll() {
+  var groups = document.querySelectorAll('.cq-log-group')
+  groups.forEach(function (g) {
+    g.classList.remove('expanded')
+    g.classList.add('collapsed')
+    var body = g.querySelector('.cq-log-body')
+    if (body) body.style.maxHeight = null
+  })
+}
+
+function expandAll() {
+  var groups = document.querySelectorAll('.cq-log-group')
+  groups.forEach(function (g) {
+    g.classList.remove('collapsed')
+    g.classList.add('expanded')
+    var body = g.querySelector('.cq-log-body')
+    if (body) body.style.maxHeight = body.scrollHeight + 'px'
+  })
+}
+
+window.getOrCreateLogGroup = getOrCreateLogGroup
+window.toggleGroup = toggleGroup
+window.collapseAll = collapseAll
+window.expandAll = expandAll
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 window.addEventListener('DOMContentLoaded', async () => {
   await window._i18nReady
   const cmdTypeInput = document.getElementById('cq-cmd-type')
@@ -306,21 +388,24 @@ window.addEventListener('DOMContentLoaded', async () => {
     )
   }
 
-  // Append log message
+  // Append log message — group by itemId
   var MAX_LOG_LINES = 500
 
   function appendLog(log) {
+    var meta = _queueItemMeta[log.itemId]
+    var commandSummary = meta ? (meta.command + (meta.args ? ' ' + meta.args : '')) : undefined
+    var group = getOrCreateLogGroup(log.itemId, commandSummary)
+    var body = group.querySelector('.cq-log-body')
     var logLine = document.createElement('div')
     logLine.className = 'cq-log-line cq-log-' + log.type
     logLine.textContent = '[' + log.type.toUpperCase() + '] ' + log.content
-    logContent.appendChild(logLine)
-
-    while (logContent.children.length > MAX_LOG_LINES) {
-      logContent.removeChild(logContent.firstChild)
+    body.appendChild(logLine)
+    // If group is expanded, update max-height to accommodate new line
+    if (group.classList.contains('expanded')) {
+      body.style.maxHeight = body.scrollHeight + 'px'
     }
-
-    logContent.scrollTop = logContent.scrollHeight
   }
+  window.appendLog = appendLog
 
   // IPC event listeners
   window.electronAPI.on('queue:status-update', function (data) {
@@ -390,6 +475,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   abortBtn.addEventListener('click', async function () {
     await window.electronAPI.invoke('queue:abort')
   })
+
+  var collapseAllBtn = document.getElementById('cq-collapse-all-btn')
+  var expandAllBtn = document.getElementById('cq-expand-all-btn')
+  if (collapseAllBtn) collapseAllBtn.addEventListener('click', function () { collapseAll() })
+  if (expandAllBtn) expandAllBtn.addEventListener('click', function () { expandAll() })
 
   queueList.addEventListener('click', async function (e) {
     var removeBtn = e.target.closest('.cq-remove-btn')
