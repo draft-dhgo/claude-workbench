@@ -54,15 +54,6 @@
     }
   }
 
-  projectSelect.addEventListener('change', async () => {
-    const projectId = projectSelect.value;
-    if (projectId) {
-      try {
-        await api.invoke('project:set-active', { projectId });
-      } catch (e) { /* ignore */ }
-    }
-  });
-
   // --- New Project Modal ---
   const projectModalOverlay = document.getElementById('project-modal-overlay');
   const projectModalCancel = document.getElementById('project-modal-cancel');
@@ -278,11 +269,333 @@
     return div.innerHTML;
   }
 
-  // --- IPC Event Listeners ---
-  api.on('issue:list-updated', () => loadIssues());
-  api.on('issue:status-changed', () => loadIssues());
+  // ============================================================
+  // Dashboard Page
+  // ============================================================
+  async function loadDashboard() {
+    const project = await getActiveProject();
+    const noProject = document.getElementById('dashboard-no-project');
+    const content = document.getElementById('dashboard-content');
+    if (!project) {
+      noProject.style.display = '';
+      content.style.display = 'none';
+      return;
+    }
+    noProject.style.display = 'none';
+    content.style.display = '';
 
-  // --- Init ---
+    try {
+      const result = await api.invoke('project:get-dashboard', { projectId: project.id });
+      if (!result || !result.success) return;
+      const d = result.dashboard;
+      document.getElementById('stat-issues-value').textContent = d.issueStats.total;
+      document.getElementById('stat-containers-value').textContent =
+        `${d.containerStats.running}/${d.containerStats.max}`;
+      document.getElementById('stat-merged-value').textContent =
+        d.issueStats.byStatus['merged'] || 0;
+      document.getElementById('stat-failed-value').textContent =
+        d.issueStats.byStatus['created'] || 0;
+    } catch (e) { /* ignore */ }
+  }
+
+  async function getActiveProject() {
+    try {
+      const result = await api.invoke('project:get-active');
+      return result?.project || null;
+    } catch { return null; }
+  }
+
+  // ============================================================
+  // Container Monitor Page
+  // ============================================================
+  async function loadContainers() {
+    try {
+      const result = await api.invoke('container:pool-status');
+      if (!result || !result.success || !result.pool) {
+        document.getElementById('containers-empty').style.display = '';
+        document.getElementById('container-grid').innerHTML = '';
+        return;
+      }
+      const pool = result.pool;
+      document.getElementById('pool-active').textContent =
+        pool.containers.filter(c => c.status !== 'idle').length;
+      document.getElementById('pool-max').textContent = pool.maxContainers;
+
+      const grid = document.getElementById('container-grid');
+      const empty = document.getElementById('containers-empty');
+
+      if (!pool.containers.length) {
+        grid.innerHTML = '';
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+
+      grid.innerHTML = pool.containers.map(c => `
+        <div class="stat-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <code style="font-size:0.78rem;">${c.id.substring(0, 8)}</code>
+            <span class="badge badge-status-${c.status === 'idle' ? 'closed' : c.status === 'running' ? 'in-progress' : 'created'}">${c.status}</span>
+          </div>
+          ${c.assignedIssueId ? `<div style="font-size:0.82rem;">Issue: <strong>${c.assignedIssueId}</strong></div>` : '<div style="font-size:0.82rem;color:var(--text-muted);">Idle</div>'}
+          <div style="margin-top:8px;">
+            <button class="btn btn-sm btn-danger" onclick="destroyContainer('${c.id}')">Destroy</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Queued issues
+      const queueList = document.getElementById('container-queue-list');
+      if (pool.queuedIssues.length) {
+        queueList.innerHTML = pool.queuedIssues.map(id =>
+          `<div style="padding:4px 0;font-size:0.85rem;">${id}</div>`
+        ).join('');
+      } else {
+        queueList.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">No queued issues</div>';
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  window.destroyContainer = async function (containerId) {
+    try {
+      await api.invoke('container:destroy', { containerId });
+      showToast('Container destroyed');
+      loadContainers();
+    } catch (e) {
+      showToast('Failed to destroy container', 'error');
+    }
+  };
+
+  // ============================================================
+  // Pipeline Page
+  // ============================================================
+  const pipelineLogContent = document.getElementById('pipeline-log-content');
+  let pipelineLogs = [];
+
+  function appendPipelineLog(entry) {
+    pipelineLogs.push(entry);
+    if (pipelineLogs.length > 500) pipelineLogs = pipelineLogs.slice(-500);
+    renderPipelineLogs();
+  }
+
+  function renderPipelineLogs() {
+    if (!pipelineLogContent) return;
+    pipelineLogContent.innerHTML = pipelineLogs.map(l => {
+      const color = l.type === 'error' ? 'var(--danger-text)' :
+        l.type === 'assistant' ? 'var(--success-text)' :
+          l.type === 'system' ? 'var(--info-text)' : 'var(--text-primary)';
+      return `<div style="color:${color};">[${l.tag || ''}] ${escapeHtml(l.content)}</div>`;
+    }).join('');
+    pipelineLogContent.scrollTop = pipelineLogContent.scrollHeight;
+  }
+
+  const logCollapseAll = document.getElementById('log-collapse-all');
+  const logExpandAll = document.getElementById('log-expand-all');
+  if (logCollapseAll) logCollapseAll.addEventListener('click', () => { pipelineLogs = []; renderPipelineLogs(); });
+  if (logExpandAll) logExpandAll.addEventListener('click', () => renderPipelineLogs());
+
+  // ============================================================
+  // Repositories Page
+  // ============================================================
+  async function loadRepos() {
+    const project = await getActiveProject();
+    if (!project) return;
+    try {
+      const result = await api.invoke('project:repo:list', { projectId: project.id });
+      if (!result || !result.success) return;
+      const repos = result.repos || [];
+      const tbody = document.getElementById('repo-tbody');
+      const empty = document.getElementById('repos-empty');
+      if (!repos.length) {
+        tbody.innerHTML = '';
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+      tbody.innerHTML = repos.map(r => `
+        <tr>
+          <td><strong>${escapeHtml(r.name)}</strong></td>
+          <td><code style="font-size:0.78rem;">${escapeHtml(r.remoteUrl)}</code></td>
+          <td><code style="font-size:0.78rem;">${escapeHtml(r.submodulePath)}</code></td>
+          <td><button class="btn btn-sm btn-danger" onclick="removeRepo('${r.id}')">Remove</button></td>
+        </tr>
+      `).join('');
+    } catch (e) { /* ignore */ }
+  }
+
+  document.getElementById('repo-add-btn')?.addEventListener('click', async () => {
+    const repoUrl = prompt('Git remote URL:');
+    if (!repoUrl) return;
+    const name = prompt('Repository name:');
+    if (!name) return;
+    const project = await getActiveProject();
+    if (!project) { showToast('No active project', 'error'); return; }
+    try {
+      const result = await api.invoke('project:repo:add', { projectId: project.id, repoUrl, name });
+      if (result && result.success) { showToast('Repository added'); loadRepos(); }
+      else showToast(result?.error || 'Failed', 'error');
+    } catch (e) { showToast('Failed', 'error'); }
+  });
+
+  document.getElementById('repo-sync-btn')?.addEventListener('click', async () => {
+    const project = await getActiveProject();
+    if (!project) return;
+    try {
+      await api.invoke('project:repo:sync-submodules', { projectId: project.id });
+      showToast('Submodules synced');
+    } catch (e) { showToast('Sync failed', 'error'); }
+  });
+
+  window.removeRepo = async function (repoId) {
+    const project = await getActiveProject();
+    if (!project) return;
+    try {
+      await api.invoke('project:repo:remove', { projectId: project.id, repoId });
+      showToast('Repository removed'); loadRepos();
+    } catch (e) { showToast('Failed', 'error'); }
+  };
+
+  // ============================================================
+  // Wiki Page
+  // ============================================================
+  const wikiHostBtn = document.getElementById('wiki-host-btn');
+  const wikiPanelBtn = document.getElementById('wiki-panel-btn');
+  const wikiStatusText = document.getElementById('wiki-status-text');
+  let wikiRunning = false;
+
+  async function checkWikiStatus() {
+    try {
+      const status = await api.invoke('wiki-host:status');
+      wikiRunning = status?.running || false;
+      wikiStatusText.textContent = wikiRunning ? `Running (${status.url})` : 'Stopped';
+      wikiHostBtn.textContent = wikiRunning ? 'Stop Server' : 'Start Server';
+    } catch (e) { /* ignore */ }
+  }
+
+  wikiHostBtn?.addEventListener('click', async () => {
+    if (wikiRunning) {
+      await api.invoke('wiki-host:stop');
+    } else {
+      const project = await getActiveProject();
+      await api.invoke('wiki-host:start', { workspacePath: project?.issueRepoPath });
+    }
+    checkWikiStatus();
+  });
+
+  wikiPanelBtn?.addEventListener('click', async () => {
+    await api.invoke('wiki-host:open-browser');
+  });
+
+  // ============================================================
+  // Settings Page
+  // ============================================================
+  async function loadSettings() {
+    try {
+      const result = await api.invoke('app:settings:get');
+      if (result?.success) {
+        const s = result.settings;
+        document.getElementById('settings-default-path').value = s.defaultProjectPath || '';
+      }
+    } catch (e) { /* ignore */ }
+
+    // Project settings
+    const project = await getActiveProject();
+    if (project) {
+      document.getElementById('settings-max-containers').value = project.settings.maxContainers;
+      document.getElementById('settings-auto-merge').checked = project.settings.autoMerge;
+      document.getElementById('settings-merge-strategy').value = project.settings.mergeStrategy;
+      document.getElementById('settings-test-command').value = project.settings.testCommand || '';
+      document.getElementById('settings-review-enabled').checked = project.settings.reviewEnabled;
+    }
+
+    // Docker status
+    try {
+      const dockerResult = await api.invoke('app:docker:check');
+      const dockerEl = document.getElementById('docker-status-text');
+      if (dockerResult?.available) {
+        dockerEl.textContent = `Available (${dockerResult.version})`;
+        dockerEl.style.color = 'var(--success-text)';
+      } else {
+        dockerEl.textContent = 'Not available';
+        dockerEl.style.color = 'var(--danger-text)';
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  document.getElementById('settings-browse-path')?.addEventListener('click', async () => {
+    try {
+      const result = await api.invoke('dialog:select-directory');
+      if (result?.path) {
+        document.getElementById('settings-default-path').value = result.path;
+      }
+    } catch (e) { /* ignore */ }
+  });
+
+  document.getElementById('settings-save-btn')?.addEventListener('click', async () => {
+    const project = await getActiveProject();
+
+    // Save app settings
+    await api.invoke('app:settings:update', {
+      defaultProjectPath: document.getElementById('settings-default-path').value,
+    });
+
+    // Save project settings
+    if (project) {
+      await api.invoke('project:update', {
+        projectId: project.id,
+        settings: {
+          maxContainers: parseInt(document.getElementById('settings-max-containers').value) || 3,
+          autoMerge: document.getElementById('settings-auto-merge').checked,
+          mergeStrategy: document.getElementById('settings-merge-strategy').value,
+          testCommand: document.getElementById('settings-test-command').value || undefined,
+          reviewEnabled: document.getElementById('settings-review-enabled').checked,
+        },
+      });
+    }
+    showToast('Settings saved');
+  });
+
+  // ============================================================
+  // Project Change Handler
+  // ============================================================
+  projectSelect.addEventListener('change', async () => {
+    const projectId = projectSelect.value;
+    if (projectId) {
+      try {
+        await api.invoke('project:set-active', { projectId });
+        // Reload all pages
+        loadDashboard();
+        loadIssues();
+        loadContainers();
+        loadRepos();
+        checkWikiStatus();
+        loadSettings();
+      } catch (e) { /* ignore */ }
+    }
+  });
+
+  // ============================================================
+  // IPC Event Listeners
+  // ============================================================
+  api.on('issue:list-updated', () => { loadIssues(); loadDashboard(); });
+  api.on('issue:status-changed', () => { loadIssues(); loadDashboard(); });
+  api.on('container:pool-updated', () => loadContainers());
+  api.on('container:status-changed', () => loadContainers());
+  api.on('pipeline:log', (entry) => appendPipelineLog(entry));
+  api.on('project:active-changed', () => {
+    loadDashboard();
+    loadIssues();
+    loadContainers();
+    loadRepos();
+    checkWikiStatus();
+    loadSettings();
+  });
+
+  // ============================================================
+  // Init
+  // ============================================================
   loadProjects();
+  loadDashboard();
+  checkWikiStatus();
   navigateTo('dashboard');
 })();

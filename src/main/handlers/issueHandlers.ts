@@ -104,15 +104,15 @@ async function handleIssueSetDetail(_event: any, data: { issueId: string; conten
   }
 }
 
-// --- Issue Start/Abort/Retry ---
-// These will delegate to PipelineOrchestratorService in Phase 2
+// --- Issue Start/Abort/Retry (PipelineOrchestrator 연동) ---
 
 async function handleIssueStart(_event: any, data: { issueId: string }): Promise<{ success: boolean; error?: string }> {
   try {
-    // Phase 2: PipelineOrchestratorService.processIssue()
-    // For now, transition to in-progress
-    await getIssueService().transitionStatus(getActiveIssueRepoPath(), data.issueId, 'in-progress');
-    notifyIssueListUpdated();
+    const project = getManager().getActiveProject();
+    if (!project) return { success: false, error: 'NO_ACTIVE_PROJECT' };
+
+    const { startIssueProcessing } = require('./pipelineHandlers');
+    await startIssueProcessing(project.id, data.issueId);
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -121,8 +121,11 @@ async function handleIssueStart(_event: any, data: { issueId: string }): Promise
 
 async function handleIssueAbort(_event: any, data: { issueId: string }): Promise<{ success: boolean; error?: string }> {
   try {
-    // Phase 2: PipelineOrchestratorService.abortIssue()
-    await getIssueService().transitionStatus(getActiveIssueRepoPath(), data.issueId, 'created');
+    const project = getManager().getActiveProject();
+    if (!project) return { success: false, error: 'NO_ACTIVE_PROJECT' };
+
+    const { abortIssueProcessing } = require('./pipelineHandlers');
+    await abortIssueProcessing(project.id, data.issueId);
     notifyIssueListUpdated();
     return { success: true };
   } catch (err: any) {
@@ -132,7 +135,11 @@ async function handleIssueAbort(_event: any, data: { issueId: string }): Promise
 
 async function handleIssueRetry(_event: any, data: { issueId: string }): Promise<{ success: boolean; error?: string }> {
   try {
-    await getIssueService().transitionStatus(getActiveIssueRepoPath(), data.issueId, 'created');
+    const project = getManager().getActiveProject();
+    if (!project) return { success: false, error: 'NO_ACTIVE_PROJECT' };
+
+    const { retryIssueProcessing } = require('./pipelineHandlers');
+    await retryIssueProcessing(project.id, data.issueId);
     notifyIssueListUpdated();
     return { success: true };
   } catch (err: any) {

@@ -18,6 +18,11 @@ import {
   handleIssueStart, handleIssueAbort, handleIssueRetry,
 } from './handlers/issueHandlers';
 import { handleSettingsGet, handleSettingsUpdate, handleDockerCheck } from './handlers/settingsHandlers';
+import {
+  handlePoolStatus, handleContainerGet, handleContainerGetLogs,
+  handleContainerDestroy, handleContainerDestroyAll, handleContainerSetMax,
+} from './handlers/containerHandlers';
+import { handlePipelineStatus, handlePipelineAbort } from './handlers/pipelineHandlers';
 
 function createWindow() {
   const win = new BrowserWindow(getWindowOptions())
@@ -83,9 +88,17 @@ ipcMain.handle('wiki-host:open-browser', handleWikiHostOpenBrowser)
 // === Merge (유지) ===
 ipcMain.handle('merge:list-branches', handleListMergeBranches)
 
-// TODO Phase 2:
-// ipcMain.handle('container:*', ...)
-// ipcMain.handle('pipeline:*', ...)
+// === Container Pool ===
+ipcMain.handle('container:pool-status', handlePoolStatus)
+ipcMain.handle('container:get', handleContainerGet)
+ipcMain.handle('container:get-logs', handleContainerGetLogs)
+ipcMain.handle('container:destroy', handleContainerDestroy)
+ipcMain.handle('container:destroy-all', handleContainerDestroyAll)
+ipcMain.handle('container:set-max', handleContainerSetMax)
+
+// === Pipeline ===
+ipcMain.handle('pipeline:status', handlePipelineStatus)
+ipcMain.handle('pipeline:abort', handlePipelineAbort)
 
 app.whenReady().then(() => {
   createWindow();
