@@ -17,7 +17,9 @@
   "project.import": "Import Project",
   "project.create_title": "Create Project",
   "project.import_title": "Import Project",
-  "project.import_desc": "Select an existing issue repo directory that contains .cwb/project-settings.json",
+  "project.import_desc": "Enter a git remote URL or select a local directory containing .cwb/project-settings.json",
+  "project.field.source": "Git URL or Local Path",
+  "project.field.remote_url": "Remote URL (optional)",
   "project.import_btn": "Import",
   "project.field.name": "Project Name",
   "project.field.path": "Local Base Path",
@@ -90,7 +92,7 @@
   "settings.merge_strategy": "Merge Strategy",
   "settings.test_command": "Test Command",
   "settings.review_enabled": "Claude Review",
-  "settings.default_path": "Default Project Path",
+  "settings.data_root": "Data Root Path",
   "settings.docker_status": "Docker Status",
   "settings.save": "Save Settings"
 }

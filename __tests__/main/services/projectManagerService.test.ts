@@ -219,8 +219,7 @@ describe('ProjectManagerService.removeDevRepo', () => {
 });
 
 describe('ProjectManagerService.importProject', () => {
-  it('imports an existing issue repo with .cwb/project-settings.json', async () => {
-    // First create a project to get a valid repo
+  it('imports from local path with .cwb/project-settings.json', async () => {
     const created = await service.createProject({ name: 'importable', localBasePath: tmpDir });
     const repoPath = created.issueRepoPath;
 
@@ -230,21 +229,52 @@ describe('ProjectManagerService.importProject', () => {
     // Remove from store (simulate fresh import)
     projectStore.remove(created.id);
 
-    const imported = await service.importProject({ issueRepoPath: repoPath });
+    const imported = await service.importProject({ source: repoPath });
     expect(imported.name).toBe('importable');
     expect(imported.issueRepoPath).toBe(repoPath);
   });
 
-  it('throws DIRECTORY_NOT_FOUND for non-existent path', async () => {
-    await expect(service.importProject({ issueRepoPath: '/nonexistent' }))
+  it('imports from git URL by cloning', async () => {
+    // Setup: create a project first, then import via URL
+    const created = await service.createProject({ name: 'url-import', localBasePath: tmpDir });
+    const repoPath = created.issueRepoPath;
+    fs.mkdirSync(path.join(repoPath, '.git'), { recursive: true });
+    projectStore.remove(created.id);
+
+    // Mock clone to just verify it was called
+    const cloneDest = path.join(tmpDir, 'cloned', 'url-import-issues');
+    mockGit.clone.mockImplementation(async (url: string, dest: string) => {
+      // Copy the source to dest to simulate clone
+      fs.cpSync(repoPath, dest, { recursive: true });
+    });
+
+    const imported = await service.importProject({
+      source: 'https://github.com/org/url-import-issues.git',
+      localBasePath: path.join(tmpDir, 'cloned'),
+    });
+
+    expect(mockGit.clone).toHaveBeenCalledWith(
+      'https://github.com/org/url-import-issues.git',
+      expect.stringContaining('url-import-issues')
+    );
+    expect(imported.name).toBe('url-import');
+  });
+
+  it('throws DIRECTORY_NOT_FOUND for non-existent local path', async () => {
+    await expect(service.importProject({ source: '/nonexistent' }))
       .rejects.toThrow('DIRECTORY_NOT_FOUND');
   });
 
   it('throws CWB_SETTINGS_NOT_FOUND when .cwb/project-settings.json is missing', async () => {
     const emptyDir = path.join(tmpDir, 'empty-repo');
     fs.mkdirSync(path.join(emptyDir, '.git'), { recursive: true });
-    await expect(service.importProject({ issueRepoPath: emptyDir }))
+    await expect(service.importProject({ source: emptyDir }))
       .rejects.toThrow('CWB_SETTINGS_NOT_FOUND');
+  });
+
+  it('throws LOCAL_BASE_PATH_REQUIRED when importing URL without localBasePath', async () => {
+    await expect(service.importProject({ source: 'https://github.com/org/repo.git' }))
+      .rejects.toThrow('LOCAL_BASE_PATH_REQUIRED');
   });
 });
 

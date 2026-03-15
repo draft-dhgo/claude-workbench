@@ -20,6 +20,7 @@ export type InvokeChannel =
   | 'project:get-active'
   | 'project:get-dashboard'
   | 'project:get-config-status'
+  | 'project:sync'
   // Dev Repo (submodule) 관리
   | 'project:repo:add'
   | 'project:repo:remove'

@@ -175,7 +175,17 @@ class IssueService {
         await this._git.commit(issueRepoPath, message);
       }
     } catch {
-      // git commit 실패는 무시 (issue repo가 아직 init 안 된 경우 등)
+      // git commit 실패는 무시
+    }
+
+    // 자동 push (remote가 있으면)
+    try {
+      const remotes = await this._git.exec(['remote'], issueRepoPath);
+      if (remotes.trim()) {
+        await this._git.push(issueRepoPath);
+      }
+    } catch {
+      // push 실패는 무시 (오프라인 등)
     }
   }
 }

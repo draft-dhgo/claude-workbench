@@ -21,7 +21,7 @@ class SettingsStore {
       // 기본값과 병합 (새 필드 추가 시 대응)
       return { ...DEFAULT_APP_SETTINGS, ...data };
     } catch {
-      return { ...DEFAULT_APP_SETTINGS, defaultProjectPath: this._defaultProjectPath() };
+      return { ...DEFAULT_APP_SETTINGS, dataRootPath: this._defaultDataRootPath() };
     }
   }
 
@@ -32,9 +32,17 @@ class SettingsStore {
     return merged;
   }
 
-  getDefaultProjectPath(): string {
+  getDataRootPath(): string {
     const settings = this.get();
-    return settings.defaultProjectPath || this._defaultProjectPath();
+    return settings.dataRootPath || this._defaultDataRootPath();
+  }
+
+  getProjectsPath(): string {
+    return path.join(this.getDataRootPath(), 'projects');
+  }
+
+  getContainersPath(): string {
+    return path.join(this.getDataRootPath(), 'containers');
   }
 
   private _save(data: AppSettings): void {
@@ -45,8 +53,8 @@ class SettingsStore {
     fs.writeFileSync(this._filePath, JSON.stringify(data, null, 2), 'utf-8');
   }
 
-  private _defaultProjectPath(): string {
-    return path.join(os.homedir(), 'claude-workbench-projects');
+  private _defaultDataRootPath(): string {
+    return path.join(os.homedir(), 'claude-workbench-data');
   }
 }
 

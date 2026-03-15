@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform" />
   <img src="https://img.shields.io/badge/electron-28-47848F?logo=electron" alt="Electron" />
   <img src="https://img.shields.io/badge/typescript-5.9-3178C6?logo=typescript" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/tests-360%20passing-brightgreen" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-364%20passing-brightgreen" alt="Tests" />
 </p>
 
 ---
@@ -81,21 +81,33 @@ npm run build      # Creates DMG (macOS), NSIS (Windows), AppImage (Linux)
 ### 1. Creating a Project
 
 A **Project** is the central unit of work. It consists of:
-- An **issue-tracking repo** (created automatically) that stores all issues, wiki artifacts, and Claude Code config
+- An **issue-tracking repo** (created automatically) with `.cwb/project-settings.json` for portable settings
 - One or more **dev repos** added as git submodules
 
-To create a project:
+To create a new project:
 
 1. Click **+ New Project** in the sidebar
 2. Enter a project name
-3. Choose a local base path (where the project directory will be created)
+3. (Optional) Enter a remote URL if you have a remote repo ready (e.g., `https://github.com/org/my-project-issues.git`)
 4. Click **Create**
 
 The app will:
-- Create a git repository at `<base-path>/<project-name>-issues/`
-- Scaffold the directory structure (issues, wiki, .claude config, skills, commands)
-- Make an initial commit
-- Register the project in the app
+- Create a git repository at `<data-root>/projects/<project-name>-issues/`
+- Scaffold the directory structure (`.cwb/`, issues, wiki, .claude config, skills, commands)
+- If remote URL was provided: `git remote add origin` + initial push
+- Make an initial commit and register the project
+
+To import an existing project:
+
+1. Click **Import Project** in the sidebar
+2. Enter a **git remote URL** (will auto-clone) or select a **local directory**
+3. Click **Import**
+
+The app will:
+- Clone the repo (if URL) or read the local path
+- Read `.cwb/project-settings.json` to load project name, settings, dev repos
+- Sync submodules automatically
+- Register the project and load all issues
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
@@ -225,27 +237,30 @@ Navigate to the **Settings** page.
 
 | Setting | Description |
 |---------|-------------|
-| **Default Project Path** | Where new projects are created |
+| **Data Root Path** | Where all project repos, containers, and caches are stored (`~/claude-workbench-data/` by default) |
 | **Docker Status** | Shows Docker availability and version |
 
 ---
 
-## Cloning a Project on Another Machine
+## Setting Up on Another Machine
 
-Since the issue-tracking repo uses git submodules, setting up on a new machine is simple:
+Just one step:
 
-```bash
-# 1. Clone the issue repo (or use the "Clone Project" feature in the app)
-git clone https://github.com/myorg/my-project-issues.git
+1. Open Claude Workbench
+2. Click **Import Project**
+3. Paste the issue repo git URL (e.g., `https://github.com/myorg/my-project-issues.git`)
+4. Click **Import**
 
-# 2. Initialize submodules
-cd my-project-issues
-git submodule update --init --recursive
+That's it. The app auto-clones, syncs submodules, reads `.cwb/project-settings.json`, and loads all issues.
 
-# 3. Open Claude Workbench and use "Clone Project" or register the directory
-```
+### Automatic Sync
 
-The app's **Clone Project** feature does all of this automatically — just provide the issue repo URL and a local path.
+- **On project select**: auto-pulls latest changes from remote (`git pull --rebase --autostash`)
+- **On issue change**: auto-commits and pushes to remote
+- **Submodules**: auto-synced on project select and import
+- **Settings**: stored in `.cwb/project-settings.json` inside the repo, synced via git
+
+No manual sync needed. Works offline too — changes are pushed when connection is available.
 
 ---
 
@@ -257,12 +272,26 @@ The app supports English and Korean (한국어). Switch languages using the drop
 
 ## Architecture
 
-### Project Structure (Issue Repo)
+### Data Root Structure
+
+```
+~/claude-workbench-data/          # AppSettings.dataRootPath
+  projects/                       # All issue repos
+    my-saas-app-issues/
+    mobile-client-issues/
+  containers/                     # Dev container worktrees
+    <container-id>/
+  devcontainers/                  # Docker image cache
+```
+
+### Issue Repo Structure
 
 ```
 my-project-issues/              # Git repository
   .git/
   .gitmodules                   # Submodule config
+  .cwb/
+    project-settings.json       # Portable project settings (synced via git)
   repos/                        # Dev repos as submodules
     backend-api/
     frontend-web/
@@ -392,7 +421,7 @@ src/
 |-----------|-----------|
 | Runtime | Electron 28 |
 | Language | TypeScript 5.9 |
-| Testing | Jest + ts-jest (22 suites, 360 tests) |
+| Testing | Jest + ts-jest (22 suites, 364 tests) |
 | Packaging | electron-builder |
 | Security | Context Isolation + Preload Script |
 | AI SDK | @anthropic-ai/claude-agent-sdk |

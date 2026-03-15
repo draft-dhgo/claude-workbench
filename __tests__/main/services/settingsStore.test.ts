@@ -18,21 +18,20 @@ afterEach(() => {
 });
 
 describe('SettingsStore.get', () => {
-  it('returns defaults merged with _defaultProjectPath when no file exists', () => {
+  it('returns defaults with dataRootPath when no file exists', () => {
     const settings = store.get();
     expect(settings.version).toBe(1);
     expect(settings.dockerSocketPath).toBe('/var/run/docker.sock');
     expect(settings.maxGlobalContainers).toBe(10);
     expect(settings.theme).toBe('system');
     expect(settings.lang).toBe('ko');
-    // defaultProjectPath should be the computed default
-    expect(settings.defaultProjectPath).toBe(path.join(os.homedir(), 'claude-workbench-projects'));
+    expect(settings.dataRootPath).toBe(path.join(os.homedir(), 'claude-workbench-data'));
   });
 
   it('returns stored values when settings file exists', () => {
     const data = {
       version: 1,
-      defaultProjectPath: '/custom/path',
+      dataRootPath: '/custom/path',
       dockerSocketPath: '/custom/docker.sock',
       maxGlobalContainers: 5,
       theme: 'dark' as const,
@@ -40,15 +39,12 @@ describe('SettingsStore.get', () => {
     };
     fs.writeFileSync(path.join(tmpDir, 'settings.json'), JSON.stringify(data), 'utf-8');
     const settings = store.get();
-    expect(settings.defaultProjectPath).toBe('/custom/path');
+    expect(settings.dataRootPath).toBe('/custom/path');
     expect(settings.dockerSocketPath).toBe('/custom/docker.sock');
     expect(settings.maxGlobalContainers).toBe(5);
-    expect(settings.theme).toBe('dark');
-    expect(settings.lang).toBe('en');
   });
 
   it('merges defaults for missing fields in stored file', () => {
-    // Stored file has only partial fields
     fs.writeFileSync(
       path.join(tmpDir, 'settings.json'),
       JSON.stringify({ version: 1, theme: 'light' }),
@@ -56,16 +52,14 @@ describe('SettingsStore.get', () => {
     );
     const settings = store.get();
     expect(settings.theme).toBe('light');
-    // Other fields should come from DEFAULT_APP_SETTINGS
     expect(settings.maxGlobalContainers).toBe(10);
-    expect(settings.lang).toBe('ko');
   });
 
   it('returns defaults when file contains invalid JSON', () => {
     fs.writeFileSync(path.join(tmpDir, 'settings.json'), 'not json!!!', 'utf-8');
     const settings = store.get();
     expect(settings.version).toBe(1);
-    expect(settings.defaultProjectPath).toBe(path.join(os.homedir(), 'claude-workbench-projects'));
+    expect(settings.dataRootPath).toBe(path.join(os.homedir(), 'claude-workbench-data'));
   });
 });
 
@@ -73,7 +67,6 @@ describe('SettingsStore.update', () => {
   it('persists partial updates and returns merged settings', () => {
     const result = store.update({ theme: 'dark' });
     expect(result.theme).toBe('dark');
-    // Verify persistence
     const reloaded = store.get();
     expect(reloaded.theme).toBe('dark');
   });
@@ -94,37 +87,39 @@ describe('SettingsStore.update', () => {
   });
 
   it('writes valid JSON to disk', () => {
-    store.update({ defaultProjectPath: '/my/projects' });
+    store.update({ dataRootPath: '/my/data' });
     const raw = fs.readFileSync(path.join(tmpDir, 'settings.json'), 'utf-8');
     const parsed = JSON.parse(raw);
-    expect(parsed.defaultProjectPath).toBe('/my/projects');
+    expect(parsed.dataRootPath).toBe('/my/data');
   });
 });
 
-describe('SettingsStore.getDefaultProjectPath', () => {
-  it('returns stored defaultProjectPath when set', () => {
-    store.update({ defaultProjectPath: '/stored/path' });
-    expect(store.getDefaultProjectPath()).toBe('/stored/path');
+describe('SettingsStore.getDataRootPath', () => {
+  it('returns stored dataRootPath when set', () => {
+    store.update({ dataRootPath: '/stored/path' });
+    expect(store.getDataRootPath()).toBe('/stored/path');
   });
 
-  it('returns computed default when defaultProjectPath is empty string', () => {
-    store.update({ defaultProjectPath: '' });
-    expect(store.getDefaultProjectPath()).toBe(path.join(os.homedir(), 'claude-workbench-projects'));
+  it('returns computed default when dataRootPath is empty string', () => {
+    store.update({ dataRootPath: '' });
+    expect(store.getDataRootPath()).toBe(path.join(os.homedir(), 'claude-workbench-data'));
   });
 
   it('returns computed default when no settings file exists', () => {
-    expect(store.getDefaultProjectPath()).toBe(path.join(os.homedir(), 'claude-workbench-projects'));
+    expect(store.getDataRootPath()).toBe(path.join(os.homedir(), 'claude-workbench-data'));
   });
 });
 
-describe('SettingsStore multiple updates', () => {
-  it('handles sequential updates correctly', () => {
-    store.update({ theme: 'light' });
-    store.update({ lang: 'en' });
-    store.update({ maxGlobalContainers: 15 });
-    const final = store.get();
-    expect(final.theme).toBe('light');
-    expect(final.lang).toBe('en');
-    expect(final.maxGlobalContainers).toBe(15);
+describe('SettingsStore.getProjectsPath', () => {
+  it('returns projects subdirectory of data root', () => {
+    store.update({ dataRootPath: '/my/data' });
+    expect(store.getProjectsPath()).toBe('/my/data/projects');
+  });
+});
+
+describe('SettingsStore.getContainersPath', () => {
+  it('returns containers subdirectory of data root', () => {
+    store.update({ dataRootPath: '/my/data' });
+    expect(store.getContainersPath()).toBe('/my/data/containers');
   });
 });

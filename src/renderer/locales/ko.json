@@ -17,7 +17,9 @@
   "project.import": "프로젝트 가져오기",
   "project.create_title": "프로젝트 생성",
   "project.import_title": "프로젝트 가져오기",
-  "project.import_desc": "기존 이슈 repo 디렉토리를 선택하세요 (.cwb/project-settings.json 필요)",
+  "project.import_desc": "git remote URL을 입력하거나, .cwb/project-settings.json이 있는 로컬 디렉토리를 선택하세요",
+  "project.field.source": "Git URL 또는 로컬 경로",
+  "project.field.remote_url": "Remote URL (선택사항)",
   "project.import_btn": "가져오기",
   "project.field.name": "프로젝트 이름",
   "project.field.path": "로컬 저장 경로",
@@ -90,7 +92,7 @@
   "settings.merge_strategy": "병합 전략",
   "settings.test_command": "테스트 명령",
   "settings.review_enabled": "Claude 리뷰",
-  "settings.default_path": "기본 프로젝트 경로",
+  "settings.data_root": "데이터 루트 경로",
   "settings.docker_status": "Docker 상태",
   "settings.save": "설정 저장"
 }

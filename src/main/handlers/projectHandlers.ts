@@ -51,11 +51,21 @@ async function handleProjectGet(_event: any, data: { projectId: string }): Promi
   }
 }
 
-async function handleProjectCreate(_event: any, data: { name: string; localBasePath: string; lang?: string }): Promise<{ success: boolean; project?: any; error?: string }> {
+async function handleProjectCreate(_event: any, data: { name: string; localBasePath?: string; remoteUrl?: string; lang?: string }): Promise<{ success: boolean; project?: any; error?: string }> {
   try {
+    // localBasePath가 없으면 settings의 projectsPath 사용
+    let localBasePath = data.localBasePath;
+    if (!localBasePath) {
+      const SettingsStore = require('../services/settingsStore');
+      const settingsStore = new SettingsStore(app.getPath('userData'));
+      localBasePath = settingsStore.getProjectsPath();
+      const fs = require('fs');
+      fs.mkdirSync(localBasePath, { recursive: true });
+    }
     const project = await getManager().createProject({
       name: data.name,
-      localBasePath: data.localBasePath,
+      localBasePath,
+      remoteUrl: data.remoteUrl,
       lang: (data.lang as 'en' | 'ko') || 'ko',
     });
     return { success: true, project };
@@ -64,10 +74,33 @@ async function handleProjectCreate(_event: any, data: { name: string; localBaseP
   }
 }
 
-async function handleProjectImport(_event: any, data: { issueRepoPath: string }): Promise<{ success: boolean; project?: any; error?: string }> {
+async function handleProjectImport(_event: any, data: { source: string; localBasePath?: string }): Promise<{ success: boolean; project?: any; error?: string }> {
   try {
-    const project = await getManager().importProject({ issueRepoPath: data.issueRepoPath });
+    // localBasePath가 없으면 settings의 projectsPath 사용
+    let localBasePath = data.localBasePath;
+    if (!localBasePath) {
+      const SettingsStore = require('../services/settingsStore');
+      const settingsStore = new SettingsStore(app.getPath('userData'));
+      localBasePath = settingsStore.getProjectsPath();
+      const fs = require('fs');
+      fs.mkdirSync(localBasePath, { recursive: true });
+    }
+    const project = await getManager().importProject({ source: data.source, localBasePath });
     return { success: true, project };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+async function handleProjectSync(_event: any, data?: { projectId?: string }): Promise<{ success: boolean; pulled?: boolean; pushed?: boolean; error?: string }> {
+  try {
+    const project = data?.projectId
+      ? getProjectStore().getById(data.projectId)
+      : getManager().getActiveProject();
+    if (!project) return { success: false, error: 'NO_ACTIVE_PROJECT' };
+
+    const pullResult = await getManager().pullProject(project.id);
+    return { success: true, pulled: pullResult.pulled, error: pullResult.error };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
@@ -198,6 +231,7 @@ export {
   handleProjectGet,
   handleProjectCreate,
   handleProjectImport,
+  handleProjectSync,
   handleProjectUpdate,
   handleProjectDelete,
   handleProjectSetActive,

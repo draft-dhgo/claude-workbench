@@ -51,6 +51,7 @@ class ProjectManagerService {
   async createProject(data: {
     name: string;
     localBasePath: string;
+    remoteUrl?: string;
     lang?: 'en' | 'ko';
   }): Promise<Project> {
     const issueRepoPath = path.join(data.localBasePath, `${data.name}-issues`);
@@ -74,6 +75,19 @@ class ProjectManagerService {
     await this._git.addAll(issueRepoPath);
     await this._git.commit(issueRepoPath, 'init: project scaffolding');
 
+    // remote 설정 (선택적)
+    if (data.remoteUrl) {
+      try {
+        await this._git.exec(['remote', 'add', 'origin', data.remoteUrl], issueRepoPath);
+        await this._git.push(issueRepoPath, 'origin', 'main');
+      } catch {
+        // push 실패해도 프로젝트 생성은 진행 (빈 remote가 아닐 수 있음)
+        try {
+          await this._git.exec(['push', '-u', 'origin', 'main', '--force'], issueRepoPath);
+        } catch { /* ignore */ }
+      }
+    }
+
     // 앱 내부 프로젝트 저장
     const project = this._projectStore.create({
       name: data.name,
@@ -85,19 +99,38 @@ class ProjectManagerService {
     return project;
   }
 
-  // --- Import Existing Project (기존 이슈 repo 경로 지정) ---
+  // --- Import Existing Project (git URL 또는 로컬 경로) ---
 
   async importProject(data: {
-    issueRepoPath: string;
+    /** git remote URL (clone) 또는 로컬 디렉토리 경로 */
+    source: string;
+    /** clone 시 저장할 로컬 기본 경로 (URL 입력 시 필수) */
+    localBasePath?: string;
   }): Promise<Project> {
-    const issueRepoPath = path.resolve(data.issueRepoPath);
+    let issueRepoPath: string;
 
-    // 유효성 검증
-    if (!fs.existsSync(issueRepoPath)) {
-      throw new Error('DIRECTORY_NOT_FOUND');
-    }
-    if (!fs.existsSync(path.join(issueRepoPath, '.git'))) {
-      throw new Error('NOT_A_GIT_REPO');
+    if (this._isGitUrl(data.source)) {
+      // === URL 기반: clone 후 setup ===
+      if (!data.localBasePath) throw new Error('LOCAL_BASE_PATH_REQUIRED');
+
+      const repoName = path.basename(data.source, '.git');
+      issueRepoPath = path.join(data.localBasePath, repoName);
+
+      if (fs.existsSync(issueRepoPath)) {
+        throw new Error('DIRECTORY_ALREADY_EXISTS');
+      }
+
+      await this._git.clone(data.source, issueRepoPath);
+    } else {
+      // === 로컬 경로 기반 ===
+      issueRepoPath = path.resolve(data.source);
+
+      if (!fs.existsSync(issueRepoPath)) {
+        throw new Error('DIRECTORY_NOT_FOUND');
+      }
+      if (!fs.existsSync(path.join(issueRepoPath, '.git'))) {
+        throw new Error('NOT_A_GIT_REPO');
+      }
     }
 
     // .cwb/project-settings.json 확인
@@ -121,11 +154,11 @@ class ProjectManagerService {
     const project = this._projectStore.create({
       name: cwbSettings.name,
       issueRepoPath,
-      localBasePath: path.dirname(issueRepoPath),
+      localBasePath: data.localBasePath || path.dirname(issueRepoPath),
       settings: cwbSettings.settings,
     });
 
-    // devRepos 동기화 (.cwb에 기록된 repo 정보를 store에 반영)
+    // devRepos 동기화
     for (const repo of cwbSettings.devRepos || []) {
       try {
         this._projectStore.addDevRepo(project.id, {
@@ -133,12 +166,75 @@ class ProjectManagerService {
           remoteUrl: repo.remoteUrl,
           submodulePath: repo.submodulePath,
         });
-      } catch {
-        // 중복 등 무시
-      }
+      } catch { /* 중복 무시 */ }
     }
 
     return this._projectStore.getById(project.id)!;
+  }
+
+  // --- Auto Sync (자동 pull/push) ---
+
+  /**
+   * 프로젝트 이슈 repo를 원격과 동기화 (pull)
+   * 프로젝트 선택 시, 앱 시작 시 호출
+   */
+  async pullProject(projectId: string): Promise<{ pulled: boolean; error?: string }> {
+    const project = this._projectStore.getById(projectId);
+    if (!project) return { pulled: false, error: 'PROJECT_NOT_FOUND' };
+
+    try {
+      // remote가 있는지 확인
+      const remotes = await this._git.exec(['remote'], project.issueRepoPath);
+      if (!remotes.trim()) return { pulled: false }; // no remote
+
+      await this._git.exec(['pull', '--rebase', '--autostash'], project.issueRepoPath);
+
+      // submodule도 동기화
+      try {
+        await this._git.updateSubmodules(project.issueRepoPath, true);
+      } catch { /* ignore */ }
+
+      // .cwb/project-settings.json이 변경되었으면 store에 반영
+      await this._syncSettingsFromRepo(projectId);
+
+      return { pulled: true };
+    } catch (err: any) {
+      return { pulled: false, error: err.message };
+    }
+  }
+
+  /**
+   * 프로젝트 이슈 repo를 원격에 push
+   * 이슈 변경 후 자동 호출
+   */
+  async pushProject(projectId: string): Promise<{ pushed: boolean; error?: string }> {
+    const project = this._projectStore.getById(projectId);
+    if (!project) return { pushed: false, error: 'PROJECT_NOT_FOUND' };
+
+    try {
+      const remotes = await this._git.exec(['remote'], project.issueRepoPath);
+      if (!remotes.trim()) return { pushed: false }; // no remote
+
+      await this._git.push(project.issueRepoPath);
+      return { pushed: true };
+    } catch (err: any) {
+      return { pushed: false, error: err.message };
+    }
+  }
+
+  /**
+   * .cwb/project-settings.json → store 동기화 (pull 후)
+   */
+  private async _syncSettingsFromRepo(projectId: string): Promise<void> {
+    const project = this._projectStore.getById(projectId);
+    if (!project) return;
+
+    try {
+      const cwbSettings = this._readCwbSettings(project.issueRepoPath);
+      this._projectStore.update(projectId, {
+        settings: cwbSettings.settings,
+      });
+    } catch { /* ignore */ }
   }
 
   // --- Settings Sync (.cwb/project-settings.json ↔ store) ---
@@ -288,6 +384,13 @@ class ProjectManagerService {
       issueRepoValid: fs.existsSync(path.join(p, '.git')),
       submodulesInitialized,
     };
+  }
+
+  // --- Utility ---
+
+  private _isGitUrl(source: string): boolean {
+    return source.startsWith('http://') || source.startsWith('https://') ||
+      source.startsWith('git@') || source.startsWith('ssh://') || source.startsWith('git://');
   }
 
   // --- .cwb/project-settings.json 읽기/쓰기 ---

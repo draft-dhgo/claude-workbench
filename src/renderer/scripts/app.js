@@ -59,12 +59,11 @@
   const projectModalCancel = document.getElementById('project-modal-cancel');
   const projectModalSubmit = document.getElementById('project-modal-submit');
   const projectFormName = document.getElementById('project-form-name');
-  const projectFormPath = document.getElementById('project-form-path');
-  const projectFormBrowse = document.getElementById('project-form-browse');
+  const projectFormRemote = document.getElementById('project-form-remote');
 
   newProjectBtn.addEventListener('click', () => {
     projectFormName.value = '';
-    projectFormPath.value = '';
+    projectFormRemote.value = '';
     projectModalOverlay.style.display = 'flex';
   });
 
@@ -72,21 +71,12 @@
     projectModalOverlay.style.display = 'none';
   });
 
-  projectFormBrowse.addEventListener('click', async () => {
-    try {
-      const result = await api.invoke('dialog:select-directory');
-      if (result && result.path) {
-        projectFormPath.value = result.path;
-      }
-    } catch (e) { /* ignore */ }
-  });
-
   projectModalSubmit.addEventListener('click', async () => {
     const name = projectFormName.value.trim();
-    const localBasePath = projectFormPath.value.trim();
-    if (!name || !localBasePath) return;
+    if (!name) return;
+    const remoteUrl = projectFormRemote.value.trim() || undefined;
     try {
-      const result = await api.invoke('project:create', { name, localBasePath });
+      const result = await api.invoke('project:create', { name, remoteUrl });
       if (result && result.success) {
         projectModalOverlay.style.display = 'none';
         await loadProjects();
@@ -106,11 +96,11 @@
   const importModalOverlay = document.getElementById('import-modal-overlay');
   const importModalCancel = document.getElementById('import-modal-cancel');
   const importModalSubmit = document.getElementById('import-modal-submit');
-  const importFormPath = document.getElementById('import-form-path');
+  const importFormSource = document.getElementById('import-form-source');
   const importFormBrowse = document.getElementById('import-form-browse');
 
   importProjectBtn.addEventListener('click', () => {
-    importFormPath.value = '';
+    importFormSource.value = '';
     importModalOverlay.style.display = 'flex';
   });
 
@@ -122,16 +112,16 @@
     try {
       const result = await api.invoke('dialog:select-directory');
       if (result && result.path) {
-        importFormPath.value = result.path;
+        importFormSource.value = result.path;
       }
     } catch (e) { /* ignore */ }
   });
 
   importModalSubmit.addEventListener('click', async () => {
-    const issueRepoPath = importFormPath.value.trim();
-    if (!issueRepoPath) return;
+    const source = importFormSource.value.trim();
+    if (!source) return;
     try {
-      const result = await api.invoke('project:import', { issueRepoPath });
+      const result = await api.invoke('project:import', { source });
       if (result && result.success) {
         importModalOverlay.style.display = 'none';
         await loadProjects();
@@ -139,10 +129,13 @@
         projectSelect.dispatchEvent(new Event('change'));
         showToast('Project imported successfully');
       } else {
-        const errMsg = result?.error === 'CWB_SETTINGS_NOT_FOUND'
-          ? 'No .cwb/project-settings.json found in this repo'
-          : result?.error || 'Failed to import project';
-        showToast(errMsg, 'error');
+        const errMap = {
+          'CWB_SETTINGS_NOT_FOUND': 'No .cwb/project-settings.json found in this repo',
+          'NOT_A_GIT_REPO': 'Not a valid git repository',
+          'DIRECTORY_NOT_FOUND': 'Directory not found',
+          'DIRECTORY_ALREADY_EXISTS': 'Directory already exists locally',
+        };
+        showToast(errMap[result?.error] || result?.error || 'Failed to import', 'error');
       }
     } catch (e) {
       showToast('Failed to import project', 'error');
@@ -542,7 +535,7 @@
       const result = await api.invoke('app:settings:get');
       if (result?.success) {
         const s = result.settings;
-        document.getElementById('settings-default-path').value = s.defaultProjectPath || '';
+        document.getElementById('settings-data-root').value = s.dataRootPath || '';
       }
     } catch (e) { /* ignore */ }
 
@@ -574,7 +567,7 @@
     try {
       const result = await api.invoke('dialog:select-directory');
       if (result?.path) {
-        document.getElementById('settings-default-path').value = result.path;
+        document.getElementById('settings-data-root').value = result.path;
       }
     } catch (e) { /* ignore */ }
   });
@@ -584,7 +577,7 @@
 
     // Save app settings
     await api.invoke('app:settings:update', {
-      defaultProjectPath: document.getElementById('settings-default-path').value,
+      dataRootPath: document.getElementById('settings-data-root').value,
     });
 
     // Save project settings
@@ -611,6 +604,8 @@
     if (projectId) {
       try {
         await api.invoke('project:set-active', { projectId });
+        // Auto sync (pull from remote)
+        await api.invoke('project:sync', { projectId }).catch(() => {});
         // Reload all pages
         loadDashboard();
         loadIssues();

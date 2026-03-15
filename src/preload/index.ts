@@ -41,7 +41,7 @@ const ALLOWED_INVOKE_CHANNELS: string[] = [
   // Dialog
   'dialog:select-directory',
   // Project (신규)
-  'project:list', 'project:get', 'project:create', 'project:import',
+  'project:list', 'project:get', 'project:create', 'project:import', 'project:sync',
   'project:update', 'project:delete', 'project:set-active', 'project:get-active',
   'project:get-dashboard', 'project:get-config-status',
   'project:repo:add', 'project:repo:remove', 'project:repo:list', 'project:repo:sync-submodules',

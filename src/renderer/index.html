@@ -25,7 +25,9 @@
       </div>
       <div class="app-header-right">
         <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Theme">
-          <span id="theme-icon" class="theme-icon">🌙</span>
+          <span id="theme-icon" class="theme-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
         </button>
         <select id="lang-select" class="lang-select">
           <option value="en">English</option>
@@ -317,9 +319,9 @@
           <div class="settings-section">
             <h3 data-i18n="settings.app">App Settings</h3>
             <div class="form-group">
-              <label data-i18n="settings.default_path">Default Project Path</label>
+              <label data-i18n="settings.data_root">Data Root Path</label>
               <div class="input-with-btn">
-                <input type="text" id="settings-default-path" class="form-input" readonly />
+                <input type="text" id="settings-data-root" class="form-input" readonly />
                 <button id="settings-browse-path" class="btn btn-secondary" data-i18n="btn.browse">Browse</button>
               </div>
             </div>
@@ -405,11 +407,8 @@
               <input type="text" id="project-form-name" class="form-input" />
             </div>
             <div class="form-group">
-              <label data-i18n="project.field.path">Local Base Path</label>
-              <div class="input-with-btn">
-                <input type="text" id="project-form-path" class="form-input" readonly />
-                <button id="project-form-browse" class="btn btn-secondary" data-i18n="btn.browse">Browse</button>
-              </div>
+              <label data-i18n="project.field.remote_url">Remote URL (optional)</label>
+              <input type="text" id="project-form-remote" class="form-input" placeholder="https://github.com/org/my-project-issues.git" />
             </div>
             <div class="dialog-actions">
               <button id="project-modal-cancel" class="btn btn-secondary" data-i18n="btn.cancel">Cancel</button>
@@ -423,12 +422,12 @@
           <div class="dialog-box">
             <h3 data-i18n="project.import_title">Import Project</h3>
             <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;" data-i18n="project.import_desc">
-              Select an existing issue repo directory that contains .cwb/project-settings.json
+              Enter a git remote URL or select a local directory containing .cwb/project-settings.json
             </p>
             <div class="form-group">
-              <label data-i18n="project.field.issue_repo_path">Issue Repo Path</label>
+              <label data-i18n="project.field.source">Git URL or Local Path</label>
               <div class="input-with-btn">
-                <input type="text" id="import-form-path" class="form-input" readonly />
+                <input type="text" id="import-form-source" class="form-input" placeholder="https://github.com/org/my-project-issues.git" />
                 <button id="import-form-browse" class="btn btn-secondary" data-i18n="btn.browse">Browse</button>
               </div>
             </div>

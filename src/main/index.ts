@@ -6,7 +6,7 @@ import { handleOpenTerminal } from './handlers/terminalHandlers';
 import { handleWikiHostStart, handleWikiHostStop, handleWikiHostStatus, handleWikiHostOpenBrowser, cleanupWikiHost } from './handlers/wikiHostHandlers';
 import { handleListMergeBranches } from './handlers/mergeHandlers';
 import {
-  handleProjectList, handleProjectGet, handleProjectCreate, handleProjectImport,
+  handleProjectList, handleProjectGet, handleProjectCreate, handleProjectImport, handleProjectSync,
   handleProjectUpdate, handleProjectDelete, handleProjectSetActive, handleProjectGetActive,
   handleProjectGetDashboard, handleProjectGetConfigStatus,
   handleRepoAdd, handleRepoRemove, handleRepoList, handleSyncSubmodules,
@@ -50,6 +50,7 @@ ipcMain.handle('project:set-active', handleProjectSetActive)
 ipcMain.handle('project:get-active', handleProjectGetActive)
 ipcMain.handle('project:get-dashboard', handleProjectGetDashboard)
 ipcMain.handle('project:get-config-status', handleProjectGetConfigStatus)
+ipcMain.handle('project:sync', handleProjectSync)
 
 // === Dev Repo (Submodule) ===
 ipcMain.handle('project:repo:add', handleRepoAdd)
