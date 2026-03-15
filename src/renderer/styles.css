@@ -145,7 +145,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 }
 .sidebar-btn:hover { background: var(--bg-hover); }
 .sidebar-btn.active { background: var(--bg-selected); color: var(--accent-primary); font-weight: 600; }
-.sidebar-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+.sidebar-icon { width: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sidebar-icon svg { display: block; }
 .sidebar-footer { padding: 12px; border-top: 1px solid var(--border-subtle); }
 .sidebar-new-project-btn { width: 100%; font-size: 0.8rem; }
 
@@ -193,7 +194,10 @@ textarea.form-input { resize: vertical; }
 
 .project-select { width: 200px; }
 .lang-select { width: 80px; padding: 4px 8px; font-size: 0.8rem; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-primary); border-radius: 4px; }
-.theme-toggle-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 4px; }
+.theme-toggle-btn { background: none; border: none; cursor: pointer; padding: 6px; color: var(--text-secondary); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.theme-toggle-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.theme-icon { display: flex; align-items: center; justify-content: center; }
+.theme-icon svg { display: block; }
 
 /* ═══ Badges ═══ */
 .badge {
@@ -204,9 +208,10 @@ textarea.form-input { resize: vertical; }
 .badge-bugfix { background: var(--danger-bg); color: var(--danger-text); }
 .badge-status-created { background: var(--badge-bg); color: var(--badge-text); }
 .badge-status-in-progress { background: var(--info-bg); color: var(--info-text); }
-.badge-status-testing { background: var(--warning-bg); color: var(--warning-text); }
-.badge-status-review { background: var(--info-bg); color: var(--info-text); }
+.badge-status-completed { background: var(--success-bg); color: var(--success-text); }
+.badge-status-merging { background: var(--warning-bg); color: var(--warning-text); }
 .badge-status-merged { background: var(--success-bg); color: var(--success-text); }
+.badge-status-failed { background: var(--danger-bg); color: var(--danger-text); }
 .badge-status-closed { background: var(--bg-hover); color: var(--text-muted); }
 .badge-priority-low { background: var(--bg-hover); color: var(--text-muted); }
 .badge-priority-medium { background: var(--badge-bg); color: var(--badge-text); }
@@ -276,7 +281,8 @@ textarea.form-input { resize: vertical; }
 
 /* ═══ Empty State ═══ */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
-.empty-icon { font-size: 2.5rem; margin-bottom: 8px; }
+.empty-icon { margin-bottom: 8px; color: var(--text-muted); display: flex; justify-content: center; }
+.empty-icon svg { display: block; opacity: 0.6; }
 
 /* ═══ Dialog / Modal ═══ */
 .dialog-overlay {

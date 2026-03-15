@@ -38,7 +38,6 @@ class IssueService {
       type: data.type,
       status: 'created',
       baseBranch: data.baseBranch || 'main',
-      targetBranch: data.targetBranch || 'main',
       issueBranch: `issue/${id}`,
       priority: data.priority || 'medium',
       pipelineCommand: data.pipelineCommand,
@@ -121,7 +120,7 @@ class IssueService {
     if (newStatus === 'in-progress' && !issue.startedAt) {
       issue.startedAt = issue.updatedAt;
     }
-    if (newStatus === 'merged' || newStatus === 'closed') {
+    if (newStatus === 'completed' || newStatus === 'merged' || newStatus === 'closed') {
       issue.completedAt = issue.updatedAt;
     }
 

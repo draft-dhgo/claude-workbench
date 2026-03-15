@@ -53,7 +53,6 @@
   "issues.field.type": "유형",
   "issues.field.priority": "우선순위",
   "issues.field.base_branch": "베이스 브랜치",
-  "issues.field.target_branch": "타겟 브랜치",
   "issues.field.pipeline": "파이프라인 커맨드",
   "issues.field.pipeline_args": "파이프라인 인자",
   "issues.field.labels": "라벨 (쉼표 구분)",
@@ -88,10 +87,7 @@
   "settings.project": "프로젝트 설정",
   "settings.app": "앱 설정",
   "settings.max_containers": "최대 컨테이너",
-  "settings.auto_merge": "자동 병합",
-  "settings.merge_strategy": "병합 전략",
   "settings.test_command": "테스트 명령",
-  "settings.review_enabled": "Claude 리뷰",
   "settings.data_root": "데이터 루트 경로",
   "settings.docker_status": "Docker 상태",
   "settings.save": "설정 저장"

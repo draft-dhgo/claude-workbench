@@ -48,7 +48,7 @@ const ALLOWED_INVOKE_CHANNELS: string[] = [
   // Issue (신규)
   'issue:list', 'issue:get', 'issue:create', 'issue:update', 'issue:delete',
   'issue:transition', 'issue:get-detail', 'issue:set-detail',
-  'issue:start', 'issue:abort', 'issue:retry',
+  'issue:start', 'issue:abort', 'issue:retry', 'issue:merge',
   // Container (신규 — Phase 2)
   'container:pool-status', 'container:get', 'container:get-logs',
   'container:destroy', 'container:destroy-all', 'container:set-max',

@@ -53,7 +53,6 @@
   "issues.field.type": "Type",
   "issues.field.priority": "Priority",
   "issues.field.base_branch": "Base Branch",
-  "issues.field.target_branch": "Target Branch",
   "issues.field.pipeline": "Pipeline Command",
   "issues.field.pipeline_args": "Pipeline Arguments",
   "issues.field.labels": "Labels (comma separated)",
@@ -88,10 +87,7 @@
   "settings.project": "Project Settings",
   "settings.app": "App Settings",
   "settings.max_containers": "Max Containers",
-  "settings.auto_merge": "Auto Merge",
-  "settings.merge_strategy": "Merge Strategy",
   "settings.test_command": "Test Command",
-  "settings.review_enabled": "Claude Review",
   "settings.data_root": "Data Root Path",
   "settings.docker_status": "Docker Status",
   "settings.save": "Save Settings"

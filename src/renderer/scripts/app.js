@@ -169,7 +169,6 @@
       type: document.getElementById('issue-form-type').value,
       priority: document.getElementById('issue-form-priority').value,
       baseBranch: document.getElementById('issue-form-base-branch').value.trim() || 'main',
-      targetBranch: document.getElementById('issue-form-target-branch').value.trim() || 'main',
       pipelineCommand: document.getElementById('issue-form-pipeline').value,
       pipelineArgs: document.getElementById('issue-form-pipeline-args').value.trim(),
       labels: document.getElementById('issue-form-labels').value
@@ -240,14 +239,16 @@
         <td><code>${issue.issueBranch}</code></td>
         <td>
           ${issue.status === 'created' ? `<button class="btn btn-sm btn-primary" onclick="startIssue('${issue.id}')">Start</button>` : ''}
-          ${['in-progress', 'testing', 'review'].includes(issue.status) ? `<button class="btn btn-sm btn-danger" onclick="abortIssue('${issue.id}')">Abort</button>` : ''}
+          ${issue.status === 'in-progress' ? `<button class="btn btn-sm btn-danger" onclick="abortIssue('${issue.id}')">Abort</button>` : ''}
+          ${issue.status === 'completed' ? `<button class="btn btn-sm btn-primary" onclick="mergeIssue('${issue.id}')">Merge</button>` : ''}
+          ${issue.status === 'failed' ? `<button class="btn btn-sm btn-primary" onclick="startIssue('${issue.id}')">Retry</button>` : ''}
         </td>
       </tr>
     `).join('');
   }
 
   function renderKanban(issues) {
-    const statuses = ['created', 'in-progress', 'testing', 'review', 'merged', 'closed'];
+    const statuses = ['created', 'in-progress', 'completed', 'merging', 'merged', 'failed', 'closed'];
     for (const status of statuses) {
       const container = document.getElementById(`kanban-${status}`);
       if (!container) continue;
@@ -291,6 +292,20 @@
       }
     } catch (e) {
       showToast('Failed to abort issue', 'error');
+    }
+  };
+
+  window.mergeIssue = async function (issueId) {
+    try {
+      const result = await api.invoke('issue:merge', { issueId });
+      if (result && result.success) {
+        showToast('Issue merged');
+        loadIssues();
+      } else {
+        showToast(result?.error || 'Failed to merge', 'error');
+      }
+    } catch (e) {
+      showToast('Failed to merge issue', 'error');
     }
   };
 
@@ -543,10 +558,7 @@
     const project = await getActiveProject();
     if (project) {
       document.getElementById('settings-max-containers').value = project.settings.maxContainers;
-      document.getElementById('settings-auto-merge').checked = project.settings.autoMerge;
-      document.getElementById('settings-merge-strategy').value = project.settings.mergeStrategy;
       document.getElementById('settings-test-command').value = project.settings.testCommand || '';
-      document.getElementById('settings-review-enabled').checked = project.settings.reviewEnabled;
     }
 
     // Docker status
@@ -586,10 +598,7 @@
         projectId: project.id,
         settings: {
           maxContainers: parseInt(document.getElementById('settings-max-containers').value) || 3,
-          autoMerge: document.getElementById('settings-auto-merge').checked,
-          mergeStrategy: document.getElementById('settings-merge-strategy').value,
           testCommand: document.getElementById('settings-test-command').value || undefined,
-          reviewEnabled: document.getElementById('settings-review-enabled').checked,
         },
       });
     }

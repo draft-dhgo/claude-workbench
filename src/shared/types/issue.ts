@@ -2,9 +2,10 @@
 export type IssueStatus =
   | 'created'
   | 'in-progress'
-  | 'testing'
-  | 'review'
+  | 'completed'
+  | 'merging'
   | 'merged'
+  | 'failed'
   | 'closed';
 
 /** 이슈 유형 */
@@ -21,10 +22,8 @@ export interface Issue {
   description: string;
   type: IssueType;
   status: IssueStatus;
-  /** 작업 시작 브랜치 */
+  /** 작업 시작 브랜치 (merge 대상도 동일) */
   baseBranch: string;
-  /** merge 대상 브랜치 */
-  targetBranch: string;
   /** 자동 생성 작업 브랜치 (e.g., "issue/ISSUE-001") */
   issueBranch: string;
   priority: IssuePriority;
@@ -66,7 +65,6 @@ export interface CreateIssueData {
   description: string;
   type: IssueType;
   baseBranch: string;
-  targetBranch: string;
   priority: IssuePriority;
   pipelineCommand: '/teams' | '/bugfix-teams';
   pipelineArgs?: string;

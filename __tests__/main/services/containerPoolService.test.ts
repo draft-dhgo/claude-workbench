@@ -51,9 +51,6 @@ beforeEach(() => {
     localBasePath: tmpDir,
     settings: {
       maxContainers: 3,
-      autoMerge: true,
-      mergeStrategy: 'merge',
-      reviewEnabled: true,
       lang: 'ko',
     },
     createdAt: new Date().toISOString(),
@@ -67,7 +64,6 @@ beforeEach(() => {
     type: 'feature',
     status: 'created',
     baseBranch: 'main',
-    targetBranch: 'main',
     issueBranch: 'issue/ISSUE-001',
     priority: 'medium',
     pipelineCommand: '/teams',

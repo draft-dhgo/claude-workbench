@@ -15,7 +15,7 @@ import {
 import {
   handleIssueList, handleIssueGet, handleIssueCreate, handleIssueUpdate,
   handleIssueDelete, handleIssueTransition, handleIssueGetDetail, handleIssueSetDetail,
-  handleIssueStart, handleIssueAbort, handleIssueRetry,
+  handleIssueStart, handleIssueAbort, handleIssueRetry, handleIssueMerge,
 } from './handlers/issueHandlers';
 import { handleSettingsGet, handleSettingsUpdate, handleDockerCheck } from './handlers/settingsHandlers';
 import {
@@ -70,6 +70,7 @@ ipcMain.handle('issue:set-detail', handleIssueSetDetail)
 ipcMain.handle('issue:start', handleIssueStart)
 ipcMain.handle('issue:abort', handleIssueAbort)
 ipcMain.handle('issue:retry', handleIssueRetry)
+ipcMain.handle('issue:merge', handleIssueMerge)
 
 // === Dialog ===
 ipcMain.handle('dialog:select-directory', handleSelectDirectory)

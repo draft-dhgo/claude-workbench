@@ -11,7 +11,8 @@ import { Issue } from '../../shared/types/issue';
 /**
  * Pipeline Orchestrator 서비스
  * 이슈 전체 생명주기 오케스트레이션:
- * Container 할당 → 브랜치 생성 → 파이프라인 실행 → 자동 merge → 정리
+ * Container 할당 → 브랜치 생성 → 파이프라인 실행 → completed → 정리
+ * 사용자가 merge 승인 시: mergeIssue() 호출
  */
 class PipelineOrchestratorService {
   private _containerPool: ContainerPoolService;
@@ -94,26 +95,17 @@ class PipelineOrchestratorService {
         // Abort 체크
         if (abortController.signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-        // 4. Auto-merge (설정된 경우)
-        if (project.settings.autoMerge) {
-          this._containerPool.updateContainerStatus(projectId, container.id, 'completing');
-
-          const mergeSuccess = await this._autoMerge(project, issue, container.id);
-          if (!mergeSuccess) return; // 충돌 시 이미 상태 업데이트됨
-        }
-
-        // 5. 성공 처리
-        await this._issueService.transitionStatus(project.issueRepoPath, issueId, 'merged');
+        // 4. 파이프라인 완료 → completed (사용자 merge 승인 대기)
+        await this._issueService.transitionStatus(project.issueRepoPath, issueId, 'completed');
         await this._issueService.updateIssue(project.issueRepoPath, issueId, {
           result: {
             testsPassed: true,
-            reviewPassed: true,
             costUsd: pipelineResult.costUsd,
             durationMs: pipelineResult.durationMs,
           },
         });
 
-        this._containerPool._log(container.id, 'info', `Issue ${issue.id} completed successfully`, 'cleanup');
+        this._containerPool._log(container.id, 'info', `Issue ${issue.id} pipeline completed, waiting for merge approval`, 'cleanup');
 
       } finally {
         // 6. Container 반환
@@ -181,85 +173,74 @@ class PipelineOrchestratorService {
     this.processIssue(projectId, issueId).catch(() => {});
   }
 
-  // --- Internal ---
+  /**
+   * 사용자 승인 후 이슈 merge 실행
+   */
+  async mergeIssue(projectId: string, issueId: string): Promise<void> {
+    const project = this._projectStore.getById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
 
-  private async _autoMerge(project: Project, issue: Issue, containerId: string): Promise<boolean> {
-    this._containerPool._log(containerId, 'info', `Auto-merging ${issue.issueBranch} → ${issue.targetBranch}`, 'merge');
+    const issue = await this._issueService.getIssue(project.issueRepoPath, issueId);
+    if (!issue) throw new Error('ISSUE_NOT_FOUND');
 
-    for (const repo of project.devRepos) {
-      const worktree = this._containerPool.getContainerByIssue(project.id, issue.id)
-        ?.worktrees.find(wt => wt.devRepoId === repo.id);
+    if (issue.status !== 'completed') {
+      throw new Error('ISSUE_NOT_COMPLETED');
+    }
 
-      if (!worktree) continue;
+    // merging 상태로 전환
+    await this._issueService.transitionStatus(project.issueRepoPath, issueId, 'merging');
+    this._notifyIssueUpdated();
 
-      const repoPath = worktree.worktreePath;
-
-      try {
-        // target 브랜치로 전환하여 merge
+    try {
+      for (const repo of project.devRepos) {
         const mainRepoPath = require('path').join(project.issueRepoPath, repo.submodulePath);
 
-        await this._git.checkoutBranch(mainRepoPath, issue.targetBranch);
+        await this._git.checkoutBranch(mainRepoPath, issue.baseBranch);
         const mergeResult = await this._merge.merge(mainRepoPath, issue.issueBranch);
 
         if (mergeResult.success) {
-          this._containerPool._log(containerId, 'info',
-            `Merged ${repo.name}: ${mergeResult.commitHash} (+${mergeResult.insertions}/-${mergeResult.deletions})`, 'merge');
-
           // push
-          try {
-            await this._git.push(mainRepoPath);
-            this._containerPool._log(containerId, 'info', `Pushed ${repo.name}`, 'merge');
-          } catch (pushErr: any) {
-            this._containerPool._log(containerId, 'warn', `Push failed for ${repo.name}: ${pushErr.message}`, 'merge');
-          }
+          await this._git.push(mainRepoPath);
 
           // 이슈 결과 업데이트
-          await this._issueService.updateIssue(project.issueRepoPath, issue.id, {
-            result: { mergeCommitHash: mergeResult.commitHash },
+          await this._issueService.updateIssue(project.issueRepoPath, issueId, {
+            result: { ...issue.result, mergeCommitHash: mergeResult.commitHash },
           });
-        } else if (mergeResult.isConflict) {
-          this._containerPool._log(containerId, 'warn',
-            `Merge conflict in ${repo.name}: ${mergeResult.conflictFiles?.length} files`, 'merge');
-
-          // Claude에게 충돌 해결 시도
-          const resolved = await this._tryResolveConflict(mainRepoPath, containerId);
-          if (!resolved) {
-            await this._handleFailure(project, issue, containerId,
-              `Merge conflict in ${repo.name} (${mergeResult.conflictFiles?.map(f => f.filePath).join(', ')})`);
-            return false;
-          }
         } else {
-          await this._handleFailure(project, issue, containerId,
-            `Merge failed for ${repo.name}: ${mergeResult.errorMessage}`);
-          return false;
+          const errorMsg = mergeResult.isConflict
+            ? `Merge conflict in ${repo.name}`
+            : `Merge failed for ${repo.name}: ${mergeResult.errorMessage}`;
+          throw new Error(errorMsg);
         }
-      } catch (err: any) {
-        await this._handleFailure(project, issue, containerId, `Merge error in ${repo.name}: ${err.message}`);
-        return false;
       }
-    }
 
-    return true;
+      // 성공: merged 상태로 전환
+      await this._issueService.transitionStatus(project.issueRepoPath, issueId, 'merged');
+      this._notifyIssueUpdated();
+
+      // 컨테이너 정리
+      const container = this._containerPool.getContainerByIssue(projectId, issueId);
+      if (container) {
+        this._containerPool.updateContainerStatus(projectId, container.id, 'idle');
+        await this._containerPool.releaseContainer(projectId, container.id);
+      }
+    } catch (err: any) {
+      // 실패: failed 상태로 전환
+      await this._issueService.transitionStatus(project.issueRepoPath, issueId, 'failed');
+      await this._issueService.updateIssue(project.issueRepoPath, issueId, {
+        result: { ...issue.result, errorMessage: err.message },
+      });
+      this._notifyIssueUpdated();
+      throw err;
+    }
   }
 
-  private async _tryResolveConflict(repoPath: string, containerId: string): Promise<boolean> {
-    try {
-      // ours 전략으로 자동 해결 시도
-      const result = await this._merge.resolveConflicts(repoPath, 'theirs');
-      if (result.success) {
-        this._containerPool._log(containerId, 'info', 'Conflict auto-resolved (theirs strategy)', 'merge');
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
-  }
+  // --- Internal ---
 
   private async _handleFailure(project: Project, issue: Issue, containerId: string, errorMessage: string): Promise<void> {
     this._containerPool._log(containerId, 'error', errorMessage, 'pipeline');
 
-    await this._issueService.transitionStatus(project.issueRepoPath, issue.id, 'created');
+    await this._issueService.transitionStatus(project.issueRepoPath, issue.id, 'failed');
     await this._issueService.updateIssue(project.issueRepoPath, issue.id, {
       result: { errorMessage },
     });

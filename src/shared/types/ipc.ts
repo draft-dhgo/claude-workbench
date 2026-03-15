@@ -38,6 +38,7 @@ export type InvokeChannel =
   | 'issue:start'
   | 'issue:abort'
   | 'issue:retry'
+  | 'issue:merge'
   // Container pool
   | 'container:pool-status'
   | 'container:get'

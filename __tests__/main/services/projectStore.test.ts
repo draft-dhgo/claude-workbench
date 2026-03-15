@@ -109,7 +109,6 @@ describe('ProjectStore.create', () => {
     });
     expect(project.settings.maxContainers).toBe(5);
     expect(project.settings.lang).toBe('en');
-    expect(project.settings.autoMerge).toBe(true); // default
   });
 
   it('persists the project to disk', () => {
@@ -135,7 +134,6 @@ describe('ProjectStore.update', () => {
     const project = createTestProject();
     const updated = store.update(project.id, { settings: { maxContainers: 10 } as any });
     expect(updated.settings.maxContainers).toBe(10);
-    expect(updated.settings.autoMerge).toBe(true); // preserved
   });
 
   it('throws PROJECT_NOT_FOUND for invalid id', () => {

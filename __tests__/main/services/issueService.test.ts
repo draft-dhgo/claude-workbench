@@ -40,7 +40,6 @@ function createIssueData(overrides = {}) {
     description: 'Test description',
     type: 'feature' as const,
     baseBranch: 'main',
-    targetBranch: 'main',
     priority: 'medium' as const,
     pipelineCommand: '/teams' as const,
     ...overrides,
@@ -211,8 +210,8 @@ describe('IssueService.transitionStatus', () => {
     const created = await service.createIssue(issueRepoPath, createIssueData());
     const first = await service.transitionStatus(issueRepoPath, created.id, 'in-progress');
     const firstStartedAt = first.startedAt;
-    // Transition to testing then back to in-progress
-    await service.transitionStatus(issueRepoPath, created.id, 'testing');
+    // Transition to completed then back to in-progress
+    await service.transitionStatus(issueRepoPath, created.id, 'completed');
     const second = await service.transitionStatus(issueRepoPath, created.id, 'in-progress');
     expect(second.startedAt).toBe(firstStartedAt);
   });

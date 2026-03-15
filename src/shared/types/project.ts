@@ -28,14 +28,8 @@ export interface DevRepoRef {
 export interface ProjectSettings {
   /** 동시 컨테이너 최대 수 (default: 3) */
   maxContainers: number;
-  /** 파이프라인 성공 시 자동 merge 여부 */
-  autoMerge: boolean;
-  /** merge 전략 */
-  mergeStrategy: 'squash' | 'merge' | 'rebase';
   /** 커스텀 테스트 명령 (e.g., "npm test") */
   testCommand?: string;
-  /** Claude Code 리뷰 활성화 여부 */
-  reviewEnabled: boolean;
   /** 프로젝트 언어 */
   lang: 'en' | 'ko';
 }
@@ -103,8 +97,5 @@ export const CWB_SETTINGS_FILE = 'project-settings.json';
 /** 프로젝트 설정 기본값 */
 export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   maxContainers: 3,
-  autoMerge: true,
-  mergeStrategy: 'merge',
-  reviewEnabled: true,
   lang: 'ko',
 };

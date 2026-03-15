@@ -147,6 +147,20 @@ async function handleIssueRetry(_event: any, data: { issueId: string }): Promise
   }
 }
 
+async function handleIssueMerge(_event: any, data: { issueId: string }): Promise<{ success: boolean; error?: string }> {
+  try {
+    const project = getManager().getActiveProject();
+    if (!project) return { success: false, error: 'NO_ACTIVE_PROJECT' };
+
+    const { mergeIssueProcessing } = require('./pipelineHandlers');
+    await mergeIssueProcessing(project.id, data.issueId);
+    notifyIssueListUpdated();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 function _resetIssueService(): void {
   _issueService = null;
 }
@@ -163,5 +177,6 @@ export {
   handleIssueStart,
   handleIssueAbort,
   handleIssueRetry,
+  handleIssueMerge,
   _resetIssueService,
 };
