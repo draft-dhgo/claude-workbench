@@ -9,38 +9,24 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="container">
+  <div class="app-layout">
+    <!-- Header -->
     <header class="app-header">
       <div class="app-header-left">
         <h1 id="title">Claude Workbench</h1>
-        <p id="version">App version: <span id="version-text" data-i18n="app.version.loading">Loading...</span></p>
+        <span id="version" class="version-text">v<span id="version-text">...</span></span>
       </div>
       <div class="app-header-center">
-        <div class="mode-toggle" id="mode-toggle">
-          <span class="toggle-switch-label-left" data-i18n="mode.workspace">Workspace</span>
-          <div class="toggle-switch-wrapper">
-            <button
-              class="toggle-switch"
-              id="mode-toggle-switch"
-              role="switch"
-              aria-checked="false"
-              aria-label="Switch between Workspace and Worktree mode"
-              tabindex="0"
-            >
-              <span class="toggle-switch__track">
-                <span class="toggle-switch__thumb"></span>
-              </span>
-            </button>
-          </div>
-          <span class="toggle-switch-label-right" data-i18n="mode.worktree">Worktree</span>
+        <div id="project-dropdown" class="project-dropdown">
+          <select id="project-select" class="form-input project-select">
+            <option value="" data-i18n="project.select.placeholder">-- Select Project --</option>
+          </select>
         </div>
       </div>
       <div class="app-header-right">
-        <button id="theme-toggle-btn" class="theme-toggle-btn"
-                data-i18n-title="theme.toggle" title="Toggle Theme">
+        <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Theme">
           <span id="theme-icon" class="theme-icon">🌙</span>
         </button>
-        <label for="lang-select" data-i18n="lang.select.label">Language</label>
         <select id="lang-select" class="lang-select">
           <option value="en">English</option>
           <option value="ko">한국어</option>
@@ -48,249 +34,397 @@
       </div>
     </header>
 
-    <!-- Workspace mode nav -->
-    <nav class="tab-nav" id="tab-nav-workspace">
-      <button class="tab-btn active" data-tab="command-queue"
-              data-i18n="tab.command-queue">Command Queue</button>
-      <button class="tab-btn" data-tab="workspace-mgmt"
-              data-i18n="workspace.management.title">Workspace Management</button>
-    </nav>
-
-    <!-- Worktree mode nav -->
-    <nav class="tab-nav" id="tab-nav-worktree" style="display:none;">
-      <button class="tab-btn active" data-tab="repos"
-              data-i18n="tab.repos">Repository Management</button>
-      <button class="tab-btn" data-tab="worktree-create">Worktree Create</button>
-      <button class="tab-btn" data-tab="repo-worktree"
-              data-i18n="tab.repo-worktree">Worktree Management</button>
-    </nav>
-
-    <!-- Repository Management Tab -->
-    <div id="tab-repos" class="tab-content" style="display: none;">
-      <div class="action-bar">
-        <button id="add-repo-btn" class="btn btn-primary" data-i18n="repos.add">+ Add Repository</button>
-        <div class="search-wrapper">
-          <input type="text" id="repo-search" class="search-input" data-i18n-placeholder="repos.search.placeholder" placeholder="Search repositories..." />
+    <!-- Main layout: sidebar + content -->
+    <div class="app-body">
+      <!-- Sidebar -->
+      <nav class="sidebar" id="sidebar">
+        <ul class="sidebar-nav">
+          <li>
+            <button class="sidebar-btn active" data-page="dashboard">
+              <span class="sidebar-icon">&#x1F4CA;</span>
+              <span class="sidebar-label" data-i18n="nav.dashboard">Dashboard</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-btn" data-page="issues">
+              <span class="sidebar-icon">&#x1F4CB;</span>
+              <span class="sidebar-label" data-i18n="nav.issues">Issues</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-btn" data-page="containers">
+              <span class="sidebar-icon">&#x1F433;</span>
+              <span class="sidebar-label" data-i18n="nav.containers">Containers</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-btn" data-page="pipeline">
+              <span class="sidebar-icon">&#x26A1;</span>
+              <span class="sidebar-label" data-i18n="nav.pipeline">Pipeline</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-btn" data-page="repositories">
+              <span class="sidebar-icon">&#x1F4C1;</span>
+              <span class="sidebar-label" data-i18n="nav.repositories">Repositories</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-btn" data-page="wiki">
+              <span class="sidebar-icon">&#x1F4D6;</span>
+              <span class="sidebar-label" data-i18n="nav.wiki">Wiki</span>
+            </button>
+          </li>
+          <li>
+            <button class="sidebar-btn" data-page="settings">
+              <span class="sidebar-icon">&#x2699;</span>
+              <span class="sidebar-label" data-i18n="nav.settings">Settings</span>
+            </button>
+          </li>
+        </ul>
+        <div class="sidebar-footer">
+          <button id="new-project-btn" class="btn btn-primary sidebar-new-project-btn" data-i18n="project.new">+ New Project</button>
         </div>
-      </div>
+      </nav>
 
-      <div id="empty-state" class="empty-state" style="display: none;">
-        <div class="empty-icon">&#128193;</div>
-        <p><span data-i18n="repos.empty">No repositories registered.</span><br><strong data-i18n="repos.empty.hint">Click the + Add Repository button to get started.</strong></p>
-      </div>
-
-      <table id="repo-table" class="repo-table" style="display: none;">
-        <thead>
-          <tr>
-            <th data-i18n="repos.col.name">Name</th>
-            <th data-i18n="repos.col.path">Path</th>
-            <th data-i18n="repos.col.branch">Branch</th>
-            <th class="col-action" data-i18n="repos.col.action">Action</th>
-          </tr>
-        </thead>
-        <tbody id="repo-tbody"></tbody>
-      </table>
-
-      <div id="status-bar" class="status-bar"></div>
-    </div>
-
-    <!-- Workspace Management Tab (SDD-0027 재구성) -->
-    <div id="tab-workspace-mgmt" class="tab-content active">
-
-      <!-- 워크스페이스 추가 (기존 디렉토리 등록) -->
-      <div id="ws-add-section" class="ws-section">
-        <button id="ws-add-toggle-btn" class="btn btn-secondary"
-                data-i18n="workspace.add.btn">+ Add Workspace</button>
-        <div id="ws-add-form" class="ws-create-form" style="display:none;">
-          <div class="ws-form-row">
-            <label data-i18n="workspace.add.path.label">Path</label>
-            <div class="ws-path-row">
-              <input type="text" id="ws-add-path-input" class="form-input"
-                     data-i18n-placeholder="workspace.add.path.placeholder" />
-              <button id="ws-add-path-btn" class="btn btn-secondary"
-                      data-i18n="workspace.add.path.select">Select Path</button>
+      <!-- Content Area -->
+      <main class="content-area" id="content-area">
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page active">
+          <h2 data-i18n="dashboard.title">Dashboard</h2>
+          <div id="dashboard-no-project" class="empty-state">
+            <div class="empty-icon">&#x1F4CA;</div>
+            <p data-i18n="dashboard.no_project">Select or create a project to get started.</p>
+          </div>
+          <div id="dashboard-content" style="display:none;">
+            <div class="dashboard-grid">
+              <div class="stat-card" id="stat-issues">
+                <div class="stat-label" data-i18n="dashboard.issues">Issues</div>
+                <div class="stat-value" id="stat-issues-value">0</div>
+              </div>
+              <div class="stat-card" id="stat-containers">
+                <div class="stat-label" data-i18n="dashboard.containers">Containers</div>
+                <div class="stat-value" id="stat-containers-value">0/0</div>
+              </div>
+              <div class="stat-card" id="stat-merged">
+                <div class="stat-label" data-i18n="dashboard.merged">Merged</div>
+                <div class="stat-value" id="stat-merged-value">0</div>
+              </div>
+              <div class="stat-card" id="stat-failed">
+                <div class="stat-label" data-i18n="dashboard.failed">Failed</div>
+                <div class="stat-value" id="stat-failed-value">0</div>
+              </div>
+            </div>
+            <div class="section">
+              <h3 data-i18n="dashboard.recent_activity">Recent Activity</h3>
+              <div id="activity-list" class="activity-list"></div>
             </div>
           </div>
-          <div class="ws-form-row">
-            <label data-i18n="workspace.add.name.label">Name</label>
-            <input type="text" id="ws-add-name-input" class="form-input"
-                   data-i18n-placeholder="workspace.add.name.placeholder" />
-          </div>
-          <div class="ws-form-actions">
-            <button id="ws-add-submit-btn" class="btn btn-primary"
-                    data-i18n="workspace.add.submit">Add</button>
-            <button id="ws-add-cancel-btn" class="btn btn-secondary"
-                    data-i18n="btn.cancel">Cancel</button>
-          </div>
         </div>
-      </div>
 
-      <!-- 워크스페이스 목록 -->
-      <div id="ws-list-section" class="ws-section">
-        <label class="section-label" data-i18n="workspace.list.label">Workspace List</label>
-        <div id="ws-list" class="ws-list"></div>
-        <div id="ws-empty-msg" class="empty-state" style="display:none;">
-          <p data-i18n="workspace.empty">No workspaces registered.</p>
-        </div>
-      </div>
-
-      <div id="ws-result-bar" class="status-bar"></div>
-    </div>
-
-    <!-- Worktree Create Tab -->
-    <div id="tab-worktree-create" class="tab-content" style="display: none;">
-      <div class="wc-section">
-        <label class="section-label">1. Select Repositories</label>
-        <div id="wc-repo-list" class="wc-repo-list"></div>
-        <div id="wc-no-repos" class="empty-state" style="display:none;">
-          <p>No repositories registered. Add repos in Repository Management first.</p>
-        </div>
-      </div>
-
-      <div id="wc-branch-section" class="wc-section" style="display:none;">
-        <label class="section-label">2. Base Branch (per repo)</label>
-        <div id="wc-branch-list" class="wc-branch-list"></div>
-      </div>
-
-      <div id="wc-config-section" class="wc-section" style="display:none;">
-        <label class="section-label">3. New Branch &amp; Target Path</label>
-        <div class="wc-config-row">
-          <label class="wc-field-label">Branch Name</label>
-          <input type="text" id="wc-new-branch" class="form-input" placeholder="feature/my-branch" />
-        </div>
-        <div class="wc-config-row">
-          <label class="wc-field-label">Target Directory</label>
-          <div class="wc-path-row">
-            <input type="text" id="wc-target-path" class="form-input" placeholder="Select directory..." readonly />
-            <button id="wc-browse-btn" class="btn btn-secondary">Browse</button>
-          </div>
-        </div>
-        <span id="wc-error" class="form-error" style="display:none;"></span>
-        <div class="wc-action-row">
-          <button id="wc-create-btn" class="btn btn-primary">Create Worktrees</button>
-        </div>
-      </div>
-
-      <div id="wc-result" class="wc-result" style="display:none;"></div>
-    </div>
-
-    <!-- Worktree Management Tab -->
-    <div id="tab-repo-worktree" class="tab-content" style="display: none;">
-
-      <div class="action-bar rm-action-bar">
-        <select id="rm-repo-select" class="form-input rm-repo-select">
-          <option value="" data-i18n="repo-worktree.select.placeholder">-- Select a repo --</option>
-        </select>
-        <button id="rm-refresh-btn" class="btn btn-secondary" style="display:none;" data-i18n="repo-worktree.refresh">
-          &#x21bb; Refresh
-        </button>
-      </div>
-
-      <div id="rm-no-repos-msg" class="empty-state" style="display: none;">
-        <div class="empty-icon">&#128193;</div>
-        <p><span data-i18n="repo-worktree.no_repos">No repositories registered.</span><br>
-           <strong data-i18n="repo-worktree.no_repos.hint">Please add a repo in the Repository Management tab first.</strong></p>
-      </div>
-
-      <div id="rm-loading" class="rm-loading" style="display: none;">
-        <span class="rm-spinner"></span> <span data-i18n="repo-worktree.loading">Loading worktree list...</span>
-      </div>
-
-      <div id="rm-list-section" style="display: none;">
-        <div id="rm-worktree-list" class="rm-card-list"></div>
-        <div id="rm-empty-msg" class="empty-state" style="display: none;">
-          <div class="empty-icon">&#127795;</div>
-          <p data-i18n="repo-worktree.empty">No worktrees created for this repo.</p>
-        </div>
-      </div>
-
-      <div id="rm-confirm-overlay" class="dialog-overlay" style="display: none;">
-        <div class="dialog-box">
-          <h3 class="dialog-title" data-i18n="repo-worktree.delete.title">Confirm Worktree Deletion</h3>
-          <p class="dialog-msg" data-i18n="repo-worktree.delete.msg">Delete the following worktree?</p>
-          <p id="rm-confirm-branch" class="dialog-branch"></p>
-          <p id="rm-confirm-warn" class="dialog-warn" style="display: none;"></p>
-          <p id="rm-confirm-safe" class="dialog-safe" style="display: none;"></p>
-          <div class="dialog-actions">
-            <button id="rm-cancel-btn" class="btn btn-secondary" data-i18n="repo-worktree.delete.cancel">Cancel</button>
-            <button id="rm-confirm-btn" class="btn btn-danger btn-danger-filled" data-i18n="repo-worktree.delete.confirm">Delete</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="rm-status-bar" class="status-bar"></div>
-    </div>
-
-    <!-- Command Queue Tab -->
-    <div id="tab-command-queue" class="tab-content" style="display: none;">
-      <h3 data-i18n="cq.title">Command Queue</h3>
-
-      <div class="cq-section">
-        <label class="section-label" data-i18n="cq.form.label">Register Command</label>
-        <div class="cq-form">
-          <div class="cq-form-row">
-            <div class="cq-cmd-autocomplete">
-              <input type="text" id="cq-cmd-type" class="form-input cq-cmd-input"
-                     placeholder="Type command... (e.g. /teams arg1)" autocomplete="off" />
-              <div id="cq-cmd-suggestions" class="cq-suggestions"></div>
+        <!-- Issues Page -->
+        <div id="page-issues" class="page" style="display:none;">
+          <div class="page-header">
+            <h2 data-i18n="issues.title">Issues</h2>
+            <div class="page-header-actions">
+              <div class="view-toggle">
+                <button class="btn btn-sm active" id="issues-list-view-btn" data-i18n="issues.view.list">List</button>
+                <button class="btn btn-sm" id="issues-kanban-view-btn" data-i18n="issues.view.kanban">Kanban</button>
+              </div>
+              <button id="issue-create-btn" class="btn btn-primary" data-i18n="issues.create">+ New Issue</button>
             </div>
-            <button id="cq-add-btn" class="btn btn-primary" data-i18n="cq.add.btn">+ Add</button>
           </div>
-          <div class="cq-form-row">
-            <label class="cq-cwd-label" data-i18n="cq.workspace.label">Workspace:</label>
-            <select id="cq-cwd-select" class="form-input cq-cwd-select">
-              <option value="" data-i18n="cq.workspace.placeholder">-- Select workspace --</option>
+          <div class="issue-filters">
+            <input type="text" id="issue-search" class="form-input" placeholder="Search issues..." data-i18n-placeholder="issues.search" />
+            <select id="issue-filter-status" class="form-input">
+              <option value="" data-i18n="issues.filter.all">All Status</option>
+              <option value="created">Created</option>
+              <option value="in-progress">In Progress</option>
+              <option value="testing">Testing</option>
+              <option value="review">Review</option>
+              <option value="merged">Merged</option>
+              <option value="closed">Closed</option>
+            </select>
+            <select id="issue-filter-type" class="form-input">
+              <option value="" data-i18n="issues.filter.alltype">All Types</option>
+              <option value="feature">Feature</option>
+              <option value="bugfix">Bugfix</option>
             </select>
           </div>
-          <div class="cq-bulk-row">
-            <textarea id="cq-bulk-input" class="form-input cq-bulk-input"
-                      placeholder="/add-req requirement description&#10;/teams&#10;/add-req another requirement&#10;/teams"
-                      rows="4"></textarea>
-            <button id="cq-bulk-btn" class="btn btn-secondary">Bulk Add</button>
+          <!-- List View -->
+          <div id="issues-list-view">
+            <table class="issue-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th data-i18n="issues.col.title">Title</th>
+                  <th data-i18n="issues.col.type">Type</th>
+                  <th data-i18n="issues.col.status">Status</th>
+                  <th data-i18n="issues.col.priority">Priority</th>
+                  <th data-i18n="issues.col.branch">Branch</th>
+                  <th data-i18n="issues.col.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="issue-list-tbody"></tbody>
+            </table>
+            <div id="issues-empty" class="empty-state" style="display:none;">
+              <div class="empty-icon">&#x1F4CB;</div>
+              <p data-i18n="issues.empty">No issues yet. Create one to get started.</p>
+            </div>
+          </div>
+          <!-- Kanban View (hidden by default) -->
+          <div id="issues-kanban-view" style="display:none;">
+            <div class="kanban-board">
+              <div class="kanban-column" data-status="created">
+                <h4 class="kanban-column-title">Created</h4>
+                <div class="kanban-cards" id="kanban-created"></div>
+              </div>
+              <div class="kanban-column" data-status="in-progress">
+                <h4 class="kanban-column-title">In Progress</h4>
+                <div class="kanban-cards" id="kanban-in-progress"></div>
+              </div>
+              <div class="kanban-column" data-status="testing">
+                <h4 class="kanban-column-title">Testing</h4>
+                <div class="kanban-cards" id="kanban-testing"></div>
+              </div>
+              <div class="kanban-column" data-status="review">
+                <h4 class="kanban-column-title">Review</h4>
+                <div class="kanban-cards" id="kanban-review"></div>
+              </div>
+              <div class="kanban-column" data-status="merged">
+                <h4 class="kanban-column-title">Merged</h4>
+                <div class="kanban-cards" id="kanban-merged"></div>
+              </div>
+              <div class="kanban-column" data-status="closed">
+                <h4 class="kanban-column-title">Closed</h4>
+                <div class="kanban-cards" id="kanban-closed"></div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="cq-section">
-        <div class="cq-section-header">
-          <label class="section-label" data-i18n="cq.queue.label">Queue List</label>
-          <button id="cq-abort-btn" class="btn btn-danger-filled" disabled data-i18n="cq.abort.btn">Abort</button>
-        </div>
-
-        <div id="cq-queue-empty" class="empty-state" style="display: none;">
-          <div class="empty-icon">&#128203;</div>
-          <p><span data-i18n="cq.queue.empty">No commands registered.</span><br><strong data-i18n="cq.queue.empty.hint">Add a command above.</strong></p>
-        </div>
-
-        <div id="cq-queue-list" class="cq-queue-list" style="display: none;"></div>
-      </div>
-
-      <div class="cq-section">
-        <div class="cq-section-header">
-          <label class="section-label" data-i18n="cq.log.label">Execution Log</label>
-          <div class="cq-log-controls">
-            <button id="cq-collapse-all-btn" class="btn btn-secondary btn-sm">Collapse All</button>
-            <button id="cq-expand-all-btn"   class="btn btn-secondary btn-sm">Expand All</button>
+        <!-- Containers Page -->
+        <div id="page-containers" class="page" style="display:none;">
+          <h2 data-i18n="containers.title">Containers</h2>
+          <div class="pool-status-bar" id="pool-status-bar">
+            <span data-i18n="containers.pool">Pool:</span>
+            <span id="pool-active">0</span> / <span id="pool-max">0</span>
+            <span data-i18n="containers.active">active</span>
+          </div>
+          <div id="container-grid" class="container-grid"></div>
+          <div id="container-queue-section">
+            <h3 data-i18n="containers.queue">Queued Issues</h3>
+            <div id="container-queue-list" class="queue-list"></div>
+          </div>
+          <div id="containers-empty" class="empty-state" style="display:none;">
+            <div class="empty-icon">&#x1F433;</div>
+            <p data-i18n="containers.empty">No containers running.</p>
           </div>
         </div>
-        <div id="cq-log-container" class="cq-log-container">
-          <div id="cq-log-content" class="cq-log-content"></div>
-        </div>
-      </div>
 
-      <div id="cq-status-bar" class="status-bar"></div>
+        <!-- Pipeline Page -->
+        <div id="page-pipeline" class="page" style="display:none;">
+          <h2 data-i18n="pipeline.title">Pipeline</h2>
+          <div id="pipeline-list" class="pipeline-list"></div>
+          <div class="section">
+            <div class="section-header">
+              <h3 data-i18n="pipeline.log">Execution Log</h3>
+              <div class="log-controls">
+                <button id="log-collapse-all" class="btn btn-sm" data-i18n="pipeline.collapse_all">Collapse All</button>
+                <button id="log-expand-all" class="btn btn-sm" data-i18n="pipeline.expand_all">Expand All</button>
+              </div>
+            </div>
+            <div id="pipeline-log-container" class="log-container">
+              <div id="pipeline-log-content" class="log-content"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Repositories Page -->
+        <div id="page-repositories" class="page" style="display:none;">
+          <div class="page-header">
+            <h2 data-i18n="repos.title">Repositories</h2>
+            <div class="page-header-actions">
+              <button id="repo-add-btn" class="btn btn-primary" data-i18n="repos.add">+ Add Repository</button>
+              <button id="repo-sync-btn" class="btn btn-secondary" data-i18n="repos.sync">Sync Submodules</button>
+            </div>
+          </div>
+          <table class="repo-table">
+            <thead>
+              <tr>
+                <th data-i18n="repos.col.name">Name</th>
+                <th data-i18n="repos.col.remote">Remote URL</th>
+                <th data-i18n="repos.col.path">Path</th>
+                <th data-i18n="repos.col.actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="repo-tbody"></tbody>
+          </table>
+          <div id="repos-empty" class="empty-state" style="display:none;">
+            <div class="empty-icon">&#x1F4C1;</div>
+            <p data-i18n="repos.empty">No repositories in this project.</p>
+          </div>
+        </div>
+
+        <!-- Wiki Page -->
+        <div id="page-wiki" class="page" style="display:none;">
+          <div class="page-header">
+            <h2 data-i18n="wiki.title">Wiki</h2>
+            <div class="page-header-actions">
+              <button id="wiki-host-btn" class="btn btn-primary" data-i18n="wiki.start">Start Server</button>
+              <button id="wiki-panel-btn" class="btn btn-secondary" data-i18n="wiki.open_panel">Open Panel</button>
+            </div>
+          </div>
+          <div id="wiki-status" class="wiki-status">
+            <span data-i18n="wiki.status">Status:</span>
+            <span id="wiki-status-text" data-i18n="wiki.stopped">Stopped</span>
+          </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="page-settings" class="page" style="display:none;">
+          <h2 data-i18n="settings.title">Settings</h2>
+
+          <div class="settings-section">
+            <h3 data-i18n="settings.project">Project Settings</h3>
+            <div class="form-group">
+              <label data-i18n="settings.max_containers">Max Containers</label>
+              <input type="number" id="settings-max-containers" class="form-input" min="1" max="10" value="3" />
+            </div>
+            <div class="form-group">
+              <label data-i18n="settings.auto_merge">Auto Merge</label>
+              <input type="checkbox" id="settings-auto-merge" checked />
+            </div>
+            <div class="form-group">
+              <label data-i18n="settings.merge_strategy">Merge Strategy</label>
+              <select id="settings-merge-strategy" class="form-input">
+                <option value="merge">Merge</option>
+                <option value="squash">Squash</option>
+                <option value="rebase">Rebase</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label data-i18n="settings.test_command">Test Command</label>
+              <input type="text" id="settings-test-command" class="form-input" placeholder="npm test" />
+            </div>
+            <div class="form-group">
+              <label data-i18n="settings.review_enabled">Claude Review</label>
+              <input type="checkbox" id="settings-review-enabled" checked />
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3 data-i18n="settings.app">App Settings</h3>
+            <div class="form-group">
+              <label data-i18n="settings.default_path">Default Project Path</label>
+              <div class="input-with-btn">
+                <input type="text" id="settings-default-path" class="form-input" readonly />
+                <button id="settings-browse-path" class="btn btn-secondary" data-i18n="btn.browse">Browse</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label data-i18n="settings.docker_status">Docker Status</label>
+              <span id="docker-status-text" class="status-badge">Checking...</span>
+            </div>
+          </div>
+
+          <div class="settings-actions">
+            <button id="settings-save-btn" class="btn btn-primary" data-i18n="settings.save">Save Settings</button>
+          </div>
+        </div>
+
+        <!-- Issue Create/Edit Modal -->
+        <div id="issue-modal-overlay" class="dialog-overlay" style="display:none;">
+          <div class="dialog-box dialog-wide">
+            <h3 id="issue-modal-title" data-i18n="issues.create_title">Create Issue</h3>
+            <div class="form-group">
+              <label data-i18n="issues.field.title">Title</label>
+              <input type="text" id="issue-form-title" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label data-i18n="issues.field.description">Description</label>
+              <textarea id="issue-form-description" class="form-input" rows="4"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label data-i18n="issues.field.type">Type</label>
+                <select id="issue-form-type" class="form-input">
+                  <option value="feature">Feature</option>
+                  <option value="bugfix">Bugfix</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="issues.field.priority">Priority</label>
+                <select id="issue-form-priority" class="form-input">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label data-i18n="issues.field.base_branch">Base Branch</label>
+                <input type="text" id="issue-form-base-branch" class="form-input" value="main" />
+              </div>
+              <div class="form-group">
+                <label data-i18n="issues.field.target_branch">Target Branch</label>
+                <input type="text" id="issue-form-target-branch" class="form-input" value="main" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label data-i18n="issues.field.pipeline">Pipeline Command</label>
+              <select id="issue-form-pipeline" class="form-input">
+                <option value="/teams">/teams</option>
+                <option value="/bugfix-teams">/bugfix-teams</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label data-i18n="issues.field.pipeline_args">Pipeline Arguments</label>
+              <textarea id="issue-form-pipeline-args" class="form-input" rows="2" placeholder="Describe the work..."></textarea>
+            </div>
+            <div class="form-group">
+              <label data-i18n="issues.field.labels">Labels (comma separated)</label>
+              <input type="text" id="issue-form-labels" class="form-input" placeholder="auth, backend" />
+            </div>
+            <div class="dialog-actions">
+              <button id="issue-modal-cancel" class="btn btn-secondary" data-i18n="btn.cancel">Cancel</button>
+              <button id="issue-modal-submit" class="btn btn-primary" data-i18n="btn.create">Create</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- New Project Modal -->
+        <div id="project-modal-overlay" class="dialog-overlay" style="display:none;">
+          <div class="dialog-box">
+            <h3 data-i18n="project.create_title">Create Project</h3>
+            <div class="form-group">
+              <label data-i18n="project.field.name">Project Name</label>
+              <input type="text" id="project-form-name" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label data-i18n="project.field.path">Local Base Path</label>
+              <div class="input-with-btn">
+                <input type="text" id="project-form-path" class="form-input" readonly />
+                <button id="project-form-browse" class="btn btn-secondary" data-i18n="btn.browse">Browse</button>
+              </div>
+            </div>
+            <div class="dialog-actions">
+              <button id="project-modal-cancel" class="btn btn-secondary" data-i18n="btn.cancel">Cancel</button>
+              <button id="project-modal-submit" class="btn btn-primary" data-i18n="btn.create">Create</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toast -->
+        <div id="toast" class="toast" style="display:none;"></div>
+      </main>
     </div>
-
-    <div id="toast" class="toast" style="display: none;"></div>
   </div>
+
   <script src="scripts/themeToggle.js"></script>
   <script src="scripts/i18n.js"></script>
-  <script src="scripts/modeToggle.js"></script>
-  <script src="scripts/renderer.js"></script>
-  <script src="scripts/repoWorktreeRenderer.js"></script>
-  <script src="scripts/worktreeCreateRenderer.js"></script>
-  <script src="scripts/hostingButton.js"></script>
-  <script src="scripts/workspaceRenderer.js"></script>
-  <script src="scripts/commandQueueRenderer.js"></script>
+  <script src="scripts/app.js"></script>
 </body>
 </html>

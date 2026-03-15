@@ -27,11 +27,8 @@ async function handleWikiHostStart(
 ): Promise<{ success: boolean; url?: string; port?: number; error?: string }> {
   let workspacePath = data?.workspacePath;
 
-  // workspacePath 미전달 시 활성 워크스페이스 경로 사용
-  if (!workspacePath) {
-    const { getManagerService } = require('./workspaceManagerHandlers');
-    workspacePath = getManagerService().getActiveWorkspacePath() ?? undefined;
-  }
+  // workspacePath 미전달 시 에러 반환
+  // TODO: ProjectManagerService 연동 후 활성 프로젝트 경로 사용
 
   if (!workspacePath) {
     return { success: false, error: 'WORKSPACE_PATH_REQUIRED' };

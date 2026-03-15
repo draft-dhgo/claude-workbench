@@ -1,80 +1,95 @@
-/** Supported UI languages */
+/** 지원 UI 언어 */
 export type Lang = 'en' | 'ko';
 
-/** claude-config:reset request payload */
-export interface ClaudeConfigResetPayload {
-  workspacePath: string;
-  lang?: Lang;
-}
-
-/** Invoke (양방향) IPC 채널 */
+/** Invoke (요청-응답) IPC 채널 */
 export type InvokeChannel =
+  // App
   | 'app:ping'
   | 'app:version'
-  | 'repo:add'
-  | 'repo:list'
-  | 'repo:remove'
-  | 'repo:validate'
-  | 'workdir-set:create'
-  | 'workdir-set:list'
-  | 'workdir-set:get'
-  | 'workdir-set:update'
-  | 'workdir-set:delete'
-  | 'worktree:list-branches'
-  | 'worktree:fetch'
-  | 'worktree:create-all'
-  | 'worktree:select-path'
-  | 'worktree:list-by-repo'
-  | 'worktree:delete-worktree'
-  | 'worktree:create-single'
-  | 'worktree:list-branches-single'
-  | 'worktree:fetch-single'
-  | 'worktree:list-unpushed'
-  | 'worktree:detach'
-  | 'claude-config:detect'
-  | 'claude-config:copy-all'
-  | 'claude-config:reset'
-  | 'terminal:open'
-  | 'workspace:list'
-  | 'workspace:create'
-  | 'workspace:update'
-  | 'workspace:delete'
-  | 'queue:enqueue'
-  | 'queue:dequeue'
-  | 'queue:abort'
-  | 'queue:status'
-  | 'queue:security-warning'
-  | 'wiki-host:start'
-  | 'wiki-host:stop'
-  | 'wiki-host:status'
-  | 'wiki-host:open-browser'
-  | 'workspace-mgr:set-active'
-  | 'workspace-mgr:get-active'
-  | 'workspace-mgr:get-commands'
-  | 'workspace-mgr:get-skills'
-  | 'workspace-mgr:get-config-status'
-  | 'workspace-mgr:reset-config'
-  | 'workspace-mgr:get-queue-summary'
-  | 'workspace-mgr:rate-limit-retry-now'
-  | 'workspace-mgr:rate-limit-cancel'
+  | 'app:settings:get'
+  | 'app:settings:update'
+  | 'app:docker:check'
+  // Project CRUD
+  | 'project:list'
+  | 'project:get'
+  | 'project:create'
+  | 'project:clone'
+  | 'project:update'
+  | 'project:delete'
+  | 'project:set-active'
+  | 'project:get-active'
+  | 'project:get-dashboard'
+  | 'project:get-config-status'
+  // Dev Repo (submodule) 관리
+  | 'project:repo:add'
+  | 'project:repo:remove'
+  | 'project:repo:list'
+  | 'project:repo:sync-submodules'
+  // Issue 관리
+  | 'issue:list'
+  | 'issue:get'
+  | 'issue:create'
+  | 'issue:update'
+  | 'issue:delete'
+  | 'issue:transition'
+  | 'issue:get-detail'
+  | 'issue:set-detail'
+  | 'issue:start'
+  | 'issue:abort'
+  | 'issue:retry'
+  // Container pool
+  | 'container:pool-status'
+  | 'container:get'
+  | 'container:get-logs'
+  | 'container:destroy'
+  | 'container:destroy-all'
+  | 'container:set-max'
+  // Pipeline
+  | 'pipeline:status'
+  | 'pipeline:abort'
+  // Merge (유지)
   | 'merge:resolve-conflict'
   | 'merge:manual-resolve-complete'
   | 'merge:abort'
   | 'merge:list-branches'
+  // Wiki (유지)
+  | 'wiki-host:start'
+  | 'wiki-host:stop'
+  | 'wiki-host:status'
+  | 'wiki-host:open-browser'
   | 'wiki-panel:open'
-  | 'wiki-panel:close';
+  | 'wiki-panel:close'
+  // Terminal (유지)
+  | 'terminal:open'
+  // Claude config (유지)
+  | 'claude-config:reset'
+  // History
+  | 'history:list'
+  | 'history:delete'
+  | 'history:clear'
+  // Dialog
+  | 'dialog:select-directory';
 
 /** Send (단방향) IPC 채널 — 현재 없음 */
 export type SendChannel = never;
 
 /** Receive (메인→렌더러) IPC 채널 */
 export type ReceiveChannel =
-  | 'worktree:progress'
-  | 'claude-config:progress'
-  | 'queue:status-update'
-  | 'queue:log'
-  | 'wiki-host:status-update'
-  | 'workspace:active-changed'
-  | 'workspace:rate-limit-status'
-  | 'workspace:rate-limit-exhausted'
-  | 'merge:conflict-detected';
+  // Project
+  | 'project:active-changed'
+  // Issue
+  | 'issue:status-changed'
+  | 'issue:list-updated'
+  // Container pool
+  | 'container:pool-updated'
+  | 'container:log'
+  | 'container:status-changed'
+  // Pipeline
+  | 'pipeline:log'
+  | 'pipeline:status-update'
+  | 'pipeline:rate-limit-status'
+  | 'pipeline:rate-limit-exhausted'
+  // Merge (유지)
+  | 'merge:conflict-detected'
+  // Wiki (유지)
+  | 'wiki-host:status-update';

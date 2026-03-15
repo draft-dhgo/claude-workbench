@@ -5,7 +5,7 @@
 <h1 align="center">Claude Workbench</h1>
 
 <p align="center">
-  Claude Code-powered development workstation &mdash; Git worktree management and scrum pipeline in one desktop app.
+  Project-centric development automation platform powered by Claude Code.
 </p>
 
 <p align="center">
@@ -16,169 +16,55 @@
 
 ---
 
-## Workspace / Worktree Mode
+## Overview
 
-Switch between two modes using the toggle in the header. **Workspace mode** focuses on running Claude Code pipelines; **Worktree mode** manages Git repositories and their worktrees.
+Claude Workbench is a desktop application for managing development projects with Claude Code automation. It provides:
 
-![Repository Management](docs/screenshot-main.png?v=3)
+- **Project Management**: Create and manage projects with issue-tracking repos and dev repos (git submodules)
+- **Issue Tracking**: File-based issue management within a git repository (base branch + target branch per issue)
+- **Dev Containers**: Docker devcontainer + git worktree pool for isolated, concurrent issue processing
+- **CI/CD Automation**: Automatic pipeline execution, testing, and merge via Claude Code
+- **OAuth Authentication**: No API keys needed in containers
 
----
-
-## Workspace Mode
-
-### Command Queue
-
-Queue multiple Claude Code commands and execute them sequentially. Built on the `@anthropic-ai/claude-agent-sdk`, commands run with full permission bypass and auto-retry on rate limits.
-
-![Command Queue](docs/screenshot-queue.png?v=3)
-
-- **FIFO queue**: enqueue `/add-req`, `/explain`, `/teams`, `/bugfix-teams`, `/add-bug` commands
-- **Workspace selector**: choose which workspace each command runs in
-- **Bulk add**: paste multiple commands at once in the bulk input area
-- **Rate limit retry**: exponential backoff (30s → 5min) with countdown timer
-- **Abort**: cancel a running command mid-execution via AbortController
-- **Dequeue**: remove pending commands before they start
-- **Real-time logs**: IPC-based status updates and execution logs in the UI
-- **Log grouping**: each queued command's logs are collapsed by default; expand any group to inspect details
-- **Color-coded logs**: assistant output (green), user messages (blue), system events (gray) for at-a-glance parsing
-- **Expand / Collapse all**: one-click toggle to open or close all log groups simultaneously
-
-### Workspace Management
-
-Register existing directories or create new workspaces (with CLAUDE.md, skills, and slash commands pre-installed). Manage wiki viewer hosting from the same screen.
-
-![Workspace Management](docs/screenshot-sets.png?v=3)
-
-- **Add Workspace**: register any existing directory as a workspace
-- **Create Workspace**: scaffold a new workspace with CLAUDE.md, `.claude/commands/`, and all pipeline skills installed automatically
-- **Workspace list**: view and delete registered workspaces; WORKTREE and EMPTY badges indicate workspace type
-- **Open Terminal**: open a terminal in the workspace directory
-- **Wiki Hosting**: start/stop a local HTTP server; once running, the Wiki Viewer opens automatically as an in-app side panel
-- **Open Wiki (in-app panel)**: toggle the built-in Wiki side panel without leaving the app — powered by Electron BrowserView
-
-![Built-in Hosting](docs/screenshot-wiki-hosting.png?v=3)
-
----
-
-## Worktree Mode
-
-### Repository Management
-
-Register local Git repositories, check current branches, and find them quickly with search.
-
-![Repository Management](docs/screenshot-main.png?v=3)
-
-### Worktree Management
-
-View the worktree list per repository and manage deletions based on push status. Shows a warning when deleting an unpushed branch.
-
-![Worktree Management](docs/screenshot-worktree-manage.png?v=3)
-
----
-
-## Claude Code Commands
-
-Run Claude Code inside a workspace and automate the scrum development pipeline with slash commands.
-
-```bash
-cd ~/workspaces/my-feature
-claude
-```
-
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `/teams` | Run team development pipeline | Automates the full flow: requirements → design → implementation → deploy |
-| `/explain` | Discuss implementation direction | Propose and confirm implementation approach through conversation |
-| `/add-req` | Register a new requirement | Adds a new requirement to `wiki/requirements/` |
-| `/add-bug` | Register a new bug | Registers a bug in `wiki/bugs/README.md` |
-| `/bugfix-teams` | Run bug-fix pipeline | Automates analysis → fix → test flow for a registered bug |
-
-```bash
-# Register a requirement then run the pipeline
-> /add-req
-> "JWT token-based auth needs to be implemented for the login API"
-
-# (Optional) Discuss implementation direction before running the pipeline
-> /explain
-
-> /teams
-> "Implement REQ-001 login API"
-
-# Register a bug then run the fix pipeline
-> /add-bug
-> "Refresh token is not renewed on login"
-
-> /bugfix-teams
-> "Fix BUG-001"
-```
-
-Each pipeline step saves its artifact to the `wiki/` directory automatically:
+## Architecture
 
 ```
-wiki/
-├── requirements/    # Requirement definitions
-├── prd/             # Product requirement documents
-├── specs/           # Design documents (SDD)
-├── tests/           # Test design
-├── tdd/             # TDD cycle reports
-├── deploy/          # Build/deploy reports
-├── bugfix/          # Bug fix analysis
-├── bugs/            # Bug tracker
-├── mockups/         # UI mockups (HTML)
-├── knowledge/       # Project knowledge base
-└── views/           # Wiki Viewer (dashboard)
+Project (issue-tracking repo)
+  ├── repos/           # Dev repos as git submodules
+  │   ├── frontend/
+  │   └── backend/
+  ├── issues/          # File-based issue tracking
+  │   ├── manifest.json
+  │   └── details/
+  ├── .claude/         # Claude Code config
+  ├── CLAUDE.md
+  └── wiki/            # Pipeline artifacts
 ```
 
----
+### Issue Lifecycle
 
-## Wiki Viewer
-
-A Wiki Viewer is included to browse all pipeline artifacts in your browser. The **cycle-based view** lets you track the pipeline progress for each requirement (REQ) and bug (BUG) at a glance.
-
-<table>
-<tr>
-<td width="50%"><strong>Dashboard</strong><br/>Dev/Bug Cycle cards, completion status, Mockup Gallery<br/><img src="docs/screenshot-wiki-dashboard.png?v=4" width="100%" /></td>
-<td width="50%"><strong>Traceability Matrix</strong><br/>REQ → PRD → SDD → Tests → TDD → Deploy → Mockup → Bugfix<br/><img src="docs/screenshot-wiki-trace.png?v=4" width="100%" /></td>
-</tr>
-<tr>
-<td width="50%"><strong>Cycle Detail</strong><br/>Pipeline stage visualization with document links<br/><img src="docs/screenshot-wiki-cycle-detail.png?v=4" width="100%" /></td>
-<td width="50%"><strong>Document Viewer</strong><br/>Markdown rendering with breadcrumb navigation<br/><img src="docs/screenshot-wiki-doc-viewer.png?v=4" width="100%" /></td>
-</tr>
-<tr>
-<td width="50%"><strong>Mockup Viewer</strong><br/>HTML mockups embedded as iframes<br/><img src="docs/screenshot-wiki-mockup.png?v=4" width="100%" /></td>
-<td width="50%"></td>
-</tr>
-</table>
-
-### Built-in Hosting
-
-The Wiki Viewer can be hosted directly from the app. In the **Workspace Management** tab, use the **Wiki Viewer Hosting** section to start a local HTTP server.
-
-- **One-click start/stop**: Start and stop the server from the Workspace Management tab; starting the server automatically opens the in-app Wiki panel
-- **In-app panel**: Wiki Viewer loads inside the app window as a side panel (400px right-side overlay) powered by BrowserView — no browser context switch needed
-- **Auto port selection**: Automatically picks an available port in the 8080–8099 range
-- **Open in browser**: Click the URL to open the hosted Wiki Viewer in your default browser
-- **Status indicator**: Running/Not Running indicator with live URL
-- **Auto cleanup**: Server shuts down automatically when the app quits
-- **localhost only**: Bound to `127.0.0.1` for security
-
-You can also host the Wiki Viewer manually:
-
-```bash
-# From workspace root
-npx serve wiki -p 3000
-
-# Open in browser
-open http://localhost:3000/views/index.html
+```
+Created → In Progress → Auto-Merge → Closed
+           │
+           ├── Container allocated from pool
+           ├── Branches created (issue/ISSUE-XXX)
+           ├── Pipeline command executed (/teams or /bugfix-teams)
+           └── Auto-merge to target branch
 ```
 
----
+### Dev Container Pool
+
+- Configurable concurrency (max containers per project)
+- Docker devcontainer with Claude Code `--dangerously-skip-permissions`
+- Git worktrees for branch isolation within containers
+- Automatic container recycling after issue completion
 
 ## Getting Started
 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 18+
+- [Docker](https://www.docker.com/) (for dev containers)
 - npm 9+
 
 ### Installation
@@ -192,11 +78,10 @@ npm install
 ### Development
 
 ```bash
-# Compile TypeScript then start the app
 npm run build:ts
 npm start
 
-# Development mode (NODE_ENV=development)
+# Development mode
 npm run dev
 
 # Type check
@@ -206,38 +91,55 @@ npm run typecheck
 npm test
 ```
 
-### Build (Packaging)
+### Build
 
 ```bash
 npm run build
 ```
 
-Build output is placed in the `build/` directory. (macOS DMG, Windows NSIS, Linux AppImage)
-
----
-
 ## Project Structure
 
 ```
-claude-workbench/
-├── src/
-│   ├── main/              # Electron main process
-│   │   ├── index.ts        # App entry point
-│   │   ├── window.ts       # Window configuration
-│   │   ├── handlers/       # IPC handlers
-│   │   ├── services/       # Business logic
-│   │   └── constants/      # Constants
-│   ├── preload/            # Context bridge (secure IPC)
-│   ├── renderer/           # UI (HTML/CSS/JS)
-│   │   ├── locales/        # i18n locale files (en.json, ko.json)
-│   │   └── scripts/        # Renderer scripts
-│   └── shared/types/       # Shared type definitions
-├── assets/                 # App icons (PNG, ICNS, ICO)
-├── __tests__/              # Jest tests
-└── docs/                   # Documentation & screenshots
+src/
+  main/
+    index.ts              # App entry, IPC registration
+    window.ts             # BrowserWindow config
+    services/
+      projectStore.ts     # Project CRUD + persistence
+      issueService.ts     # Issue lifecycle in issue repo
+      gitService.ts       # Centralized git operations
+      projectManagerService.ts  # Project creation/dashboard
+      settingsStore.ts    # App settings
+      mergeService.ts     # Git merge operations
+      wikiHostService.ts  # Wiki HTTP server
+      wikiPanelService.ts # BrowserView panel
+    handlers/
+      projectHandlers.ts  # project:* IPC
+      issueHandlers.ts    # issue:* IPC
+      settingsHandlers.ts # settings IPC
+      mergeHandlers.ts    # merge IPC
+      wikiHostHandlers.ts # wiki IPC
+      terminalHandlers.ts # terminal IPC
+      claudeConfigHandlers.ts  # config IPC
+    constants/            # Pipeline commands & skills
+  shared/types/
+    project.ts            # Project, DevRepoRef, ProjectSettings
+    issue.ts              # Issue, IssueManifest, IssueStatus
+    container.ts          # DevContainer, ContainerPoolState
+    settings.ts           # AppSettings
+    ipc.ts                # IPC channel types
+    models.ts             # Legacy shared models
+  renderer/
+    index.html            # Sidebar layout
+    styles.css            # Theme-aware CSS
+    scripts/
+      app.js              # Router + page logic
+      i18n.js             # Internationalization
+      theme-init.js       # Theme initialization
+      themeToggle.js      # Theme toggle
+  preload/
+    index.ts              # Secure IPC bridge
 ```
-
----
 
 ## Tech Stack
 
@@ -247,8 +149,7 @@ claude-workbench/
 - **Packaging**: electron-builder
 - **Security**: Context Isolation + Preload Script
 - **AI SDK**: @anthropic-ai/claude-agent-sdk
-
----
+- **Containers**: Docker devcontainers
 
 ## License
 

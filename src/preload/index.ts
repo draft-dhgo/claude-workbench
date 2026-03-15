@@ -2,61 +2,60 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 // 허용된 IPC 채널 목록 (allowlist)
 const ALLOWED_SEND_CHANNELS: string[] = []
+
 const ALLOWED_RECEIVE_CHANNELS: string[] = [
-  'worktree:progress',
-  'claude-config:progress',
-  'queue:status-update',
-  'queue:log',
+  // Wiki
   'wiki-host:status-update',
-  'workspace:active-changed',
-  'workspace:rate-limit-status',
-  'workspace:rate-limit-exhausted',
-  'merge:conflict-detected'
+  // Merge
+  'merge:conflict-detected',
+  // Project (신규 — Phase 1.8에서 활성화)
+  'project:active-changed',
+  // Issue (신규)
+  'issue:status-changed',
+  'issue:list-updated',
+  // Container (신규 — Phase 2)
+  'container:pool-updated',
+  'container:log',
+  'container:status-changed',
+  // Pipeline (신규 — Phase 2)
+  'pipeline:log',
+  'pipeline:status-update',
+  'pipeline:rate-limit-status',
+  'pipeline:rate-limit-exhausted'
 ]
+
 const ALLOWED_INVOKE_CHANNELS: string[] = [
+  // App
   'app:ping', 'app:version',
-  'repo:add', 'repo:list', 'repo:remove', 'repo:validate',
-  'workdir-set:create', 'workdir-set:list', 'workdir-set:get',
-  'workdir-set:update', 'workdir-set:delete',
-  'worktree:list-branches', 'worktree:fetch', 'worktree:create-all', 'worktree:select-path',
-  'worktree:list-by-repo', 'worktree:delete-worktree',
-  'worktree:create-single', 'worktree:list-branches-single',
-  'worktree:fetch-single', 'worktree:list-unpushed', 'worktree:detach',
-  'claude-config:detect',
-  'claude-config:copy-all',
+  'app:settings:get', 'app:settings:update',
+  'app:docker:check',
+  // Claude config (유지)
   'claude-config:reset',
+  // Terminal (유지)
   'terminal:open',
-  'workspace:list',
-  'workspace:register',
-  'workspace:create', 'workspace:update', 'workspace:delete',
-  'queue:enqueue',
-  'queue:dequeue',
-  'queue:requeue',
-  'queue:abort',
-  'queue:status',
-  'queue:security-warning',
-  'queue:history:list',
-  'queue:history:delete',
-  'queue:history:clear',
-  'wiki-host:start',
-  'wiki-host:stop',
-  'wiki-host:status',
-  'wiki-host:open-browser',
-  'workspace-mgr:set-active',
-  'workspace-mgr:get-active',
-  'workspace-mgr:get-commands',
-  'workspace-mgr:get-skills',
-  'workspace-mgr:get-config-status',
-  'workspace-mgr:reset-config',
-  'workspace-mgr:get-queue-summary',
-  'workspace-mgr:rate-limit-retry-now',
-  'workspace-mgr:rate-limit-cancel',
-  'merge:resolve-conflict',
-  'merge:manual-resolve-complete',
-  'merge:abort',
-  'merge:list-branches',
-  'wiki-panel:open',
-  'wiki-panel:close'
+  // Wiki (유지)
+  'wiki-host:start', 'wiki-host:stop', 'wiki-host:status', 'wiki-host:open-browser',
+  'wiki-panel:open', 'wiki-panel:close',
+  // Merge (유지)
+  'merge:resolve-conflict', 'merge:manual-resolve-complete', 'merge:abort', 'merge:list-branches',
+  // Dialog
+  'dialog:select-directory',
+  // Project (신규)
+  'project:list', 'project:get', 'project:create', 'project:clone',
+  'project:update', 'project:delete', 'project:set-active', 'project:get-active',
+  'project:get-dashboard', 'project:get-config-status',
+  'project:repo:add', 'project:repo:remove', 'project:repo:list', 'project:repo:sync-submodules',
+  // Issue (신규)
+  'issue:list', 'issue:get', 'issue:create', 'issue:update', 'issue:delete',
+  'issue:transition', 'issue:get-detail', 'issue:set-detail',
+  'issue:start', 'issue:abort', 'issue:retry',
+  // Container (신규 — Phase 2)
+  'container:pool-status', 'container:get', 'container:get-logs',
+  'container:destroy', 'container:destroy-all', 'container:set-max',
+  // Pipeline (신규 — Phase 2)
+  'pipeline:status', 'pipeline:abort',
+  // History (유지)
+  'history:list', 'history:delete', 'history:clear'
 ]
 
 contextBridge.exposeInMainWorld('electronAPI', {

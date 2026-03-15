@@ -1,0 +1,82 @@
+/** 이슈 상태 */
+export type IssueStatus =
+  | 'created'
+  | 'in-progress'
+  | 'testing'
+  | 'review'
+  | 'merged'
+  | 'closed';
+
+/** 이슈 유형 */
+export type IssueType = 'feature' | 'bugfix';
+
+/** 이슈 우선순위 */
+export type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
+
+/** 이슈: 작업 단위 (신규 기능 또는 버그 수정) */
+export interface Issue {
+  /** 자동 생성 ID (e.g., "ISSUE-001") */
+  id: string;
+  title: string;
+  description: string;
+  type: IssueType;
+  status: IssueStatus;
+  /** 작업 시작 브랜치 */
+  baseBranch: string;
+  /** merge 대상 브랜치 */
+  targetBranch: string;
+  /** 자동 생성 작업 브랜치 (e.g., "issue/ISSUE-001") */
+  issueBranch: string;
+  priority: IssuePriority;
+  /** 현재 할당된 dev container ID */
+  assignedContainerId?: string;
+  /** 실행할 파이프라인 커맨드 */
+  pipelineCommand: '/teams' | '/bugfix-teams';
+  /** 파이프라인 추가 인자 */
+  pipelineArgs?: string;
+  labels: string[];
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  result?: IssueResult;
+}
+
+/** 이슈 실행 결과 */
+export interface IssueResult {
+  mergeCommitHash?: string;
+  testsPassed?: boolean;
+  reviewPassed?: boolean;
+  costUsd?: number;
+  durationMs?: number;
+  errorMessage?: string;
+}
+
+/** 이슈 매니페스트: issue repo 내 issues/manifest.json 구조 */
+export interface IssueManifest {
+  version: number;
+  /** 다음 이슈 ID 자동 증분 카운터 */
+  nextId: number;
+  issues: Issue[];
+}
+
+/** 이슈 생성 요청 데이터 */
+export interface CreateIssueData {
+  title: string;
+  description: string;
+  type: IssueType;
+  baseBranch: string;
+  targetBranch: string;
+  priority: IssuePriority;
+  pipelineCommand: '/teams' | '/bugfix-teams';
+  pipelineArgs?: string;
+  labels?: string[];
+}
+
+/** 이슈 목록 필터 */
+export interface IssueFilter {
+  status?: IssueStatus[];
+  type?: IssueType;
+  priority?: IssuePriority[];
+  search?: string;
+}
