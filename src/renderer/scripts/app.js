@@ -163,13 +163,14 @@
   });
 
   issueModalSubmit.addEventListener('click', async () => {
+    const issueType = document.getElementById('issue-form-type').value;
     const data = {
       title: document.getElementById('issue-form-title').value.trim(),
       description: document.getElementById('issue-form-description').value.trim(),
-      type: document.getElementById('issue-form-type').value,
+      type: issueType,
       priority: document.getElementById('issue-form-priority').value,
       baseBranch: document.getElementById('issue-form-base-branch').value.trim() || 'main',
-      pipelineCommand: document.getElementById('issue-form-pipeline').value,
+      pipelineCommand: issueType === 'bugfix' ? '/bugfix-teams' : '/teams',
       pipelineArgs: document.getElementById('issue-form-pipeline-args').value.trim(),
       labels: document.getElementById('issue-form-labels').value
         .split(',').map(s => s.trim()).filter(Boolean)
@@ -220,6 +221,32 @@
     } catch (e) { /* ignore */ }
   }
 
+  function renderStepperHtml(status) {
+    if (typeof getStepperState !== 'function') return '';
+    var steps = getStepperState(status);
+    return '<div class="issue-stepper">' + steps.map(function(s) {
+      return '<span class="stepper-step stepper-' + s.status + '">' + escapeHtml(s.label) + '</span>';
+    }).join('<span class="stepper-arrow">&rarr;</span>') + '</div>';
+  }
+
+  function renderDiffSummaryHtml(issue) {
+    var r = issue.result;
+    if (!r) return '';
+    var parts = [];
+    if (r.durationMs) {
+      var sec = Math.round(r.durationMs / 1000);
+      var min = Math.floor(sec / 60);
+      parts.push(min > 0 ? min + 'm ' + (sec % 60) + 's' : sec + 's');
+    }
+    if (r.costUsd !== undefined) parts.push('$' + r.costUsd.toFixed(2));
+    if (r.diffSummary) {
+      var d = r.diffSummary;
+      parts.push(d.filesChanged + ' files, +' + d.insertions + ' -' + d.deletions);
+    }
+    if (!parts.length) return '';
+    return '<div class="issue-result-summary">' + parts.join(' &middot; ') + '</div>';
+  }
+
   function renderIssueList(issues) {
     const tbody = document.getElementById('issue-list-tbody');
     const empty = document.getElementById('issues-empty');
@@ -232,7 +259,11 @@
     tbody.innerHTML = issues.map(issue => `
       <tr>
         <td><code>${issue.id}</code></td>
-        <td>${escapeHtml(issue.title)}</td>
+        <td>
+          ${escapeHtml(issue.title)}
+          ${renderDiffSummaryHtml(issue)}
+          ${renderStepperHtml(issue.status)}
+        </td>
         <td><span class="badge badge-${issue.type}">${issue.type}</span></td>
         <td><span class="badge badge-status-${issue.status}">${issue.status}</span></td>
         <td><span class="badge badge-priority-${issue.priority}">${issue.priority}</span></td>
@@ -240,7 +271,8 @@
         <td>
           ${issue.status === 'created' ? `<button class="btn btn-sm btn-primary" onclick="startIssue('${issue.id}')">Start</button>` : ''}
           ${issue.status === 'in-progress' ? `<button class="btn btn-sm btn-danger" onclick="abortIssue('${issue.id}')">Abort</button>` : ''}
-          ${issue.status === 'completed' ? `<button class="btn btn-sm btn-primary" onclick="mergeIssue('${issue.id}')">Merge</button>` : ''}
+          ${issue.status === 'completed' ? `<button class="btn btn-sm btn-primary" onclick="mergeIssue('${issue.id}')">Merge</button> <button class="btn btn-sm btn-danger" onclick="rejectIssue('${issue.id}')">Reject</button>` : ''}
+          ${issue.status === 'completed' && issue.result && issue.result.diffSummary ? `<button class="btn btn-sm" onclick="showDiff('${issue.id}')">Diff</button>` : ''}
           ${issue.status === 'failed' ? `<button class="btn btn-sm btn-primary" onclick="startIssue('${issue.id}')">Retry</button>` : ''}
         </td>
       </tr>
@@ -308,6 +340,54 @@
       showToast('Failed to merge issue', 'error');
     }
   };
+
+  window.rejectIssue = async function (issueId) {
+    try {
+      const result = await api.invoke('issue:reject', { issueId });
+      if (result && result.success) {
+        showToast('Issue rejected — reset to created');
+        loadIssues();
+      } else {
+        showToast(result?.error || 'Failed to reject', 'error');
+      }
+    } catch (e) {
+      showToast('Failed to reject issue', 'error');
+    }
+  };
+
+  window.showDiff = async function (issueId) {
+    try {
+      const result = await api.invoke('issue:get', { issueId });
+      if (!result || !result.success || !result.issue.result || !result.issue.result.diffSummary) {
+        showToast('No diff data available', 'error');
+        return;
+      }
+      const diff = result.issue.result.diffSummary;
+      const modal = document.getElementById('diff-modal-overlay');
+      document.getElementById('diff-modal-title').textContent = issueId + ' — Diff Summary';
+      document.getElementById('diff-modal-stats').innerHTML =
+        '<strong>' + diff.filesChanged + '</strong> files changed, ' +
+        '<span style="color:var(--success-text);">+' + diff.insertions + '</span> ' +
+        '<span style="color:var(--danger-text);">-' + diff.deletions + '</span>';
+      document.getElementById('diff-modal-files').innerHTML = diff.files.map(function(f) {
+        var statusBadge = f.status === 'added' ? 'badge-status-created' :
+          f.status === 'deleted' ? 'badge-status-failed' : 'badge-status-in-progress';
+        return '<div class="diff-file-row">' +
+          '<span class="badge ' + statusBadge + '">' + f.status + '</span> ' +
+          '<code>' + escapeHtml(f.path) + '</code> ' +
+          '<span style="color:var(--success-text);">+' + f.insertions + '</span> ' +
+          '<span style="color:var(--danger-text);">-' + f.deletions + '</span>' +
+          '</div>';
+      }).join('');
+      modal.style.display = 'flex';
+    } catch (e) {
+      showToast('Failed to load diff', 'error');
+    }
+  };
+
+  document.getElementById('diff-modal-close')?.addEventListener('click', function() {
+    document.getElementById('diff-modal-overlay').style.display = 'none';
+  });
 
   // --- Toast ---
   function showToast(message, type) {
@@ -426,17 +506,37 @@
   // Pipeline Page
   // ============================================================
   const pipelineLogContent = document.getElementById('pipeline-log-content');
+  const logFilterSelect = document.getElementById('log-filter-issue');
   let pipelineLogs = [];
+  let logFilterTag = 'all';
 
   function appendPipelineLog(entry) {
     pipelineLogs.push(entry);
     if (pipelineLogs.length > 500) pipelineLogs = pipelineLogs.slice(-500);
+    updateLogFilterOptions();
     renderPipelineLogs();
+  }
+
+  function updateLogFilterOptions() {
+    if (!logFilterSelect) return;
+    var tags = (typeof getUniqueTags === 'function') ? getUniqueTags(pipelineLogs) : [];
+    var current = logFilterSelect.value;
+    logFilterSelect.innerHTML = '<option value="all">All Issues</option>';
+    tags.forEach(function(tag) {
+      var opt = document.createElement('option');
+      opt.value = tag;
+      opt.textContent = tag;
+      logFilterSelect.appendChild(opt);
+    });
+    logFilterSelect.value = current || 'all';
   }
 
   function renderPipelineLogs() {
     if (!pipelineLogContent) return;
-    pipelineLogContent.innerHTML = pipelineLogs.map(l => {
+    var filtered = (typeof filterLogsByIssue === 'function')
+      ? filterLogsByIssue(pipelineLogs, logFilterTag)
+      : pipelineLogs;
+    pipelineLogContent.innerHTML = filtered.map(l => {
       const color = l.type === 'error' ? 'var(--danger-text)' :
         l.type === 'assistant' ? 'var(--success-text)' :
           l.type === 'system' ? 'var(--info-text)' : 'var(--text-primary)';
@@ -445,9 +545,16 @@
     pipelineLogContent.scrollTop = pipelineLogContent.scrollHeight;
   }
 
+  if (logFilterSelect) {
+    logFilterSelect.addEventListener('change', function() {
+      logFilterTag = logFilterSelect.value;
+      renderPipelineLogs();
+    });
+  }
+
   const logCollapseAll = document.getElementById('log-collapse-all');
   const logExpandAll = document.getElementById('log-expand-all');
-  if (logCollapseAll) logCollapseAll.addEventListener('click', () => { pipelineLogs = []; renderPipelineLogs(); });
+  if (logCollapseAll) logCollapseAll.addEventListener('click', () => { pipelineLogs = []; updateLogFilterOptions(); renderPipelineLogs(); });
   if (logExpandAll) logExpandAll.addEventListener('click', () => renderPipelineLogs());
 
   // ============================================================
@@ -573,6 +680,9 @@
         dockerEl.style.color = 'var(--danger-text)';
       }
     } catch (e) { /* ignore */ }
+
+    // GitHub status
+    loadGitHubStatus();
   }
 
   document.getElementById('settings-browse-path')?.addEventListener('click', async () => {
@@ -603,6 +713,206 @@
       });
     }
     showToast('Settings saved');
+  });
+
+  // ============================================================
+  // GitHub Account Settings
+  // ============================================================
+  let _ghConnected = false;
+
+  async function loadGitHubStatus() {
+    try {
+      const result = await api.invoke('github:check-connection');
+      const dot = document.getElementById('github-dot');
+      const statusText = document.getElementById('github-status-text');
+      const usernameEl = document.getElementById('github-username');
+      const tokenSection = document.getElementById('github-token-section');
+      const connectedSection = document.getElementById('github-connected-section');
+      const browseBtn = document.getElementById('repo-browse-github-btn');
+
+      if (result?.success && result.status?.connected) {
+        _ghConnected = true;
+        dot.className = 'github-status-dot github-dot-connected';
+        statusText.textContent = '';
+        usernameEl.textContent = result.status.username;
+        usernameEl.style.display = '';
+        tokenSection.style.display = 'none';
+        connectedSection.style.display = '';
+        if (browseBtn) browseBtn.style.display = '';
+      } else {
+        _ghConnected = false;
+        dot.className = 'github-status-dot github-dot-disconnected';
+        statusText.setAttribute('data-i18n', 'settings.github.disconnected');
+        statusText.textContent = 'Not connected';
+        usernameEl.style.display = 'none';
+        tokenSection.style.display = '';
+        connectedSection.style.display = 'none';
+        if (browseBtn) browseBtn.style.display = 'none';
+        // Re-apply i18n if available
+        if (typeof applyI18n === 'function') applyI18n();
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  document.getElementById('github-connect-btn')?.addEventListener('click', async () => {
+    const input = document.getElementById('github-token-input');
+    const token = input.value.trim();
+    if (!token) return;
+    const btn = document.getElementById('github-connect-btn');
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      const result = await api.invoke('github:set-token', { token });
+      if (result?.success) {
+        input.value = '';
+        await loadGitHubStatus();
+        showToast('GitHub connected');
+      } else {
+        showToast(result?.error || 'Failed to connect', 'error');
+      }
+    } catch (e) {
+      showToast('Failed to connect', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Connect';
+      if (typeof applyI18n === 'function') applyI18n();
+    }
+  });
+
+  document.getElementById('github-disconnect-btn')?.addEventListener('click', async () => {
+    try {
+      await api.invoke('github:remove-token');
+      await loadGitHubStatus();
+      showToast('GitHub disconnected');
+    } catch (e) {
+      showToast('Failed to disconnect', 'error');
+    }
+  });
+
+  // ============================================================
+  // GitHub Repo Browser
+  // ============================================================
+  let ghRepoPage = 1;
+  let ghRepoSearchQuery = '';
+  let ghSearchTimer = null;
+
+  document.getElementById('repo-browse-github-btn')?.addEventListener('click', async () => {
+    if (!_ghConnected) {
+      showToast('Connect GitHub account first in Settings', 'error');
+      return;
+    }
+    ghRepoPage = 1;
+    ghRepoSearchQuery = '';
+    const searchInput = document.getElementById('github-repo-search');
+    if (searchInput) searchInput.value = '';
+    await loadGitHubRepos();
+    document.getElementById('github-repo-modal-overlay').style.display = 'flex';
+  });
+
+  document.getElementById('github-repo-modal-cancel')?.addEventListener('click', () => {
+    document.getElementById('github-repo-modal-overlay').style.display = 'none';
+  });
+
+  document.getElementById('github-repo-search')?.addEventListener('input', (e) => {
+    if (ghSearchTimer) clearTimeout(ghSearchTimer);
+    ghSearchTimer = setTimeout(() => {
+      ghRepoSearchQuery = e.target.value.trim();
+      ghRepoPage = 1;
+      loadGitHubRepos();
+    }, 300);
+  });
+
+  document.getElementById('github-repo-prev')?.addEventListener('click', () => {
+    if (ghRepoPage > 1) { ghRepoPage--; loadGitHubRepos(); }
+  });
+
+  document.getElementById('github-repo-next')?.addEventListener('click', () => {
+    ghRepoPage++;
+    loadGitHubRepos();
+  });
+
+  async function loadGitHubRepos() {
+    const listEl = document.getElementById('github-repo-list');
+    listEl.innerHTML = '<div class="empty-state" style="padding:24px;">Loading...</div>';
+
+    try {
+      let result;
+      if (ghRepoSearchQuery) {
+        result = await api.invoke('github:search-repos', {
+          query: ghRepoSearchQuery, page: ghRepoPage, perPage: 20
+        });
+      } else {
+        result = await api.invoke('github:list-repos', {
+          page: ghRepoPage, perPage: 20, sort: 'updated'
+        });
+      }
+
+      if (!result?.success || !result.result) {
+        listEl.innerHTML = '<div class="empty-state" style="padding:24px;">Failed to load</div>';
+        return;
+      }
+
+      const repos = result.result.repos || [];
+      const hasNext = result.result.hasNextPage;
+
+      if (!repos.length) {
+        listEl.innerHTML = '<div class="empty-state" style="padding:24px;">No repositories found</div>';
+        document.getElementById('github-repo-pagination').style.display = 'none';
+        return;
+      }
+
+      listEl.innerHTML = repos.map(r => `
+        <div class="github-repo-item" data-clone-url="${escapeHtml(r.cloneUrl)}" data-name="${escapeHtml(r.name)}">
+          <div class="github-repo-info">
+            <div class="github-repo-name">${escapeHtml(r.fullName)}</div>
+            <div class="github-repo-desc">${escapeHtml(r.description || '')}</div>
+            <div class="github-repo-meta">
+              ${r.language ? `<span>${escapeHtml(r.language)}</span>` : ''}
+              <span>&#9733; ${r.stargazersCount}</span>
+              ${r.private ? '<span class="badge">private</span>' : ''}
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary github-repo-select-btn">Select</button>
+        </div>
+      `).join('');
+
+      // Pagination
+      const pag = document.getElementById('github-repo-pagination');
+      if (ghRepoPage > 1 || hasNext) {
+        pag.style.display = 'flex';
+        document.getElementById('github-repo-prev').disabled = ghRepoPage <= 1;
+        document.getElementById('github-repo-next').disabled = !hasNext;
+        document.getElementById('github-repo-page-info').textContent = 'Page ' + ghRepoPage;
+      } else {
+        pag.style.display = 'none';
+      }
+    } catch (e) {
+      listEl.innerHTML = '<div class="empty-state" style="padding:24px;">Error loading repos</div>';
+    }
+  }
+
+  // Handle repo selection via event delegation
+  document.getElementById('github-repo-list')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.github-repo-select-btn');
+    if (!btn) return;
+    const item = btn.closest('.github-repo-item');
+    if (!item) return;
+
+    const cloneUrl = item.dataset.cloneUrl;
+    const name = item.dataset.name;
+
+    document.getElementById('github-repo-modal-overlay').style.display = 'none';
+
+    const project = await getActiveProject();
+    if (!project) { showToast('No active project', 'error'); return; }
+
+    try {
+      const result = await api.invoke('project:repo:add', { projectId: project.id, repoUrl: cloneUrl, name });
+      if (result?.success) { showToast('Repository added'); loadRepos(); }
+      else showToast(result?.error || 'Failed to add repository', 'error');
+    } catch (e) {
+      showToast('Failed to add repository', 'error');
+    }
   });
 
   // ============================================================
@@ -649,5 +959,6 @@
   loadProjects();
   loadDashboard();
   checkWikiStatus();
+  loadGitHubStatus();
   navigateTo('dashboard');
 })();

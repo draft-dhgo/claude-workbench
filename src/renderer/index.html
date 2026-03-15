@@ -238,7 +238,10 @@
             <div class="section-header">
               <h3 data-i18n="pipeline.log">Execution Log</h3>
               <div class="log-controls">
-                <button id="log-collapse-all" class="btn btn-sm" data-i18n="pipeline.collapse_all">Collapse All</button>
+                <select id="log-filter-issue" class="form-input" style="width:auto;min-width:140px;margin-right:8px;">
+                  <option value="all" data-i18n="pipeline.filter_all">All Issues</option>
+                </select>
+                <button id="log-collapse-all" class="btn btn-sm" data-i18n="pipeline.collapse_all">Clear</button>
                 <button id="log-expand-all" class="btn btn-sm" data-i18n="pipeline.expand_all">Expand All</button>
               </div>
             </div>
@@ -253,6 +256,7 @@
           <div class="page-header">
             <h2 data-i18n="repos.title">Repositories</h2>
             <div class="page-header-actions">
+              <button id="repo-browse-github-btn" class="btn btn-secondary" data-i18n="repos.browse_github" style="display:none;">Browse GitHub</button>
               <button id="repo-add-btn" class="btn btn-primary" data-i18n="repos.add">+ Add Repository</button>
               <button id="repo-sync-btn" class="btn btn-secondary" data-i18n="repos.sync">Sync Submodules</button>
             </div>
@@ -320,6 +324,28 @@
             </div>
           </div>
 
+          <div class="settings-section">
+            <h3 data-i18n="settings.github">GitHub Account</h3>
+            <div id="github-status-row" class="github-status-row">
+              <span class="github-status-dot github-dot-disconnected" id="github-dot"></span>
+              <span id="github-status-text" data-i18n="settings.github.disconnected">Not connected</span>
+              <span id="github-username" class="github-username" style="display:none;"></span>
+            </div>
+            <div id="github-token-section">
+              <div class="form-group">
+                <label data-i18n="settings.github.token_label">Personal Access Token</label>
+                <div class="input-with-btn">
+                  <input type="password" id="github-token-input" class="form-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+                  <button id="github-connect-btn" class="btn btn-primary" data-i18n="settings.github.connect">Connect</button>
+                </div>
+                <small class="form-hint" data-i18n="settings.github.token_hint">Requires 'repo' scope. Token is encrypted and stored locally.</small>
+              </div>
+            </div>
+            <div id="github-connected-section" style="display:none;">
+              <button id="github-disconnect-btn" class="btn btn-danger" data-i18n="settings.github.disconnect">Disconnect</button>
+            </div>
+          </div>
+
           <div class="settings-actions">
             <button id="settings-save-btn" class="btn btn-primary" data-i18n="settings.save">Save Settings</button>
           </div>
@@ -360,15 +386,8 @@
               <input type="text" id="issue-form-base-branch" class="form-input" value="main" />
             </div>
             <div class="form-group">
-              <label data-i18n="issues.field.pipeline">Pipeline Command</label>
-              <select id="issue-form-pipeline" class="form-input">
-                <option value="/teams">/teams</option>
-                <option value="/bugfix-teams">/bugfix-teams</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label data-i18n="issues.field.pipeline_args">Pipeline Arguments</label>
-              <textarea id="issue-form-pipeline-args" class="form-input" rows="2" placeholder="Describe the work..."></textarea>
+              <label data-i18n="issues.field.work_instructions">Work Instructions</label>
+              <textarea id="issue-form-pipeline-args" class="form-input" rows="2" placeholder="e.g., Add JWT authentication to login API" data-i18n-placeholder="issues.field.work_instructions_placeholder"></textarea>
             </div>
             <div class="form-group">
               <label data-i18n="issues.field.labels">Labels (comma separated)</label>
@@ -421,6 +440,37 @@
           </div>
         </div>
 
+        <!-- Diff Summary Modal -->
+        <div id="diff-modal-overlay" class="dialog-overlay" style="display:none;">
+          <div class="dialog-box dialog-wide">
+            <h3 id="diff-modal-title">Diff Summary</h3>
+            <div id="diff-modal-stats" class="diff-stats"></div>
+            <div id="diff-modal-files" class="diff-files"></div>
+            <div class="dialog-actions">
+              <button id="diff-modal-close" class="btn btn-secondary" data-i18n="btn.cancel">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- GitHub Repo Browser Modal -->
+        <div id="github-repo-modal-overlay" class="dialog-overlay" style="display:none;">
+          <div class="dialog-box dialog-wide">
+            <h3 data-i18n="repos.github_browse_title">Browse GitHub Repositories</h3>
+            <div class="form-group">
+              <input type="text" id="github-repo-search" class="form-input" placeholder="Search repositories..." data-i18n-placeholder="repos.github_search" />
+            </div>
+            <div id="github-repo-list" class="github-repo-list"></div>
+            <div id="github-repo-pagination" class="github-pagination" style="display:none;">
+              <button id="github-repo-prev" class="btn btn-sm" data-i18n="btn.prev">Previous</button>
+              <span id="github-repo-page-info"></span>
+              <button id="github-repo-next" class="btn btn-sm" data-i18n="btn.next">Next</button>
+            </div>
+            <div class="dialog-actions">
+              <button id="github-repo-modal-cancel" class="btn btn-secondary" data-i18n="btn.cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Toast -->
         <div id="toast" class="toast" style="display:none;"></div>
       </main>
@@ -429,6 +479,8 @@
 
   <script src="scripts/themeToggle.js"></script>
   <script src="scripts/i18n.js"></script>
+  <script src="scripts/logFilter.js"></script>
+  <script src="scripts/statusStepper.js"></script>
   <script src="scripts/app.js"></script>
 </body>
 </html>

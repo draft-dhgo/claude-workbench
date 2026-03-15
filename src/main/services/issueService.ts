@@ -31,6 +31,10 @@ class IssueService {
     const id = `ISSUE-${String(manifest.nextId).padStart(3, '0')}`;
     const now = new Date().toISOString();
 
+    // Auto-map type → pipelineCommand if not explicitly provided
+    const pipelineCommand = data.pipelineCommand
+      || (data.type === 'bugfix' ? '/bugfix-teams' : '/teams');
+
     const issue: Issue = {
       id,
       title: data.title.trim(),
@@ -40,7 +44,7 @@ class IssueService {
       baseBranch: data.baseBranch || 'main',
       issueBranch: `issue/${id}`,
       priority: data.priority || 'medium',
-      pipelineCommand: data.pipelineCommand,
+      pipelineCommand,
       pipelineArgs: data.pipelineArgs,
       labels: data.labels || [],
       createdAt: now,

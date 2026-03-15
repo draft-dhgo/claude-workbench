@@ -41,6 +41,22 @@ export interface Issue {
   result?: IssueResult;
 }
 
+/** Diff 파일 정보 */
+export interface DiffFileSummary {
+  path: string;
+  insertions: number;
+  deletions: number;
+  status: 'added' | 'modified' | 'deleted';
+}
+
+/** Diff 요약 */
+export interface DiffSummary {
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+  files: DiffFileSummary[];
+}
+
 /** 이슈 실행 결과 */
 export interface IssueResult {
   mergeCommitHash?: string;
@@ -49,6 +65,7 @@ export interface IssueResult {
   costUsd?: number;
   durationMs?: number;
   errorMessage?: string;
+  diffSummary?: DiffSummary;
 }
 
 /** 이슈 매니페스트: issue repo 내 issues/manifest.json 구조 */

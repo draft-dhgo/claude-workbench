@@ -80,6 +80,11 @@ async function mergeIssueProcessing(projectId: string, issueId: string): Promise
   await orchestrator.mergeIssue(projectId, issueId);
 }
 
+async function rejectIssueProcessing(projectId: string, issueId: string): Promise<void> {
+  const orchestrator = getOrchestrator();
+  await orchestrator.rejectIssue(projectId, issueId);
+}
+
 function _resetPipelineServices(): void {
   _executor = null;
   _orchestrator = null;
@@ -92,6 +97,7 @@ export {
   abortIssueProcessing,
   retryIssueProcessing,
   mergeIssueProcessing,
+  rejectIssueProcessing,
   getOrchestrator,
   _resetPipelineServices,
 };

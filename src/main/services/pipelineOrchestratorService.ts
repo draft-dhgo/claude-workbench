@@ -235,6 +235,28 @@ class PipelineOrchestratorService {
     }
   }
 
+  /**
+   * 사용자가 completed 이슈를 거부 — created 상태로 되돌림
+   */
+  async rejectIssue(projectId: string, issueId: string): Promise<void> {
+    const project = this._projectStore.getById(projectId);
+    if (!project) throw new Error('PROJECT_NOT_FOUND');
+
+    const issue = await this._issueService.getIssue(project.issueRepoPath, issueId);
+    if (!issue) throw new Error('ISSUE_NOT_FOUND');
+
+    if (issue.status !== 'completed') {
+      throw new Error('ISSUE_NOT_COMPLETED');
+    }
+
+    await this._issueService.transitionStatus(project.issueRepoPath, issueId, 'created');
+    await this._issueService.updateIssue(project.issueRepoPath, issueId, {
+      result: undefined,
+      assignedContainerId: undefined,
+    });
+    this._notifyIssueUpdated();
+  }
+
   // --- Internal ---
 
   private async _handleFailure(project: Project, issue: Issue, containerId: string, errorMessage: string): Promise<void> {

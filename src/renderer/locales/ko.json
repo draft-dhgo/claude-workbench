@@ -53,8 +53,8 @@
   "issues.field.type": "유형",
   "issues.field.priority": "우선순위",
   "issues.field.base_branch": "베이스 브랜치",
-  "issues.field.pipeline": "파이프라인 커맨드",
-  "issues.field.pipeline_args": "파이프라인 인자",
+  "issues.field.work_instructions": "작업 지시사항",
+  "issues.field.work_instructions_placeholder": "예: 로그인 API에 JWT 인증 추가",
   "issues.field.labels": "라벨 (쉼표 구분)",
 
   "containers.title": "컨테이너",
@@ -65,7 +65,8 @@
 
   "pipeline.title": "파이프라인",
   "pipeline.log": "실행 로그",
-  "pipeline.collapse_all": "모두 접기",
+  "pipeline.filter_all": "전체 이슈",
+  "pipeline.collapse_all": "지우기",
   "pipeline.expand_all": "모두 펼치기",
 
   "repos.title": "저장소",
@@ -90,5 +91,19 @@
   "settings.test_command": "테스트 명령",
   "settings.data_root": "데이터 루트 경로",
   "settings.docker_status": "Docker 상태",
-  "settings.save": "설정 저장"
+  "settings.save": "설정 저장",
+
+  "settings.github": "GitHub 계정",
+  "settings.github.connected": "연결됨",
+  "settings.github.disconnected": "연결되지 않음",
+  "settings.github.token_label": "개인 액세스 토큰",
+  "settings.github.connect": "연결",
+  "settings.github.disconnect": "연결 해제",
+  "settings.github.token_hint": "'repo' 스코프가 필요합니다. 토큰은 암호화되어 로컬에 저장됩니다. 선택 사항 — SSH 키로도 사용 가능합니다.",
+
+  "repos.browse_github": "GitHub 찾아보기",
+  "repos.github_browse_title": "GitHub 저장소 찾아보기",
+  "repos.github_search": "저장소 검색...",
+  "btn.prev": "이전",
+  "btn.next": "다음"
 }

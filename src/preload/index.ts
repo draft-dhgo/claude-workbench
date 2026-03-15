@@ -48,12 +48,15 @@ const ALLOWED_INVOKE_CHANNELS: string[] = [
   // Issue (신규)
   'issue:list', 'issue:get', 'issue:create', 'issue:update', 'issue:delete',
   'issue:transition', 'issue:get-detail', 'issue:set-detail',
-  'issue:start', 'issue:abort', 'issue:retry', 'issue:merge',
+  'issue:start', 'issue:abort', 'issue:retry', 'issue:merge', 'issue:reject',
   // Container (신규 — Phase 2)
   'container:pool-status', 'container:get', 'container:get-logs',
   'container:destroy', 'container:destroy-all', 'container:set-max',
   // Pipeline (신규 — Phase 2)
   'pipeline:status', 'pipeline:abort',
+  // GitHub
+  'github:set-token', 'github:remove-token', 'github:check-connection',
+  'github:list-repos', 'github:search-repos',
   // History (유지)
   'history:list', 'history:delete', 'history:clear'
 ]

@@ -15,7 +15,7 @@ import {
 import {
   handleIssueList, handleIssueGet, handleIssueCreate, handleIssueUpdate,
   handleIssueDelete, handleIssueTransition, handleIssueGetDetail, handleIssueSetDetail,
-  handleIssueStart, handleIssueAbort, handleIssueRetry, handleIssueMerge,
+  handleIssueStart, handleIssueAbort, handleIssueRetry, handleIssueMerge, handleIssueReject,
 } from './handlers/issueHandlers';
 import { handleSettingsGet, handleSettingsUpdate, handleDockerCheck } from './handlers/settingsHandlers';
 import {
@@ -23,6 +23,10 @@ import {
   handleContainerDestroy, handleContainerDestroyAll, handleContainerSetMax,
 } from './handlers/containerHandlers';
 import { handlePipelineStatus, handlePipelineAbort } from './handlers/pipelineHandlers';
+import {
+  handleGitHubSetToken, handleGitHubRemoveToken, handleGitHubCheckConnection,
+  handleGitHubListRepos, handleGitHubSearchRepos,
+} from './handlers/githubHandlers';
 
 function createWindow() {
   const win = new BrowserWindow(getWindowOptions())
@@ -71,6 +75,7 @@ ipcMain.handle('issue:start', handleIssueStart)
 ipcMain.handle('issue:abort', handleIssueAbort)
 ipcMain.handle('issue:retry', handleIssueRetry)
 ipcMain.handle('issue:merge', handleIssueMerge)
+ipcMain.handle('issue:reject', handleIssueReject)
 
 // === Dialog ===
 ipcMain.handle('dialog:select-directory', handleSelectDirectory)
@@ -97,6 +102,13 @@ ipcMain.handle('container:get-logs', handleContainerGetLogs)
 ipcMain.handle('container:destroy', handleContainerDestroy)
 ipcMain.handle('container:destroy-all', handleContainerDestroyAll)
 ipcMain.handle('container:set-max', handleContainerSetMax)
+
+// === GitHub ===
+ipcMain.handle('github:set-token', handleGitHubSetToken)
+ipcMain.handle('github:remove-token', handleGitHubRemoveToken)
+ipcMain.handle('github:check-connection', handleGitHubCheckConnection)
+ipcMain.handle('github:list-repos', handleGitHubListRepos)
+ipcMain.handle('github:search-repos', handleGitHubSearchRepos)
 
 // === Pipeline ===
 ipcMain.handle('pipeline:status', handlePipelineStatus)

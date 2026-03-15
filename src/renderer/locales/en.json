@@ -53,8 +53,8 @@
   "issues.field.type": "Type",
   "issues.field.priority": "Priority",
   "issues.field.base_branch": "Base Branch",
-  "issues.field.pipeline": "Pipeline Command",
-  "issues.field.pipeline_args": "Pipeline Arguments",
+  "issues.field.work_instructions": "Work Instructions",
+  "issues.field.work_instructions_placeholder": "e.g., Add JWT authentication to login API",
   "issues.field.labels": "Labels (comma separated)",
 
   "containers.title": "Containers",
@@ -65,7 +65,8 @@
 
   "pipeline.title": "Pipeline",
   "pipeline.log": "Execution Log",
-  "pipeline.collapse_all": "Collapse All",
+  "pipeline.filter_all": "All Issues",
+  "pipeline.collapse_all": "Clear",
   "pipeline.expand_all": "Expand All",
 
   "repos.title": "Repositories",
@@ -90,5 +91,19 @@
   "settings.test_command": "Test Command",
   "settings.data_root": "Data Root Path",
   "settings.docker_status": "Docker Status",
-  "settings.save": "Save Settings"
+  "settings.save": "Save Settings",
+
+  "settings.github": "GitHub Account",
+  "settings.github.connected": "Connected",
+  "settings.github.disconnected": "Not connected",
+  "settings.github.token_label": "Personal Access Token",
+  "settings.github.connect": "Connect",
+  "settings.github.disconnect": "Disconnect",
+  "settings.github.token_hint": "Requires 'repo' scope. Token is encrypted and stored locally. Optional — you can also use SSH keys.",
+
+  "repos.browse_github": "Browse GitHub",
+  "repos.github_browse_title": "Browse GitHub Repositories",
+  "repos.github_search": "Search repositories...",
+  "btn.prev": "Previous",
+  "btn.next": "Next"
 }
